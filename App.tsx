@@ -9,6 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import { useFonts, Baloo2_700Bold, Baloo2_600SemiBold } from "@expo-google-fonts/baloo-2";
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from "@expo-google-fonts/inter";
 import RoleSelectScreen from "./src/screens/RoleSelectScreen";
+import TestModelScreen from "./src/screens/TestModelScreen";
 import { colors, fonts as themeFonts } from "./src/theme/theme";
 
 type Role = "student" | "teacher" | "admin" | null;
@@ -39,7 +40,7 @@ export default function App() {
     return (
       <>
         <StatusBar style="dark" />
-        <RoleSelectScreen onSelectRole={setRole} />
+        <TestModelScreen />
       </>
     );
   }

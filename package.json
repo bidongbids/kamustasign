@@ -17,14 +17,15 @@
     "@supabase/supabase-js": "^2.110.0",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-react-native": "^1.0.0",
-    "expo": "~57.0.0",
-    "expo-camera": "~57.0.0",
-    "expo-font": "*",
-    "expo-gl": "~57.0.1",
-    "expo-status-bar": "*",
+    "expo": "~56.0.0",
+    "expo-camera": "~56.0.8",
+    "expo-font": "~56.0.7",
+    "expo-gl": "~56.0.6",
+    "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-native": "*",
+    "react-native": "0.85.3",
+    "react-native-fs": "^2.20.0",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
     "react-native-svg": "15.15.4",
@@ -35,5 +36,12 @@
     "@types/react": "*",
     "typescript": "~6.0.3"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["react-native-fs"]
+      }
+    }
+  }
 }
