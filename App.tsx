@@ -40,7 +40,7 @@ export default function App() {
     return (
       <>
         <StatusBar style="dark" />
-        <TestModelScreen />
+        <RoleSelectScreen onSelectRole={setRole} />
       </>
     );
   }
