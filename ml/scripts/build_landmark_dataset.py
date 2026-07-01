@@ -40,7 +40,7 @@ OUTPUT_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "landmarks_da
 
 # Start small to verify the pipeline works before running the full 87,000.
 # Each class folder has ~3,000 images; set to None to process ALL of them.
-SAMPLES_PER_CLASS = 200
+SAMPLES_PER_CLASS = None
 # -----------------------------------------------------------------------
 
 

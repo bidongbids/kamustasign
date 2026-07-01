@@ -43,6 +43,7 @@ def main():
 
     print(f"Loading {CSV_PATH} ...")
     df = pd.read_csv(CSV_PATH)
+    df = df[df["label"] != "nothing"]
     print(f"Loaded {len(df)} rows, {df['label'].nunique()} classes.")
     print("Class counts:\n", df["label"].value_counts().sort_index())
 
