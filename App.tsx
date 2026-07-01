@@ -3,6 +3,7 @@
 // Real navigation (@react-navigation/native) gets wired in next — this just
 // proves the fonts + theme + role-select flow work end to end.
 
+import LiveTranslatorScreen from "./src/screens/LiveTranslatorScreen";
 import React, { useState } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -40,7 +41,7 @@ export default function App() {
     return (
       <>
         <StatusBar style="dark" />
-        <RoleSelectScreen onSelectRole={setRole} />
+        <LiveTranslatorScreen />
       </>
     );
   }
