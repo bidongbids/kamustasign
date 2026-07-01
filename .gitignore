@@ -1,0 +1,28 @@
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+npm-debug.*
+
+# Python / ML
+venv/
+venv-convert/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Env files - never commit secrets
+.env
+.env.local
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Large datasets - don't commit raw video/image data
+ml/data/
+ml/datasets/
+*.mp4
+*.avi
