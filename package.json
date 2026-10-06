@@ -6,7 +6,10 @@
     "start": "expo start",
     "web": "expo start --web",
     "android": "expo start --android",
-    "ios": "expo start --ios"
+    "ios": "expo start --ios",
+    "electron:install": "cd electron && npm install",
+    "electron:dev": "concurrently \"npm run web\" \"cd electron && npm start\"",
+    "electron:build": "npx expo export --platform web && cd electron && npx electron-builder"
   },
   "dependencies": {
     "@expo-google-fonts/baloo-2": "*",
@@ -14,13 +17,17 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/native": "^7.3.5",
     "@react-navigation/native-stack": "^7.17.7",
+    "@react-three/fiber": "^9.7.0",
     "@supabase/supabase-js": "^2.110.0",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-react-native": "^1.0.0",
     "expo": "~56.0.0",
+    "expo-blur": "~56.0.4",
     "expo-camera": "~56.0.8",
     "expo-font": "~56.0.7",
     "expo-gl": "~56.0.6",
+    "expo-linear-gradient": "~56.0.4",
+    "expo-speech": "~56.0.3",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -29,11 +36,14 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
     "react-native-svg": "15.15.4",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
     "@types/react": "*",
+    "@types/three": "^0.186.0",
+    "concurrently": "^9.0.0",
     "typescript": "~6.0.3"
   },
   "private": true,

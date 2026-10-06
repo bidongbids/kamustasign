@@ -26,3 +26,20 @@ ml/data/
 ml/datasets/
 *.mp4
 *.avi
+# Model binaries - too large for git; regenerate with the ml/scripts pipeline
+# (see FSL_MODEL_GUIDE.md / NUMBERS_MODEL_GUIDE.md) or copy in by hand
+ml/models/
+public/word-model/
+public/fsl-model/
+ml/**/*.task
+
+# Separate upstream repo + datasets, not part of this project's source
+ml/SignAvatars/
+
+# Office/PDF working drafts
+*.docx
+*.pdf
+*.pptx
+_pptx_edit/
+ml/ab_test/*.keras
+ml/ab_test/*.npy

@@ -3,7 +3,8 @@
 // Used as the app logo on the Role Select screen, and reusable later as a
 // loading/processing indicator during live sign recognition.
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import { Animated } from "react-native";
 import Svg, { Circle, Line } from "react-native-svg";
 import { colors } from "../theme/theme";
 
@@ -11,6 +12,10 @@ type Props = {
   size?: number;
   color?: string;
   dotColor?: string;
+  // Gentle idle "breathing" loop — on by default since this mark stands in
+  // for the live landmark-detection motif; set false anywhere it needs to
+  // sit still (e.g. next to running text).
+  animated?: boolean;
 };
 
 // Simplified 21-point hand landmark layout (MediaPipe hand topology),
@@ -37,35 +42,56 @@ const CONNECTIONS: [number, number][] = [
 export default function HandLandmarkMark({
   size = 96,
   color = colors.primaryTeal,
-  dotColor = colors.accentMarigold,
+  dotColor = colors.accentCoral,
+  animated = true,
 }: Props) {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!animated) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 1700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 1700, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [animated, pulse]);
+
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.045] });
+
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100">
-      {CONNECTIONS.map(([a, b], i) => {
-        const [x1, y1] = POINTS[a];
-        const [x2, y2] = POINTS[b];
-        return (
-          <Line
-            key={`line-${i}`}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={color}
-            strokeWidth={2.5}
-            strokeLinecap="round"
+    <Animated.View
+      style={{ width: size, height: size, transform: animated ? [{ scale }] : undefined }}
+    >
+      <Svg width={size} height={size} viewBox="0 0 100 100">
+        {CONNECTIONS.map(([a, b], i) => {
+          const [x1, y1] = POINTS[a];
+          const [x2, y2] = POINTS[b];
+          return (
+            <Line
+              key={`line-${i}`}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={color}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        {POINTS.map(([x, y], i) => (
+          <Circle
+            key={`dot-${i}`}
+            cx={x}
+            cy={y}
+            r={i === 0 ? 4.5 : 3}
+            fill={i === 0 ? color : dotColor}
           />
-        );
-      })}
-      {POINTS.map(([x, y], i) => (
-        <Circle
-          key={`dot-${i}`}
-          cx={x}
-          cy={y}
-          r={i === 0 ? 4.5 : 3}
-          fill={i === 0 ? color : dotColor}
-        />
-      ))}
-    </Svg>
+        ))}
+      </Svg>
+    </Animated.View>
   );
 }

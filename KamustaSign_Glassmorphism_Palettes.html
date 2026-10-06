@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KamustaSign — Glassmorphism Palette Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif;
+    background: #0b0b0f;
+    color: #fff;
+    padding: 40px 20px 80px;
+  }
+  .page-header {
+    max-width: 900px;
+    margin: 0 auto 48px;
+    text-align: center;
+  }
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .page-header p {
+    font-size: 15px;
+    color: rgba(255,255,255,0.6);
+  }
+  .palette-section {
+    max-width: 900px;
+    margin: 0 auto 56px;
+    border-radius: 28px;
+    padding: 48px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .palette-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .palette-label h2 {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .palette-label span {
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.75;
+    letter-spacing: 0.02em;
+  }
+  .mock-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .glass-card {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.35);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    padding: 24px;
+  }
+  .card-main {
+    flex: 1 1 320px;
+  }
+  .card-main .kicker {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.8;
+    margin-bottom: 6px;
+  }
+  .card-main h3 {
+    font-size: 19px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .fake-video {
+    height: 90px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.25);
+    margin-bottom: 16px;
+  }
+  .cta-btn {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 11px 22px;
+    border-radius: 999px;
+    border: none;
+    cursor: default;
+  }
+  .card-side {
+    flex: 1 1 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .stat-pill {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .stat-pill .num {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .stat-label {
+    font-size: 12px;
+    opacity: 0.75;
+    margin-top: 2px;
+  }
+  .swatch-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .swatch {
+    flex: 1 1 100px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .swatch .role {
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    opacity: 0.8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Glassmorphism palette options</h1>
+  <p>Four directions for KamustaSign — same layout, different mood. Pick the one that feels right.</p>
+</div>
+
+<div class="palette-section" style="background: linear-gradient(135deg, #0B1F27 0%, #145C66 55%, #3FA9AA 100%);">
+  <div class="palette-label">
+    <h2>1. Ocean teal</h2>
+    <span>calm · trustworthy · accessible</span>
+  </div>
+  <div class="mock-row">
+    <div class="glass-card card-main" style="background: rgba(255,255,255,0.14);">
+      <div class="kicker" style="color:#B2F5EA;">Word translator</div>
+      <h3>Sign the word now&hellip;</h3>
+      <div class="fake-video"></div>
+      <button class="cta-btn" style="background:#FF8A65; color:#4A1D0E;">Record a sign</button>
+    </div>
+    <div class="glass-card card-side" style="background: rgba(255,255,255,0.14);">
+      <div class="stat-pill"><span class="num">133</span></div>
+      <div class="stat-label">Words learned</div>
+      <div class="stat-pill"><span class="num">52.9%</span></div>
+      <div class="stat-label">Model accuracy</div>
+    </div>
+  </div>
+  <div class="swatch-row">
+    <div class="swatch" style="background:#0B1F27; color:#F0FBFA;"><span class="role">Base</span>#0B1F27</div>
+    <div class="swatch" style="background:#3FA9AA; color:#04342C;"><span class="role">Glass tint</span>#3FA9AA</div>
+    <div class="swatch" style="background:#FF8A65; color:#4A1D0E;"><span class="role">Accent</span>#FF8A65</div>
+    <div class="swatch" style="background:#F0FBFA; color:#0B1F27;"><span class="role">Neutral</span>#F0FBFA</div>
+  </div>
+</div>
+
+<div class="palette-section" style="background: linear-gradient(135deg, #2E1065 0%, #6D28D9 55%, #C026D3 100%);">
+  <div class="palette-label">
+    <h2>2. Violet dusk</h2>
+    <span>vibrant · modern · energetic</span>
+  </div>
+  <div class="mock-row">
+    <div class="glass-card card-main" style="background: rgba(255,255,255,0.14);">
+      <div class="kicker" style="color:#E9D5FF;">Word translator</div>
+      <h3>Sign the word now&hellip;</h3>
+      <div class="fake-video"></div>
+      <button class="cta-btn" style="background:#FBBF24; color:#412402;">Record a sign</button>
+    </div>
+    <div class="glass-card card-side" style="background: rgba(255,255,255,0.14);">
+      <div class="stat-pill"><span class="num">133</span></div>
+      <div class="stat-label">Words learned</div>
+      <div class="stat-pill"><span class="num">52.9%</span></div>
+      <div class="stat-label">Model accuracy</div>
+    </div>
+  </div>
+  <div class="swatch-row">
+    <div class="swatch" style="background:#2E1065; color:#EEEDFE;"><span class="role">Base</span>#2E1065</div>
+    <div class="swatch" style="background:#C026D3; color:#4B1528;"><span class="role">Glass tint</span>#C026D3</div>
+    <div class="swatch" style="background:#FBBF24; color:#412402;"><span class="role">Accent</span>#FBBF24</div>
+    <div class="swatch" style="background:#FAF5FF; color:#2E1065;"><span class="role">Neutral</span>#FAF5FF</div>
+  </div>
+</div>
+
+<div class="palette-section" style="background: linear-gradient(135deg, #4A1D3D 0%, #C2410C 55%, #FB923C 100%);">
+  <div class="palette-label">
+    <h2>3. Tropical sunrise</h2>
+    <span>warm · energetic · homegrown</span>
+  </div>
+  <div class="mock-row">
+    <div class="glass-card card-main" style="background: rgba(255,255,255,0.14);">
+      <div class="kicker" style="color:#FFE4C2;">Word translator</div>
+      <h3>Sign the word now&hellip;</h3>
+      <div class="fake-video"></div>
+      <button class="cta-btn" style="background:#22D3EE; color:#04313B;">Record a sign</button>
+    </div>
+    <div class="glass-card card-side" style="background: rgba(255,255,255,0.14);">
+      <div class="stat-pill"><span class="num">133</span></div>
+      <div class="stat-label">Words learned</div>
+      <div class="stat-pill"><span class="num">52.9%</span></div>
+      <div class="stat-label">Model accuracy</div>
+    </div>
+  </div>
+  <div class="swatch-row">
+    <div class="swatch" style="background:#4A1D3D; color:#FBEAF0;"><span class="role">Base</span>#4A1D3D</div>
+    <div class="swatch" style="background:#FB923C; color:#4A1B0C;"><span class="role">Glass tint</span>#FB923C</div>
+    <div class="swatch" style="background:#22D3EE; color:#04313B;"><span class="role">Accent</span>#22D3EE</div>
+    <div class="swatch" style="background:#FFF7ED; color:#4A1D3D;"><span class="role">Neutral</span>#FFF7ED</div>
+  </div>
+</div>
+
+<div class="palette-section" style="background: linear-gradient(135deg, #052E27 0%, #0D9488 55%, #5EEAD4 100%);">
+  <div class="palette-label">
+    <h2>4. Fresh mint</h2>
+    <span>growth · nature · reassuring</span>
+  </div>
+  <div class="mock-row">
+    <div class="glass-card card-main" style="background: rgba(255,255,255,0.14);">
+      <div class="kicker" style="color:#CCFBF1;">Word translator</div>
+      <h3>Sign the word now&hellip;</h3>
+      <div class="fake-video"></div>
+      <button class="cta-btn" style="background:#FBBF24; color:#412402;">Record a sign</button>
+    </div>
+    <div class="glass-card card-side" style="background: rgba(255,255,255,0.14);">
+      <div class="stat-pill"><span class="num">133</span></div>
+      <div class="stat-label">Words learned</div>
+      <div class="stat-pill"><span class="num">52.9%</span></div>
+      <div class="stat-label">Model accuracy</div>
+    </div>
+  </div>
+  <div class="swatch-row">
+    <div class="swatch" style="background:#052E27; color:#EAF3DE;"><span class="role">Base</span>#052E27</div>
+    <div class="swatch" style="background:#5EEAD4; color:#04342C;"><span class="role">Glass tint</span>#5EEAD4</div>
+    <div class="swatch" style="background:#FBBF24; color:#412402;"><span class="role">Accent</span>#FBBF24</div>
+    <div class="swatch" style="background:#F0FDF4; color:#052E27;"><span class="role">Neutral</span>#F0FDF4</div>
+  </div>
+</div>
+
+</body>
+</html>

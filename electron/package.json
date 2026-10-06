@@ -1,0 +1,29 @@
+{
+  "name": "kamustasign-electron",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.nmsc.kamustasign",
+    "productName": "KamustaSign",
+    "files": [
+      "main.js",
+      "../dist/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  },
+  "allowScripts": {
+    "electron@33.4.11": true
+  }
+}
