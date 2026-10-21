@@ -37,6 +37,7 @@ import { PASS_CONFIDENCE } from "../lib/curriculum";
 import { drawHandSkeleton } from "../lib/handSkeleton";
 import PracticeCameraOverlay from "../components/learn/PracticeCameraOverlay";
 import { useTranslateAndSpeak } from "../hooks/useTranslateAndSpeak";
+import { fpsLabel, useFpsMeter } from "../hooks/useFpsMeter";
 
 const TOP_K = 5;
 // Visual-only target the frame meter / REC pill count toward on mobile
@@ -140,6 +141,7 @@ export default function WordTranslatorScreen({
   const frameTarget = isDesktop ? clipLengthFrames : FRAME_TARGET;
 
   const [status, setStatus] = useState("Starting...");
+  const { fps, tick: fpsTick } = useFpsMeter();
   // The word models load in the background, separately from the camera. The
   // ref mirrors the state so setup()'s async flow can read it without
   // capturing a stale closure value.
@@ -380,6 +382,7 @@ export default function WordTranslatorScreen({
         // landmarker's whole lifetime - a counter reset to 0 on every mount
         // would violate that as soon as you switched back to Words.
         const result = holisticLandmarker.detectForVideo(video, performance.now());
+        fpsTick(video);
 
         if (canvas) {
           const ctx = canvas.getContext("2d");
@@ -1162,7 +1165,7 @@ export default function WordTranslatorScreen({
               statusText={
                 capturing || classifying
                   ? `CLASSIFYING · ${frameCount} FRAMES BUFFERED`
-                  : isAuto ? "HANDS-FREE · WATCHING" : "30 FPS · MODEL READY"
+                  : isAuto ? `HANDS-FREE · ${fpsLabel(fps)}` : `${fpsLabel(fps)} · MODEL READY`
               }
               overlays={cameraOverlays}
               style={styles.cameraDesktopSize}
@@ -1196,7 +1199,7 @@ export default function WordTranslatorScreen({
         statusText={
           capturing || classifying
                   ? `CLASSIFYING · ${frameCount} FRAMES BUFFERED`
-                  : isAuto ? "HANDS-FREE · WATCHING" : "30 FPS · MODEL READY"
+                  : isAuto ? `HANDS-FREE · ${fpsLabel(fps)}` : `${fpsLabel(fps)} · MODEL READY`
         }
         mobileScreenHeight={282}
         overlays={cameraOverlays}

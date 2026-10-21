@@ -15,6 +15,7 @@ import HoldDurationControl, { useHoldDuration } from "../components/HoldDuration
 import TranslatorPanel from "../components/TranslatorPanel";
 import { BackspaceIcon, CheckIcon, ClockIcon, EyeIcon, HandIcon, SpeakerIcon } from "../components/icons/UiIcons";
 import { useReduceMotion } from "../hooks/useReduceMotion";
+import { fpsLabel, useFpsMeter } from "../hooks/useFpsMeter";
 import { useTranslateAndSpeak } from "../hooks/useTranslateAndSpeak";
 import { findLanguage } from "../lib/languages";
 import { drawHandSkeleton } from "../lib/handSkeleton";
@@ -101,6 +102,7 @@ export default function LiveTranslatorScreen({
   const [prediction, setPrediction] = useState("-");
   const [confidence, setConfidence] = useState(0);
   const [status, setStatus] = useState("Starting...");
+  const { fps, tick: fpsTick } = useFpsMeter();
   const [handDetected, setHandDetected] = useState(false);
   const [landmarkCount, setLandmarkCount] = useState(0);
 
@@ -314,6 +316,7 @@ export default function LiveTranslatorScreen({
 
       if (video.readyState >= 2) {
         const result = handLandmarker.detectForVideo(video, nowMs);
+        fpsTick(video);
 
         let ctx: CanvasRenderingContext2D | null = null;
         if (canvas) {
@@ -496,7 +499,9 @@ export default function LiveTranslatorScreen({
   }
 
   const ready = status === "Running.";
-  const bottomShelfText = isDesktop ? `30 FPS · ${ready ? "MODEL READY" : "LOADING"}` : `30 FPS · ${ready ? "READY" : "LOADING"}`;
+  const bottomShelfText = isDesktop
+    ? `${fpsLabel(fps)} · ${ready ? "MODEL READY" : "LOADING"}`
+    : `${fpsLabel(fps)} · ${ready ? "READY" : "LOADING"}`;
   const translationTag =
     speechStatus === "translating" ? "translating…" : speechStatus === "speaking" ? "speaking…" : "ready";
 
@@ -750,7 +755,7 @@ export default function LiveTranslatorScreen({
           videoRef={videoRef}
           canvasRef={canvasRef}
           ledColor={cameraError ? colors.needsPractice : ready ? colors.success : colors.accentCoral}
-          statusText={cameraError ? "CAMERA OFF" : ready ? "30 FPS · READY" : "STARTING"}
+          statusText={cameraError ? "CAMERA OFF" : ready ? `${fpsLabel(fps)} · READY` : "STARTING"}
           overlays={
             <PracticeCameraOverlay
               phase={cameraError ? "error" : ready ? "live" : "loading"}
