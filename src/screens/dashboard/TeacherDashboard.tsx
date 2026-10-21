@@ -1,42 +1,58 @@
-// Teacher dashboard: create/own a class, post assignments, review
-// submissions, grade them. Real reads/writes against Supabase, scoped by
-// RLS - a teacher only ever sees their own class/assignments/submissions
-// because the database enforces that, not because this screen filters for it.
+// Teacher dashboard: run your classes (create / rename / delete), invite
+// students (class code or ticking them from a list), author modules, call a
+// student, and follow the class's progress. Real reads/writes against
+// Supabase, scoped by RLS - a teacher only ever sees their own class's
+// students because the database enforces that (0002/0006), and roster
+// changes go through the owner-checked functions in
+// 0009_teacher_classroom.sql.
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import DashboardShell, { DashboardCard, dashboardStyles as ds } from "./DashboardShell";
-import AuthButton from "../../components/auth/AuthButton";
-import AuthTextField from "../../components/auth/AuthTextField";
-import { colors, spacing } from "../../theme/theme";
+import { colors, fonts, spacing } from "../../theme/theme";
+import { useResponsive } from "../../theme/responsive";
+import CurriculumTabs from "./CurriculumTabs";
+import StudentProgressRow from "./StudentProgressRow";
+import TeacherModules from "./TeacherModules";
+import { InviteStudentsCard, JoinCodeCard } from "./InviteStudents";
+import SegmentedToggle from "../../components/SegmentedToggle";
+import ProgressBar from "../../components/ProgressBar";
+import {
+  ActionButton,
+  Avatar,
+  ChoicePills,
+  ConfirmInline,
+  InlineField,
+  Notice,
+  StatTile,
+  type NoticeState,
+} from "./ManageKit";
+import { PencilIcon, PlusIcon, TrashIcon, VideoIcon } from "../../components/icons/UiIcons";
 import {
   getMyProfile,
-  getMyClassAsTeacher,
+  getMyClassesAsTeacher,
   createClass,
-  createAssignment,
-  deleteAssignment,
-  getAssignmentsForClass,
-  getSubmissionsForTeacher,
-  getStudentsForClass,
-  upsertScore,
-  toOne,
+  renameClass,
+  deleteClass,
+  removeStudentFromClass,
+  getClassProgressSummary,
   type Profile,
   type ClassRow,
-  type AssignmentRow,
+  type StudentProgressSummary,
 } from "../../lib/queries";
+import {
+  OVERALL_CAPTION,
+  computeOverall,
+  getGroup,
+  groupFraction,
+  type SignGroup,
+  type SignLanguage,
+} from "../../lib/curriculum";
 import { useVideoCall } from "../../hooks/useVideoCall";
 import VideoCallScreen from "../videocall/VideoCallScreen";
 import type { CallPeer } from "../../lib/callSignaling";
 
-type ScoreJoin = { is_correct: boolean; confidence: number; predicted_sign: string };
-
-type SubmissionWithJoins = {
-  id: string;
-  submitted_at: string;
-  video_url: string;
-  assignments: { target_sign: string } | { target_sign: string }[] | null;
-  profiles: { full_name: string } | { full_name: string }[] | null;
-  scores: ScoreJoin | ScoreJoin[] | null;
-};
+type SortKey = "overall" | "group" | "name";
+type Section = "students" | "modules" | "progress";
 
 type Props = {
   accentColor: string;
@@ -45,116 +61,175 @@ type Props = {
 };
 
 export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleSelect }: Props) {
+  const { isDesktop } = useResponsive();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [klass, setKlass] = useState<ClassRow | null>(null);
-  const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
-  const [submissions, setSubmissions] = useState<SubmissionWithJoins[]>([]);
-  const [students, setStudents] = useState<CallPeer[]>([]);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [progress, setProgress] = useState<StudentProgressSummary[]>([]);
+  const [language, setLanguage] = useState<SignLanguage>("asl");
+  const [group, setGroup] = useState<SignGroup>("letters");
+  const [sortBy, setSortBy] = useState<SortKey>("overall");
+  const [section, setSection] = useState<Section>("students");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [notice, setNotice] = useState<NoticeState>(null);
+
+  // Forms / pending actions
+  const [newClassName, setNewClassName] = useState("");
+  const [creatingClass, setCreatingClass] = useState(false);
+  const [showNewClass, setShowNewClass] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [savingRename, setSavingRename] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  const klass = classes.find((c) => c.id === selectedClassId) ?? null;
 
   const self: CallPeer | null = profile ? { id: profile.id, name: profile.full_name } : null;
+  // Calls ring on the selected class's channel - a student in another of
+  // this teacher's classes reaches them only while that class is selected.
   const call = useVideoCall(klass?.id ?? null, self);
 
-  const [className, setClassName] = useState("");
-  const [creatingClass, setCreatingClass] = useState(false);
-
-  const [targetSign, setTargetSign] = useState("");
-  const [addingAssignment, setAddingAssignment] = useState(false);
-
-  const [gradingId, setGradingId] = useState<string | null>(null);
-  const [gradeSign, setGradeSign] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const { data: me, error: profileError } = await getMyProfile();
-    if (profileError || !me) {
-      setError(profileError?.message ?? "Couldn't load your profile.");
-      setLoading(false);
-      return;
-    }
-    setProfile(me as Profile);
-
-    const { data: myClass, error: classErr } = await getMyClassAsTeacher(me.id);
-    if (classErr) {
-      setError(classErr.message);
-      setLoading(false);
-      return;
-    }
-    setKlass((myClass as ClassRow) ?? null);
-
-    if (myClass) {
-      const [{ data: a, error: aErr }, { data: s, error: sErr }, { data: st }] = await Promise.all([
-        getAssignmentsForClass((myClass as ClassRow).id),
-        getSubmissionsForTeacher(),
-        getStudentsForClass((myClass as ClassRow).id),
-      ]);
-      if (aErr) setError(aErr.message);
-      else setAssignments((a as AssignmentRow[]) ?? []);
-      if (sErr) setError((prev) => prev ?? sErr.message);
-      else setSubmissions((s as unknown as SubmissionWithJoins[]) ?? []);
-      setStudents(((st as { id: string; full_name: string }[]) ?? []).map((p) => ({ id: p.id, name: p.full_name })));
-    }
-    setLoading(false);
+  const loadRoster = useCallback(async (classId: string) => {
+    setRosterLoading(true);
+    const { data, error } = await getClassProgressSummary(classId);
+    setRosterLoading(false);
+    if (error) setNotice({ kind: "error", message: error.message });
+    else setProgress(data ?? []);
   }, []);
+
+  const load = useCallback(
+    async (preferClassId?: string | null) => {
+      setLoading(true);
+      const { data: me, error: profileError } = await getMyProfile();
+      if (profileError || !me) {
+        setNotice({ kind: "error", message: profileError?.message ?? "Couldn't load your profile." });
+        setLoading(false);
+        return;
+      }
+      setProfile(me as Profile);
+
+      const { data: mine, error: classErr } = await getMyClassesAsTeacher(me.id);
+      if (classErr) {
+        setNotice({ kind: "error", message: classErr.message });
+        setLoading(false);
+        return;
+      }
+      const list = (mine as ClassRow[]) ?? [];
+      setClasses(list);
+      const nextId =
+        list.find((c) => c.id === preferClassId)?.id ?? list[0]?.id ?? null;
+      setSelectedClassId(nextId);
+      if (nextId) await loadRoster(nextId);
+      else setProgress([]);
+      setLoading(false);
+    },
+    [loadRoster]
+  );
 
   useEffect(() => {
     load();
   }, [load]);
 
+  const selectClass = (id: string) => {
+    if (id === selectedClassId) return;
+    setSelectedClassId(id);
+    setRenaming(false);
+    setConfirmDelete(false);
+    setConfirmRemoveId(null);
+    setProgress([]);
+    loadRoster(id);
+  };
+
+  // ---- class CRUD ----
+
   const handleCreateClass = async () => {
-    if (!profile || !className.trim()) return;
+    const name = newClassName.trim();
+    if (!profile || !name) return;
     setCreatingClass(true);
-    const { error: err } = await createClass(className.trim(), profile.id);
+    const { data, error } = await createClass(name, profile.id);
     setCreatingClass(false);
-    if (err) {
-      setError(err.message);
+    if (error) {
+      setNotice({ kind: "error", message: error.message });
       return;
     }
-    setClassName("");
+    setNewClassName("");
+    setShowNewClass(false);
+    setNotice({ kind: "success", message: `Created "${name}". Share its class code or tick students to invite them.` });
+    setSection("students");
+    load((data as ClassRow).id);
+  };
+
+  const handleRename = async () => {
+    const name = renameValue.trim();
+    if (!klass || !name) return;
+    setSavingRename(true);
+    const { error } = await renameClass(klass.id, name);
+    setSavingRename(false);
+    if (error) {
+      setNotice({ kind: "error", message: error.message });
+      return;
+    }
+    setClasses((prev) => prev.map((c) => (c.id === klass.id ? { ...c, name } : c)));
+    setRenaming(false);
+    setNotice({ kind: "success", message: "Class renamed." });
+  };
+
+  const handleDelete = async () => {
+    if (!klass) return;
+    setDeleting(true);
+    const { error } = await deleteClass(klass.id);
+    setDeleting(false);
+    setConfirmDelete(false);
+    if (error) {
+      setNotice({ kind: "error", message: error.message });
+      return;
+    }
+    setNotice({ kind: "success", message: `Deleted "${klass.name}".` });
     load();
   };
 
-  const handleAddAssignment = async () => {
-    if (!profile || !klass || !targetSign.trim()) return;
-    setAddingAssignment(true);
-    const { error: err } = await createAssignment(klass.id, profile.id, targetSign.trim(), null);
-    setAddingAssignment(false);
-    if (err) {
-      setError(err.message);
+  // ---- roster ----
+
+  const setJoinCode = (code: string) =>
+    setClasses((prev) => prev.map((c) => (c.id === selectedClassId ? { ...c, join_code: code } : c)));
+
+  const handleRemoveStudent = async (student: StudentProgressSummary) => {
+    if (!klass) return;
+    setRemoving(true);
+    const { error } = await removeStudentFromClass(student.id);
+    setRemoving(false);
+    setConfirmRemoveId(null);
+    if (error) {
+      setNotice({ kind: "error", message: error.message });
       return;
     }
-    setTargetSign("");
-    load();
+    setProgress((prev) => prev.filter((p) => p.id !== student.id));
+    setNotice({ kind: "success", message: `Removed ${student.full_name || "the student"} from ${klass.name}.` });
   };
 
-  const handleDeleteAssignment = async (id: string) => {
-    const { error: err } = await deleteAssignment(id);
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    load();
-  };
-
-  const handleGrade = async (submissionId: string, isCorrect: boolean) => {
-    if (!gradeSign.trim()) {
-      setError("Enter what sign was actually recognized before grading.");
-      return;
-    }
-    setSaving(true);
-    const { error: err } = await upsertScore(submissionId, gradeSign.trim(), isCorrect, isCorrect ? 0.95 : 0.4);
-    setSaving(false);
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    setGradingId(null);
-    setGradeSign("");
-    load();
-  };
+  // The same overall figure the student sees (computeOverall). Lowest first,
+  // so whoever is stuck surfaces at the top without hunting; "group" ranks by
+  // the group tab currently selected instead.
+  const groupDef = getGroup(language, group);
+  const sortOptions: { key: SortKey; label: string; disabled?: boolean }[] = [
+    { key: "overall", label: "Overall" },
+    { key: "group", label: groupDef.label, disabled: !groupDef.available },
+    { key: "name", label: "Name" },
+  ];
+  const sortedProgress = [...progress].sort((x, y) => {
+    if (sortBy === "name") return x.full_name.localeCompare(y.full_name);
+    const score = (p: StudentProgressSummary) =>
+      sortBy === "group" ? groupFraction(language, group, p.mastered) : computeOverall(p.mastered);
+    return score(x) - score(y) || x.full_name.localeCompare(y.full_name);
+  });
+  const roster = [...progress].sort((x, y) => x.full_name.localeCompare(y.full_name));
+  const classAverage = progress.length
+    ? progress.reduce((sum, p) => sum + computeOverall(p.mastered), 0) / progress.length
+    : 0;
 
   if (call.callState !== "idle") {
     return (
@@ -168,10 +243,213 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
         acceptCall={call.acceptCall}
         declineCall={call.declineCall}
         hangUp={call.hangUp}
+        role="teacher"
+        remoteSettings={call.remoteSettings}
+        sendSettings={call.sendSettings}
+        requestSettings={call.requestSettings}
         accentColor={accentColor}
       />
     );
   }
+
+  const newClassForm = (
+    <InlineField
+      label="Class name"
+      value={newClassName}
+      onChangeText={setNewClassName}
+      placeholder="e.g. Grade 6 - Rizal"
+      actionLabel="Create class"
+      onSubmit={handleCreateClass}
+      busy={creatingClass}
+      accentColor={accentColor}
+      autoFocus={classes.length > 0}
+      onCancel={classes.length > 0 ? () => setShowNewClass(false) : undefined}
+    />
+  );
+
+  const classHeader = klass && (
+    <DashboardCard>
+      <View style={styles.headerTop}>
+        <View style={styles.titleBlock}>
+          <Text style={styles.eyebrow}>{classes.length > 1 ? "YOUR CLASSES" : "YOUR CLASS"}</Text>
+          {renaming ? null : (
+            <Text style={styles.className}>
+              {klass.name}
+            </Text>
+          )}
+        </View>
+        {!renaming && (
+          <View style={styles.row8}>
+            <ActionButton
+              label="Rename class"
+              iconOnly
+              icon={(c) => <PencilIcon size={16} color={c} />}
+              onPress={() => {
+                setRenameValue(klass.name);
+                setRenaming(true);
+                setConfirmDelete(false);
+              }}
+            />
+            <ActionButton
+              label="Delete class"
+              iconOnly
+              variant="danger"
+              icon={(c) => <TrashIcon size={16} color={c} />}
+              onPress={() => {
+                setConfirmDelete(true);
+                setRenaming(false);
+              }}
+            />
+            <ActionButton
+              label="New class"
+              variant="ghost"
+              icon={(c) => <PlusIcon size={14} color={c} />}
+              onPress={() => setShowNewClass((v) => !v)}
+            />
+          </View>
+        )}
+      </View>
+
+      {renaming && (
+        <View style={styles.gapTop}>
+          <InlineField
+            label="Class name"
+            value={renameValue}
+            onChangeText={setRenameValue}
+            actionLabel="Save"
+            onSubmit={handleRename}
+            busy={savingRename}
+            accentColor={accentColor}
+            autoFocus
+            onCancel={() => setRenaming(false)}
+          />
+        </View>
+      )}
+
+      {confirmDelete && (
+        <ConfirmInline
+          message={`Delete "${klass.name}"? Its ${progress.length} student${progress.length === 1 ? "" : "s"} will be left without a class (their progress is kept). This can't be undone.`}
+          confirmLabel="Delete class"
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(false)}
+          busy={deleting}
+        />
+      )}
+
+      {classes.length > 1 && (
+        <View style={styles.gapTop}>
+          <ChoicePills
+            options={classes.map((c) => ({ key: c.id, label: c.name }))}
+            value={selectedClassId}
+            onChange={selectClass}
+            accentColor={accentColor}
+          />
+        </View>
+      )}
+
+      {showNewClass && <View style={styles.gapTop}>{newClassForm}</View>}
+
+      <View style={[styles.stats, styles.gapTop]}>
+        <StatTile label={progress.length === 1 ? "Student" : "Students"} value={rosterLoading ? "…" : progress.length} />
+        <View style={styles.statWide}>
+          <ProgressBar value={classAverage} label="Class average" caption={OVERALL_CAPTION} />
+        </View>
+      </View>
+    </DashboardCard>
+  );
+
+  const studentsCard = klass && (
+    <DashboardCard title={`Students (${roster.length})`} style={styles.card}>
+      {rosterLoading && roster.length === 0 ? (
+        <Text style={ds.emptyText}>Loading students…</Text>
+      ) : roster.length === 0 ? (
+        <Text style={ds.emptyText}>No students yet. Share the class code, or tick students under Invite students.</Text>
+      ) : (
+        <View style={styles.gapTop}>
+          {roster.map((s, i) => (
+            <View key={s.id} style={[ds.listItem, i === 0 && ds.listItemFirst]}>
+              <View style={styles.personRow}>
+                <Avatar name={s.full_name} color={colors.accentCoral} />
+                <View style={styles.flex}>
+                  <Text style={ds.itemTitle} numberOfLines={1}>
+                    {s.full_name || "(no name)"}
+                  </Text>
+                  <Text style={ds.itemMeta}>{Math.round(computeOverall(s.mastered) * 100)}% overall</Text>
+                </View>
+                <ActionButton
+                  label="Call"
+                  variant="primary"
+                  accentColor={accentColor}
+                  icon={(c) => <VideoIcon size={16} color={c} />}
+                  onPress={() => call.startCall({ id: s.id, name: s.full_name })}
+                />
+                <ActionButton
+                  label={`Remove ${s.full_name || "student"} from class`}
+                  iconOnly
+                  variant="ghost"
+                  icon={(c) => <TrashIcon size={16} color={c} />}
+                  onPress={() => setConfirmRemoveId(s.id)}
+                />
+              </View>
+              {confirmRemoveId === s.id && (
+                <ConfirmInline
+                  message={`Remove ${s.full_name || "this student"} from ${klass.name}? Their account and progress stay; they just won't be in your class.`}
+                  confirmLabel="Remove"
+                  onConfirm={() => handleRemoveStudent(s)}
+                  onCancel={() => setConfirmRemoveId(null)}
+                  busy={removing}
+                />
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+    </DashboardCard>
+  );
+
+  const inviteCards = klass && (
+    <>
+      <JoinCodeCard klass={klass} setNotice={setNotice} onCodeChanged={setJoinCode} />
+      <InviteStudentsCard klass={klass} accentColor={accentColor} setNotice={setNotice} onAdded={() => loadRoster(klass.id)} />
+    </>
+  );
+
+  const progressCard = klass && (
+    <View style={styles.card}>
+      <CurriculumTabs
+        language={language}
+        group={group}
+        onChange={(l, g) => {
+          setLanguage(l);
+          setGroup(g);
+        }}
+      />
+      <View style={styles.sortRow}>
+        <Text style={styles.sortLabel}>Sort by</Text>
+        <SegmentedToggle options={sortOptions} value={sortBy} onChange={setSortBy} />
+      </View>
+      <DashboardCard style={styles.gapTop}>
+        <Text style={ds.itemMeta}>
+          Overall is the {OVERALL_CAPTION} - the same figure each student sees on their own dashboard. Lowest first,
+          so whoever needs help is at the top.
+        </Text>
+        {progress.length === 0 ? (
+          <Text style={ds.emptyText}>Progress shows up here once students are in your class.</Text>
+        ) : (
+          sortedProgress.map((p, i) => (
+            <StudentProgressRow
+              key={p.id}
+              name={p.full_name}
+              mastered={p.mastered}
+              language={language}
+              highlightGroup={group}
+              first={i === 0}
+            />
+          ))
+        )}
+      </DashboardCard>
+    </View>
+  );
 
   return (
     <DashboardShell
@@ -180,141 +458,52 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
       userName={profile?.full_name ?? "..."}
       onSignOut={onSignOut}
       onExitToRoleSelect={onExitToRoleSelect}
+      contentMaxWidth={1200}
     >
-      {error ? <Text style={ds.errorText}>{error}</Text> : null}
+      <Notice notice={notice} onDismiss={() => setNotice(null)} />
 
-      {loading ? (
-        <Text style={ds.emptyText}>Loading...</Text>
+      {loading && !profile ? (
+        <DashboardCard>
+          <Text style={ds.emptyText}>Loading your class…</Text>
+        </DashboardCard>
       ) : !klass ? (
         <DashboardCard title="Create your class">
-          <Text style={ds.emptyText}>You don't have a class yet - create one to start posting assignments.</Text>
-          <View style={{ height: spacing.sm }} />
-          <AuthTextField label="Class name" value={className} onChangeText={setClassName} placeholder="e.g. Grade 6 - Rizal" />
-          <AuthButton
-            label={creatingClass ? "Creating..." : "Create class"}
-            accentColor={accentColor}
-            loading={creatingClass}
-            onPress={handleCreateClass}
-          />
+          <Text style={[ds.itemMeta, styles.gapBottom]}>
+            You don't have a class yet. Create one, then invite students with its class code or by ticking them from
+            the list - you'll be able to give them modules, follow their progress and video call them.
+          </Text>
+          {newClassForm}
         </DashboardCard>
       ) : (
         <>
-          <DashboardCard title={klass.name}>
-            <Text style={ds.itemMeta}>Your class - assignments below are scoped to it.</Text>
-          </DashboardCard>
-
-          <Text style={ds.sectionTitle}>Video Call</Text>
-          <DashboardCard>
-            {students.length === 0 ? (
-              <Text style={ds.emptyText}>No students in your class yet.</Text>
-            ) : (
-              students.map((s, i) => (
-                <View key={s.id} style={[ds.listItem, i === 0 && ds.listItemFirst, ds.spaceBetween]}>
-                  <Text style={ds.itemTitle}>{s.name}</Text>
-                  <AuthButton
-                    label="Call"
-                    accentColor={accentColor}
-                    onPress={() => call.startCall(s)}
-                    style={styles.inlineButton}
-                  />
-                </View>
-              ))
-            )}
-          </DashboardCard>
-
-          <Text style={ds.sectionTitle}>Assignments</Text>
-          <DashboardCard>
-            <AuthTextField label="Post a new assignment (target sign)" value={targetSign} onChangeText={setTargetSign} placeholder="e.g. THANK YOU" />
-            <AuthButton
-              label={addingAssignment ? "Posting..." : "Post assignment"}
-              accentColor={accentColor}
-              loading={addingAssignment}
-              onPress={handleAddAssignment}
+          {classHeader}
+          <View style={styles.sectionTabs}>
+            <SegmentedToggle
+              options={[
+                { key: "students", label: "Students" },
+                { key: "modules", label: "Modules" },
+                { key: "progress", label: "Progress" },
+              ]}
+              value={section}
+              onChange={setSection}
             />
-            <View style={{ height: spacing.sm }} />
-            {assignments.length === 0 ? (
-              <Text style={ds.emptyText}>No assignments posted yet.</Text>
+          </View>
+          {section === "students" &&
+            (isDesktop ? (
+              <View style={styles.columns}>
+                <View style={styles.colRight}>{studentsCard}</View>
+                <View style={styles.colLeft}>{inviteCards}</View>
+              </View>
             ) : (
-              assignments.map((a, i) => (
-                <View key={a.id} style={[ds.listItem, i === 0 && ds.listItemFirst, ds.spaceBetween]}>
-                  <View>
-                    <Text style={ds.itemTitle}>Sign: {a.target_sign}</Text>
-                    <Text style={ds.itemMeta}>Posted {new Date(a.created_at).toLocaleDateString()}</Text>
-                  </View>
-                  <AuthButton
-                    label="Delete"
-                    variant="secondary"
-                    onPress={() => handleDeleteAssignment(a.id)}
-                    style={styles.inlineButton}
-                  />
-                </View>
-              ))
-            )}
-          </DashboardCard>
-
-          <Text style={ds.sectionTitle}>Submissions</Text>
-          <DashboardCard>
-            {submissions.length === 0 ? (
-              <Text style={ds.emptyText}>No submissions yet.</Text>
-            ) : (
-              submissions.map((s, i) => {
-                const studentProfile = toOne(s.profiles);
-                const assignment = toOne(s.assignments);
-                const score = toOne(s.scores);
-                return (
-                <View key={s.id} style={[ds.listItem, i === 0 && ds.listItemFirst]}>
-                  <Text style={ds.itemTitle}>
-                    {studentProfile?.full_name ?? "Student"} - {assignment?.target_sign ?? "Assignment"}
-                  </Text>
-                  <Text style={ds.itemMeta}>
-                    Submitted {new Date(s.submitted_at).toLocaleDateString()} ·{" "}
-                    {score
-                      ? `Graded: ${score.is_correct ? "Correct" : "Needs practice"}`
-                      : "Not graded yet"}
-                  </Text>
-
-                  {gradingId === s.id ? (
-                    <View style={styles.submitForm}>
-                      <AuthTextField
-                        label="Recognized sign"
-                        value={gradeSign}
-                        onChangeText={setGradeSign}
-                        placeholder="what the model/you saw"
-                      />
-                      <View style={ds.row}>
-                        <AuthButton
-                          label="Mark correct"
-                          accentColor={colors.success}
-                          loading={saving}
-                          onPress={() => handleGrade(s.id, true)}
-                          style={styles.inlineButton}
-                        />
-                        <View style={{ width: spacing.sm }} />
-                        <AuthButton
-                          label="Needs practice"
-                          accentColor={colors.needsPractice}
-                          loading={saving}
-                          onPress={() => handleGrade(s.id, false)}
-                          style={styles.inlineButton}
-                        />
-                        <View style={{ width: spacing.sm }} />
-                        <AuthButton label="Cancel" variant="secondary" onPress={() => setGradingId(null)} style={styles.inlineButton} />
-                      </View>
-                    </View>
-                  ) : (
-                    <AuthButton
-                      label={score ? "Re-grade" : "Grade"}
-                      variant="secondary"
-                      accentColor={accentColor}
-                      onPress={() => setGradingId(s.id)}
-                      style={styles.inlineButton}
-                    />
-                  )}
-                </View>
-                );
-              })
-            )}
-          </DashboardCard>
+              <>
+                {inviteCards}
+                {studentsCard}
+              </>
+            ))}
+          {section === "modules" && (
+            <TeacherModules klass={klass} students={roster} accentColor={accentColor} setNotice={setNotice} />
+          )}
+          {section === "progress" && progressCard}
         </>
       )}
     </DashboardShell>
@@ -322,11 +511,24 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
 }
 
 const styles = StyleSheet.create({
-  inlineButton: { minWidth: 110, marginTop: spacing.xs },
-  submitForm: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)",
-  },
+  flex: { flex: 1, minWidth: 0 },
+  row8: { flexDirection: "row", alignItems: "center", gap: 8 },
+  gapTop: { marginTop: spacing.md },
+  gapBottom: { marginBottom: spacing.md },
+  card: { marginTop: spacing.md },
+  headerTop: { flexDirection: "row", alignItems: "flex-start", gap: 12, flexWrap: "wrap" },
+  // flexBasis lets the action buttons wrap underneath on a phone instead of
+  // squeezing the class name into an ellipsis.
+  titleBlock: { flexGrow: 1, flexShrink: 1, flexBasis: 240, minWidth: 0 },
+  eyebrow: { fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.1, color: colors.textSecondary },
+  className: { fontFamily: fonts.heading, fontSize: 28, lineHeight: 34, color: colors.textPrimary, marginTop: 2 },
+  stats: { flexDirection: "row", gap: 12, flexWrap: "wrap", alignItems: "stretch" },
+  statWide: { flex: 3, minWidth: 220, justifyContent: "center" },
+  personRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  sectionTabs: { alignItems: "center", marginTop: spacing.md },
+  columns: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
+  colLeft: { flex: 1, minWidth: 0 },
+  colRight: { flex: 1.35, minWidth: 0 },
+  sortRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, flexWrap: "wrap" },
+  sortLabel: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.textSecondary, paddingTop: 10 },
 });

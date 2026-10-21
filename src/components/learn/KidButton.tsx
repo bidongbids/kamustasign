@@ -1,0 +1,79 @@
+// The student layer's button: 56 high (48 for "small"), pill, label in
+// kidLabel. "primary" is the one gold action per view; "raised" is the
+// neumorphic control; "ghost" a hairline outline for the quiet way out.
+import React, { forwardRef } from "react";
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { colors, kidTypography, sizes } from "../../theme/theme";
+import { neuRaised } from "../../theme/shadows";
+
+type Props = {
+  label: string;
+  onPress: () => void;
+  variant?: "primary" | "raised" | "ghost";
+  small?: boolean;
+  iconLeft?: React.ReactNode;
+  iconRight?: React.ReactNode;
+  /** Icon-only (still needs `label` for the screen reader). */
+  iconOnly?: boolean;
+  disabled?: boolean;
+  accessibilityLabel?: string;
+  style?: StyleProp<ViewStyle>;
+};
+
+const KidButton = forwardRef<View, Props>(function KidButton(
+  { label, onPress, variant = "raised", small, iconLeft, iconRight, iconOnly, disabled, accessibilityLabel, style },
+  ref
+) {
+  const h = small ? sizes.tapMin : sizes.buttonKidH;
+  const textColor = variant === "primary" ? colors.textOnAccent : colors.textPrimary;
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: !!disabled }}
+      style={(state: any) => [
+        styles.base,
+        { minHeight: h, borderRadius: h / 2 },
+        iconOnly ? { width: h, paddingHorizontal: 0 } : { paddingHorizontal: small ? 16 : 24 },
+        variant === "primary" && styles.primary,
+        variant === "raised" && [styles.raised, neuRaised(small ? "sm" : "md")],
+        variant === "ghost" && styles.ghost,
+        state.pressed && { transform: [{ scale: 0.98 }] },
+        state.focused && styles.focused,
+        disabled && styles.disabled,
+        style,
+      ]}
+    >
+      {iconLeft}
+      {!iconOnly && (
+        <Text style={[small ? styles.labelSmall : kidTypography.kidLabel, { color: textColor }]} numberOfLines={1}>
+          {label}
+        </Text>
+      )}
+      {iconRight}
+    </Pressable>
+  );
+});
+
+export default KidButton;
+
+const styles = StyleSheet.create({
+  base: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  primary: {
+    backgroundColor: colors.accentCoral,
+    boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: "rgba(242,178,62,0.28)" }],
+  } as any,
+  raised: { backgroundColor: colors.neuBase },
+  ghost: { borderWidth: 1, borderColor: colors.border, backgroundColor: "transparent" },
+  focused: { outlineColor: colors.focusRing, outlineWidth: 2, outlineStyle: "solid", outlineOffset: 2 } as any,
+  disabled: { opacity: 0.5 },
+  labelSmall: { ...kidTypography.kidLabel, fontSize: 14 },
+});

@@ -17,6 +17,8 @@ type Props = {
   onSignOut: () => void;
   onExitToRoleSelect: () => void;
   children: React.ReactNode;
+  /** Desktop content width; the student learning plan uses 880 (default 720). */
+  contentMaxWidth?: number;
 };
 
 export default function DashboardShell({
@@ -26,13 +28,14 @@ export default function DashboardShell({
   onSignOut,
   onExitToRoleSelect,
   children,
+  contentMaxWidth,
 }: Props) {
   const { isDesktop } = useResponsive();
 
   return (
     <GradientBackground style={styles.root} variant="subtle">
       <GlassCard
-        tint="frosted"
+        tint="sheer"
         radius={0}
         padding={0}
         style={[styles.header, { borderBottomColor: accentColor + "33" }]}
@@ -62,7 +65,11 @@ export default function DashboardShell({
 
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={[styles.content, isDesktop && styles.contentDesktop]}
+        contentContainerStyle={[
+          styles.content,
+          isDesktop && styles.contentDesktop,
+          isDesktop && contentMaxWidth ? { maxWidth: contentMaxWidth } : null,
+        ]}
       >
         {children}
       </ScrollView>
@@ -75,14 +82,20 @@ export function DashboardCard({
   title,
   children,
   style,
+  tint = "sheer",
 }: {
   title?: string;
   children: React.ReactNode;
   style?: any;
+  /**
+   * Every dashboard sits on the dark ground (sheer); "frosted" is kept for a
+   * light panel, and needs textOnFrosted text instead of dashboardStyles.
+   */
+  tint?: "frosted" | "sheer";
 }) {
   return (
-    <GlassCard tint="frosted" radius={radii.md} padding={spacing.md} style={style}>
-      {title ? <Text style={styles.cardTitle}>{title}</Text> : null}
+    <GlassCard tint={tint} radius={radii.lg} padding={20} style={style}>
+      {title ? <Text style={[styles.cardTitle, tint === "frosted" && { color: colors.textOnFrosted }]}>{title}</Text> : null}
       {children}
     </GlassCard>
   );
@@ -101,7 +114,7 @@ export const dashboardStyles = StyleSheet.create({
   emptyText: {
     fontFamily: fonts.body,
     fontSize: 13,
-    color: colors.textOnFrostedMuted,
+    color: colors.textSecondary,
     fontStyle: "italic",
     paddingVertical: spacing.sm,
   },
@@ -113,8 +126,8 @@ export const dashboardStyles = StyleSheet.create({
   },
   listItem: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)",
-    paddingVertical: spacing.sm + 2,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    paddingVertical: spacing.sm + 4,
   },
   listItemFirst: {
     borderTopWidth: 0,
@@ -122,12 +135,12 @@ export const dashboardStyles = StyleSheet.create({
   itemTitle: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 15,
-    color: colors.textOnFrosted,
+    color: colors.textPrimary,
   },
   itemMeta: {
     fontFamily: fonts.body,
     fontSize: 12,
-    color: colors.textOnFrostedMuted,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
@@ -157,22 +170,22 @@ const styles = StyleSheet.create({
   brandWordmark: { fontFamily: fonts.heading, fontSize: 16, marginLeft: spacing.xs },
   headerRight: { flexDirection: "row", alignItems: "center" },
   identity: { alignItems: "flex-end", marginRight: spacing.md, maxWidth: 160 },
-  userName: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.textOnFrosted },
+  userName: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.textPrimary },
   roleBadge: { fontFamily: fonts.bodyMedium, fontSize: 11, marginTop: 1 },
   signOutBtn: {
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: radii.pill,
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.15)",
+    borderColor: colors.border,
   },
-  signOutText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textOnFrosted },
+  signOutText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textPrimary },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl, maxWidth: 720, width: "100%", alignSelf: "center" },
   contentDesktop: { padding: spacing.xl },
   cardTitle: {
     fontFamily: fonts.heading,
-    fontSize: 16,
-    color: colors.textOnFrosted,
+    fontSize: 18,
+    color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
 });
