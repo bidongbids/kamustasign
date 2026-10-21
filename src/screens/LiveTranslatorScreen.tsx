@@ -18,7 +18,7 @@ import { useReduceMotion } from "../hooks/useReduceMotion";
 import { useTranslateAndSpeak } from "../hooks/useTranslateAndSpeak";
 import { findLanguage } from "../lib/languages";
 import { drawHandSkeleton } from "../lib/handSkeleton";
-import { LIVE_PASS_HOLD_MS, PASS_CONFIDENCE } from "../lib/curriculum";
+import { LivePassTracker } from "../lib/livePassTracker";
 import PracticeCameraOverlay from "../components/learn/PracticeCameraOverlay";
 
 // Confidence (0-100) a live prediction needs before it's "stable" enough to
@@ -157,14 +157,14 @@ export default function LiveTranslatorScreen({
   targetSignRef.current = targetSign;
   const onPracticeResultRef = useRef(onPracticeResult);
   onPracticeResultRef.current = onPracticeResult;
-  const practiceRef = useRef({ started: false, best: 0, armed: true, holdStart: null as number | null });
+  const practiceRef = useRef(new LivePassTracker());
   const onHoldProgressRef = useRef(onHoldProgress);
   onHoldProgressRef.current = onHoldProgress;
   const lastHoldRef = useRef(0);
   // Practice-variant overlay only (hand box colour/label).
   const [practiceHold, setPracticeHold] = useState(0);
   useEffect(() => {
-    practiceRef.current = { started: false, best: 0, armed: true, holdStart: null };
+    practiceRef.current.reset();
     lastHoldRef.current = 0;
     setPracticeHold(0);
   }, [targetSign]);
@@ -289,39 +289,13 @@ export default function LiveTranslatorScreen({
     function trackPractice(label: string, confidence: number, nowMs: number) {
       const target = targetSignRef.current;
       const report = onPracticeResultRef.current;
-      const p = practiceRef.current;
       if (!target || !report) return;
-      if (!p.started) {
-        p.started = true;
-        report({ passed: false, confidence: 0 });
-      }
-      const onTarget = label === target && confidence >= PASS_CONFIDENCE;
-      if (label === target && confidence > p.best) {
-        p.best = confidence;
-        report({ passed: false, confidence: p.best });
-      }
-      if (!onTarget) {
-        // Letting go of the sign re-arms the next pass.
-        p.holdStart = null;
-        p.armed = true;
-        reportHold(0);
-        return;
-      }
-      if (!p.armed) {
-        reportHold(1);
-        return;
-      }
-      if (p.holdStart === null) {
-        p.holdStart = nowMs;
-        reportHold(0.02);
-      } else if (nowMs - p.holdStart >= LIVE_PASS_HOLD_MS) {
-        p.armed = false;
-        p.holdStart = null;
-        reportHold(1);
-        report({ passed: true, confidence });
-      } else {
-        reportHold((nowMs - p.holdStart) / LIVE_PASS_HOLD_MS);
-      }
+      const { hold, reports } = practiceRef.current.frame(target, label, confidence, nowMs);
+      // Same order as before the tracker was extracted: progress reports,
+      // then the ring, then the pass itself.
+      reports.filter((r) => !r.passed).forEach(report);
+      reportHold(hold);
+      reports.filter((r) => r.passed).forEach(report);
     }
 
     function loop() {
@@ -417,9 +391,8 @@ export default function LiveTranslatorScreen({
           lastCommittedRef.current = "";
           holdLabelRef.current = null;
           setHeldMs(0);
-          practiceRef.current.holdStart = null;
-          practiceRef.current.armed = true;
-          if (targetSignRef.current) reportHold(0);
+          const hold = practiceRef.current.handLost();
+          if (targetSignRef.current) reportHold(hold);
         }
       }
 
