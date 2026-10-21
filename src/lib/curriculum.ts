@@ -65,6 +65,14 @@ export const OVERALL_CAPTION = "average across groups";
 
 // ---- sign lists ----
 
+/**
+ * A word model trained with an "unknown sign" class (train_word_classifier.py
+ * --unknown) has this label too. It's never a lesson; when it wins a
+ * prediction, the screens treat it as "no sign".
+ */
+export const UNKNOWN_SIGN_LABEL = "__unknown__";
+const notUnknown = (c: string) => c !== UNKNOWN_SIGN_LABEL;
+
 // The letters model also has "del"/"space" (and some builds "nothing"): those
 // are fingerspelling UI affordances, not lessons.
 const NON_LESSON_LETTER_CLASSES = new Set(["del", "space", "nothing"]);
@@ -104,7 +112,7 @@ export const CURRICULUM: LanguageDefinition[] = [
       {
         group: "words",
         label: "Words",
-        signs: byPracticeOrder(aslWordClasses as string[], wordPracticeOrder.asl),
+        signs: byPracticeOrder((aslWordClasses as string[]).filter(notUnknown), wordPracticeOrder.asl),
         available: true,
       },
     ],
@@ -130,7 +138,7 @@ export const CURRICULUM: LanguageDefinition[] = [
       {
         group: "words",
         label: "Words",
-        signs: byPracticeOrder(fslWordClasses as string[], wordPracticeOrder.fsl),
+        signs: byPracticeOrder((fslWordClasses as string[]).filter(notUnknown), wordPracticeOrder.fsl),
         available: true,
       },
     ],

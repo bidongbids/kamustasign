@@ -63,6 +63,9 @@ DATA_DIR = os.path.join(ML_DIR, "data")
 SEEDS = {
     # Our clips + the Google Isolated SLR clips (train_word_classifier.py --combined).
     "asl": lambda: sorted(glob.glob(os.path.join(MODEL_DIR, "asl_combined_seed[0-9].keras"))),
+    # Same plus the "__unknown__" class (train_word_classifier.py --combined --unknown).
+    # Deploy with public/word-model/label_classes.json = asl_combined_unk_label_classes.json.
+    "asl-unk": lambda: sorted(glob.glob(os.path.join(MODEL_DIR, "asl_combined_unk_seed[0-9].keras"))),
     # The 133-word model trained on our clips alone.
     "asl-legacy": lambda: sorted(p for p in glob.glob(os.path.join(MODEL_DIR, "word_sequence_classifier*.keras"))
                                  if "diagnostic" not in p),
@@ -74,12 +77,12 @@ SEEDS = {
 # (DROP_COLS in consolidate_combined_words.py). Zeroing those columns of the
 # folded BN scale below makes the deployed graph ignore whatever the app
 # sends there - identical to feeding zeros, so the app needs no change.
-DROP_VISIBILITY = {"asl"}
+DROP_VISIBILITY = {"asl", "asl-unk"}
 DROP_COLS = [i * 4 + 3 for i in range(33)]
 
 
 def test_set(lang):
-    if lang == "asl":
+    if lang in ("asl", "asl-unk"):
         d = np.load(os.path.join(DATA_DIR, "combined_word_landmarks.npz"))
         return d["X_test"].astype("float32"), d["y_test"]
     if lang == "asl-legacy":
@@ -184,7 +187,7 @@ def make_fn(L1, L2, dense):
 def main():
     lang = (sys.argv[1:] or [""])[0].lower()
     if lang not in SEEDS:
-        print("usage: export_fused_word_ensemble.py asl|asl-legacy|fsl")
+        print("usage: export_fused_word_ensemble.py asl|asl-unk|asl-legacy|fsl")
         return
     paths = SEEDS[lang]()
     print(f"Fusing {len(paths)} seeds: {[os.path.basename(p) for p in paths]}")

@@ -29,6 +29,7 @@ import {
 import { SignSegmenter } from "../ml/signSegmenter";
 import { mirrorFlatLandmarks } from "../components/HandednessPicker";
 import { loadTasksVision, getVisionFileset } from "../lib/mediapipeVision";
+import { UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
 
 export type CallModel = { kind: "letters" } | { kind: "words"; language: SignLanguage };
 
@@ -188,7 +189,7 @@ export function useCallSignReader(
           if (stopped) return;
           const i = probs.indexOf(Math.max(...probs));
           const pct = probs[i] * 100;
-          if (pct >= WORD_MIN_PCT) {
+          if (pct >= WORD_MIN_PCT && classes[i] !== UNKNOWN_SIGN_LABEL) {
             setGuess({ label: classes[i] ?? "?", confidence: pct });
             add(classes[i] ?? "?", true);
             setPhase("added");

@@ -73,6 +73,16 @@ Combined dataset (--combined):
     python scripts/train_word_classifier.py --combined        (seed 0)
     python scripts/train_word_classifier.py --combined 1      (seed 1)
 
+Unknown-sign class (--combined --unknown):
+  Adds one extra class, "__unknown__", trained on real signs that are NOT in
+  the vocabulary (build_unknown_class.py -> data/unknown_landmarks.npz), so
+  the model has somewhere to put a sign it doesn't know instead of the
+  nearest word. The app treats a top prediction of __unknown__ as "no sign".
+  The test set is unchanged (vocabulary words only); judge the result with
+  oov_rejection_eval.py --models "asl_combined_unk_seed*.keras".
+  Saves as asl_combined_unk_seed{N}.keras / asl_combined_unk_label_classes.json.
+    python scripts/train_word_classifier.py --combined --unknown 0
+
 Run this with your venv active (after steps 1-3 have produced word_landmarks.npz):
   cd ml
   .\venv\Scripts\Activate.ps1     (Windows)
@@ -117,6 +127,10 @@ import tensorflow as tf
 from tensorflow import keras
 
 COMBINED = "--combined" in sys.argv
+UNKNOWN = "--unknown" in sys.argv
+UNKNOWN_LABEL = "__unknown__"  # keep in sync with src/ml/modelLoader.ts
+if UNKNOWN and not COMBINED:
+    sys.exit("--unknown needs --combined")
 # Pick up a run that was stopped part-way from its last checkpoint (see
 # callbacks in main). Same seed and flags as the original run.
 RESUME = "--resume" in sys.argv
@@ -130,8 +144,10 @@ MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 if COMBINED:
     NPZ_PATH = os.path.join(DATA_DIR, "combined_word_landmarks.npz")
     CLASSES_PATH = os.path.join(DATA_DIR, "combined_word_classes.json")
-    MODEL_PATH = os.path.join(MODEL_DIR, f"asl_combined_seed{SEED}.keras")
-    LABELS_PATH = os.path.join(MODEL_DIR, "asl_combined_label_classes.json")
+    _tag = "asl_combined_unk" if UNKNOWN else "asl_combined"
+    MODEL_PATH = os.path.join(MODEL_DIR, f"{_tag}_seed{SEED}.keras")
+    LABELS_PATH = os.path.join(MODEL_DIR, f"{_tag}_label_classes.json")
+    UNKNOWN_NPZ = os.path.join(DATA_DIR, "unknown_landmarks.npz")
 else:
     NPZ_PATH = os.path.join(DATA_DIR, "word_landmarks.npz")
     CLASSES_PATH = os.path.join(DATA_DIR, "word_classes.json")
@@ -289,6 +305,20 @@ def main():
     X_train, y_train = data["X_train"], data["y_train"]
     X_val, y_val = data["X_val"], data["y_val"]
     X_test, y_test = data["X_test"], data["y_test"]
+
+    if UNKNOWN:
+        if not os.path.exists(UNKNOWN_NPZ):
+            print(f"ERROR: {UNKNOWN_NPZ} not found - run build_unknown_class.py first.")
+            return
+        unk = np.load(UNKNOWN_NPZ)
+        unk_idx = num_classes
+        classes = classes + [UNKNOWN_LABEL]
+        num_classes = len(classes)
+        X_train = np.concatenate([X_train, unk["X_train"].astype(X_train.dtype)])
+        y_train = np.concatenate([y_train, np.full(len(unk["X_train"]), unk_idx, dtype=y_train.dtype)])
+        X_val = np.concatenate([X_val, unk["X_val"].astype(X_val.dtype)])
+        y_val = np.concatenate([y_val, np.full(len(unk["X_val"]), unk_idx, dtype=y_val.dtype)])
+        print(f"Unknown class: +{len(unk['X_train'])} train / +{len(unk['X_val'])} val clips as '{UNKNOWN_LABEL}'")
 
     print(f"Classes: {num_classes}")
     print(f"Train: {X_train.shape}   Val: {X_val.shape}   Test: {X_test.shape}")

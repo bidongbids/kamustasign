@@ -12,6 +12,7 @@ import {
   isMastered,
   nextCountedPassAt,
   formatPercent,
+  UNKNOWN_SIGN_LABEL,
 } from "../lib/curriculum";
 import { WORD_CATEGORIES, categoriesIn, evenChunks, filterByCategory, getWordCategory } from "../lib/wordCategories";
 
@@ -32,6 +33,10 @@ describe("curriculum data", () => {
         expect(new Set(g.signs).size).toBe(g.signs.length);
       }
     }
+  });
+
+  it("never lists the model's unknown-sign class as a lesson", () => {
+    for (const lang of CURRICULUM) for (const g of lang.groups) expect(g.signs).not.toContain(UNKNOWN_SIGN_LABEL);
   });
 
   it("has words available for both languages", () => {

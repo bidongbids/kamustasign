@@ -33,7 +33,7 @@ import ClipLengthControl, { useClipLength } from "../components/ClipLengthContro
 import TranslatorPanel from "../components/TranslatorPanel";
 import { SpeakerIcon } from "../components/icons/UiIcons";
 import { findLanguage } from "../lib/languages";
-import { PASS_CONFIDENCE } from "../lib/curriculum";
+import { PASS_CONFIDENCE, UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
 import { drawHandSkeleton } from "../lib/handSkeleton";
 import PracticeCameraOverlay from "../components/learn/PracticeCameraOverlay";
 import { useTranslateAndSpeak } from "../hooks/useTranslateAndSpeak";
@@ -561,10 +561,12 @@ export default function WordTranslatorScreen({
       const avgProbs = Array.from(await outTensor.data());
       outTensor.dispose();
 
-      const ranked = avgProbs
+      const sorted = avgProbs
         .map((p, i) => ({ word: classes[i] ?? "?", confidence: p * 100 }))
-        .sort((a, b) => b.confidence - a.confidence)
-        .slice(0, TOP_K);
+        .sort((a, b) => b.confidence - a.confidence);
+      // A model with the "unknown sign" class: when that wins, it's no sign.
+      const unknownTop = sorted[0]?.word === UNKNOWN_SIGN_LABEL;
+      const ranked = sorted.filter((r) => r.word !== UNKNOWN_SIGN_LABEL).slice(0, TOP_K);
 
       // Language switched while this was scoring: the old vocabulary's
       // matches would show (and be spoken) under the new language's toggle.
@@ -576,7 +578,7 @@ export default function WordTranslatorScreen({
       if (targetSign && onPracticeResult) {
         const targetIndex = classes.indexOf(targetSign);
         const targetConfidence = targetIndex >= 0 ? avgProbs[targetIndex] : 0;
-        const top = ranked[0];
+        const top = unknownTop ? undefined : ranked[0];
         onPracticeResult({
           passed: !!top && top.word === targetSign && targetConfidence >= PASS_CONFIDENCE,
           confidence: targetConfidence,
@@ -584,7 +586,7 @@ export default function WordTranslatorScreen({
         });
       }
 
-      if (ranked.length === 0 || ranked[0].confidence < MIN_CONFIDENCE) {
+      if (unknownTop || ranked.length === 0 || ranked[0].confidence < MIN_CONFIDENCE) {
         // Unsure: display nothing and say nothing (see MIN_CONFIDENCE). The
         // previous word and its translation are cleared too, so they can't
         // read as the answer to this sign.

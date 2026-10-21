@@ -23,6 +23,9 @@ app trims a recording. For each gate it reports:
   .\\venv\\Scripts\\Activate.ps1
   python scripts/oov_rejection_eval.py              # extract (resumable) + score
   python scripts/oov_rejection_eval.py --per-set 150
+  python scripts/oov_rejection_eval.py --models "asl_combined_unk_seed[0-9].keras"
+      (a model with the __unknown__ class: a top prediction of it counts as
+      rejected at every gate, like the app treats it)
 
 Landmarks are cached in data/oov_landmarks_cache/, so a killed run resumes.
 Writes models/diagnostics/oov_rejection.json.
@@ -123,6 +126,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--per-set", type=int, default=250)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--models", default="asl_combined_seed[0-9].keras", help="glob under models/")
     args = ap.parse_args()
     os.makedirs(CACHE, exist_ok=True)
 
@@ -133,14 +137,23 @@ def main():
     from tensorflow import keras
     Xo, _ = load(oov_pick)
     Xi, yi = load(inv_pick)
-    paths = sorted(glob.glob(os.path.join(MODEL_DIR, "asl_combined_seed[0-9].keras")))
+    paths = sorted(glob.glob(os.path.join(MODEL_DIR, args.models)))
+    if not paths:
+        raise SystemExit(f"no models match {args.models}")
     po, pi = [], []
     for p in paths:
         m = keras.models.load_model(p, compile=False)
         po.append(m.predict(Xo, verbose=0, batch_size=128))
         pi.append(m.predict(Xi, verbose=0, batch_size=128))
     po, pi = np.mean(po, axis=0), np.mean(pi, axis=0)
+    # Unknown-class models have one extra output after the 344 words (the
+    # in-vocab labels keep their indices); its winning means "rejected".
+    has_unknown = po.shape[1] == len(classes) + 1
+    unk = len(classes)
     conf_o, conf_i = po.max(1), pi.max(1)
+    if has_unknown:
+        conf_o = np.where(po.argmax(1) == unk, 0.0, conf_o)
+        conf_i = np.where(pi.argmax(1) == unk, 0.0, conf_i)
     right_i = pi.argmax(1) == yi
 
     rows = []
@@ -152,7 +165,8 @@ def main():
             "correct_shown": float(np.mean((conf_i >= g) & right_i)),
         })
     result = {
-        "model": f"ASL words ({len(paths)}-seed ensemble, {len(classes)} words)",
+        "model": f"ASL words ({len(paths)}-seed ensemble, {len(classes)} words"
+                 f"{' + __unknown__' if has_unknown else ''}, {args.models})",
         "oov_clips": int(len(Xo)),
         "in_vocab_clips": int(len(Xi)),
         "in_vocab_top1": float(right_i.mean()),
@@ -161,8 +175,9 @@ def main():
         "mean_conf_in_vocab": float(conf_i.mean()),
         "gates": rows,
     }
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    json.dump(result, open(OUT, "w"), indent=2)
+    out = OUT if not has_unknown else OUT.replace(".json", "_unk.json")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    json.dump(result, open(out, "w"), indent=2)
 
     print(f"\n{result['model']}: {len(Xo)} OOV clips, {len(Xi)} in-vocab clips "
           f"(in-vocab top-1 {right_i.mean():.1%})")
@@ -171,7 +186,7 @@ def main():
     for r in rows:
         mark = "  <- app" if abs(r["gate"] - APP_GATE) < 1e-9 else ""
         print(f"{r['gate']:>6.2f} {r['false_accept']:>13.1%} {r['accept']:>8.1%} {r['correct_shown']:>14.1%}{mark}")
-    print(f"\nwrote {OUT}")
+    print(f"\nwrote {out}")
 
 
 if __name__ == "__main__":
