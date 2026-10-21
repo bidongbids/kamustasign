@@ -2,7 +2,7 @@
 // elevated card, soft role-tinted background. Keeps the auth flow feeling
 // like part of LCSign instead of a bare form, on both desktop and mobile.
 import React, { useEffect, useRef } from "react";
-import { Animated, View, Text, ScrollView, StyleSheet } from "react-native";
+import { Animated, View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import HandLandmarkMark from "../../components/HandLandmarkMark";
 import GradientBackground from "../../components/GradientBackground";
 import GlassCard from "../../components/GlassCard";
@@ -50,14 +50,14 @@ export default function AuthScreenShell({ accentColor, onBack, backLabel = "Back
             </View>
 
             {onBack && (
-              <Text
+              <Pressable
                 onPress={onBack}
-                style={styles.backLink}
                 accessibilityRole="button"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{ alignSelf: "flex-start" }}
               >
-                ‹ {backLabel}
-              </Text>
+                <Text style={styles.backLink}>‹ {backLabel}</Text>
+              </Pressable>
             )}
 
             {children}
