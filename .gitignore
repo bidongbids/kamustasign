@@ -26,11 +26,12 @@ ml/data/
 ml/datasets/
 *.mp4
 *.avi
-# Model binaries - too large for git; regenerate with the ml/scripts pipeline
-# (see FSL_MODEL_GUIDE.md / NUMBERS_MODEL_GUIDE.md) or copy in by hand
+# Training checkpoints - too large for git; regenerate with the ml/scripts
+# pipeline (see docs/FSL_MODEL_GUIDE.md / docs/NUMBERS_MODEL_GUIDE.md).
+# The deployed web models (public/model, public/word-model, public/fsl-model)
+# ARE committed: the fused exports are ~9 MB each and the app can't bundle
+# without their label_classes.json.
 ml/models/
-public/word-model/
-public/fsl-model/
 ml/**/*.task
 
 # Separate upstream repo + datasets, not part of this project's source
