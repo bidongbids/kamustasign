@@ -3,7 +3,7 @@ Out-of-vocabulary (OOV) rejection check for the deployed ASL word ensemble.
 
 The app shows a word only when the ensemble's top probability clears a gate
 (MIN_CONFIDENCE in WordTranslatorScreen.tsx, WORD_MIN_PCT in
-useCallSignReader.ts - both 40%). This measures what that gate does with signs
+useCallSignReader.ts - 40% and 60%). This measures what that gate does with signs
 the model was NEVER taught, which test accuracy can't show:
 
   OOV clips   ASL Citizen test-split clips whose gloss is not one of the 344
@@ -48,7 +48,7 @@ MODEL_DIR = os.path.join(ML_DIR, "models")
 CITIZEN = os.path.join(DATA_DIR, "ASL_Citizen")
 CACHE = os.path.join(DATA_DIR, "oov_landmarks_cache")
 OUT = os.path.join(MODEL_DIR, "diagnostics", "oov_rejection.json")
-APP_GATE = 0.40
+APP_GATE = 0.40  # Words translator; the video-call reader uses 0.60
 GATES = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
 
 

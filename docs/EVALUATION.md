@@ -104,16 +104,16 @@ clips of in-vocabulary words (one clip per gloss, trimmed like the app).
 | Gate (min. confidence) | False accept (OOV shown as a word) ↓ | In-vocab shown | In-vocab shown **and right** ↑ |
 |---|---|---|---|
 | 0.30 | 73.2% | 85.5% | 39.3% |
-| **0.40 (current app)** | **52.8%** | 72.2% | 37.2% |
+| **0.40 (Words translator)** | **52.8%** | 72.2% | 37.2% |
 | 0.50 | 38.8% | 62.0% | 35.0% |
-| 0.60 | 25.6% | 53.4% | 33.3% |
+| **0.60 (video call, since 2026-10-21)** | **25.6%** | 53.4% | **33.3%** |
 | 0.70 | 17.6% | 44.4% | 30.8% |
 | 0.80 | 9.6% | 35.0% | 26.5% |
 
 Mean top confidence is 0.46 on OOV clips versus 0.63 on in-vocab clips.
 In-vocab top-1 on this set is 41.5%.
 
-**Reading it:** at the current 40% gate, about half of unknown signs get
+**Reading it:** at a 40% gate, about half of unknown signs get
 captioned as *some* word. Raising the gate cuts false captions much faster
 than it loses right ones. At 0.6, false accepts halve (52.8% → 25.6%) while
 correct captions drop only 37.2% → 33.3%. A softmax classifier has no
@@ -126,6 +126,14 @@ The gate is `WORD_MIN_PCT` in `src/hooks/useCallSignReader.ts` (video call)
 and `MIN_CONFIDENCE` in `src/screens/WordTranslatorScreen.tsx` (translator).
 They don't have to match: a call caption that is wrong misleads the other
 person, while the translator shows its top-5 alternatives anyway.
+
+**Decision (2026-10-21):** the video-call reader now uses **60%**, halving
+false captions on unknown signs for a small loss of correct ones. The
+Words translator stays at 40%: it shows its top-5 alternatives, so a wrong
+top guess there is visible as one. The 60% figure was measured on the ASL
+model. The call reader uses the same gate for FSL, whose unknown-sign
+behaviour hasn't been measured (FSL-105 has no out-of-vocabulary clips on
+disk).
 
 ## 5. Speed
 

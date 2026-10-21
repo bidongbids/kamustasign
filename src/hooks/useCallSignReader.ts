@@ -36,7 +36,11 @@ export type ReaderPhase = "off" | "loading" | "error" | "no-hand" | "unsure" | "
 
 const COMMIT_PCT = 60;
 const HOLD_MS = 450;
-const WORD_MIN_PCT = 40;
+// Higher than the Words translator's 40%: a wrong call caption misleads the
+// other person, and the model has no "unknown sign" class. At 40%, 52.8% of
+// out-of-vocabulary ASL clips were captioned as some word; at 60%, 25.6%,
+// with correct captions only 37.2% -> 33.3% (docs/EVALUATION.md section 4).
+const WORD_MIN_PCT = 60;
 
 export function useCallSignReader(
   videoRef: React.RefObject<HTMLVideoElement | null>,
