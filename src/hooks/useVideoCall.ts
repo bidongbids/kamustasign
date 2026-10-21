@@ -2,7 +2,7 @@
 // ../lib/callSignaling.ts). Web-only for now: uses the browser's native
 // RTCPeerConnection/getUserMedia rather than react-native-webrtc, matching
 // the existing translator screens' web-only precedent (native support is a
-// separate, larger lift - see KamustaSign_UI_CRUD_Handoff.md Section 5.3).
+// separate, larger lift - see docs/KamustaSign_UI_CRUD_Handoff.md Section 5.3).
 //
 // STUN-only (Google's public stun.l.google.com:19302), no TURN server - fine
 // for most same-network/open-NAT demo conditions, but calls between peers
@@ -47,7 +47,7 @@ export type CallState =
 // Expo only inlines EXPO_PUBLIC_* when read as a literal property access.
 const TURN_URLS = (process.env.EXPO_PUBLIC_TURN_URLS ?? "")
   .split(",")
-  .map((u) => u.trim())
+  .map((u: string) => u.trim())
   .filter(Boolean);
 
 export const hasTurnRelay = TURN_URLS.length > 0;

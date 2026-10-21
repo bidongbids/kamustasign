@@ -1,7 +1,6 @@
 // Sign reading for one video feed during a call (local preview or the peer's
-// incoming stream), with a choice of model - the call screen's replacement
-// for useSignRecognitionOverlay. Like that hook it runs entirely on this
-// device and sends nothing over the network.
+// incoming stream), with a choice of model. It runs entirely on this device
+// and sends nothing over the network.
 //
 //  - letters / numbers: HandLandmarker + the fingerspelling model, with the
 //    live translator's commit rule (>= COMMIT_PCT held HOLD_MS -> the letter
@@ -29,6 +28,7 @@ import {
 } from "../ml/wordLandmarks";
 import { SignSegmenter } from "../ml/signSegmenter";
 import { mirrorFlatLandmarks } from "../components/HandednessPicker";
+import { loadTasksVision, getVisionFileset } from "../lib/mediapipeVision";
 
 export type CallModel = { kind: "letters" } | { kind: "words"; language: SignLanguage };
 
@@ -37,35 +37,6 @@ export type ReaderPhase = "off" | "loading" | "error" | "no-hand" | "unsure" | "
 const COMMIT_PCT = 60;
 const HOLD_MS = 450;
 const WORD_MIN_PCT = 40;
-const TASKS_VISION_VERSION = "0.10.15";
-
-function loadTasksVision(): Promise<any> {
-  const w = window as any;
-  if (w.__mpTasksVision) return Promise.resolve(w.__mpTasksVision);
-  return new Promise((resolve, reject) => {
-    window.addEventListener("mp-tasks-vision-ready", () => resolve(w.__mpTasksVision), { once: true });
-    if (document.querySelector("script[data-mp-tasks-vision]")) return;
-    const script = document.createElement("script");
-    script.type = "module";
-    script.dataset.mpTasksVision = "1";
-    script.textContent =
-      `import { FilesetResolver, HandLandmarker, HolisticLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}/vision_bundle.mjs"; ` +
-      "window.__mpTasksVision = { FilesetResolver, HandLandmarker, HolisticLandmarker }; " +
-      'window.dispatchEvent(new Event("mp-tasks-vision-ready"));';
-    script.onerror = () => reject(new Error("Failed to load MediaPipe from the CDN"));
-    document.head.appendChild(script);
-  });
-}
-
-let visionFileset: Promise<any> | null = null;
-function getFileset(mp: any) {
-  if (!visionFileset) {
-    visionFileset = mp.FilesetResolver.forVisionTasks(
-      `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}/wasm`
-    );
-  }
-  return visionFileset;
-}
 
 export function useCallSignReader(
   videoRef: React.RefObject<HTMLVideoElement | null>,
@@ -108,7 +79,7 @@ export function useCallSignReader(
 
     async function runLetters() {
       const [{ model: clf, classes }, mp] = await Promise.all([loadAlphabet("letters"), loadTasksVision()]);
-      const fileset = await getFileset(mp);
+      const fileset = await getVisionFileset();
       const lm = await mp.HandLandmarker.createFromOptions(fileset, {
         baseOptions: { modelAssetPath: "/mediapipe/hand_landmarker.task" },
         runningMode: "VIDEO",
@@ -183,7 +154,7 @@ export function useCallSignReader(
 
     async function runWords(language: SignLanguage) {
       const [{ model: clf, classes }, mp] = await Promise.all([loadWordModels(language), loadTasksVision()]);
-      const fileset = await getFileset(mp);
+      const fileset = await getVisionFileset();
       const lm = await mp.HolisticLandmarker.createFromOptions(fileset, {
         baseOptions: { modelAssetPath: "/mediapipe/holistic_landmarker.task", delegate: "CPU" },
         runningMode: "VIDEO",

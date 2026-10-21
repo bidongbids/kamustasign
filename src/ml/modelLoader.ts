@@ -63,13 +63,6 @@ export async function loadAlphabet(alphabet: Alphabet = "letters"): Promise<Load
   return loaded;
 }
 
-// Kept for callers that only ever want letters
-// (useSignRecognitionOverlay). Behaviour is unchanged from before the split.
-export async function loadModel() {
-  const { model } = await loadAlphabet("letters");
-  return model;
-}
-
 export function getLabelForIndex(index: number) {
   return alphabetCache.letters?.classes?.[index] ?? "?";
 }
