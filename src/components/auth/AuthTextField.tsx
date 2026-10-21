@@ -5,17 +5,19 @@ import { colors, fonts, spacing, radii } from "../../theme/theme";
 type Props = TextInputProps & {
   label: string;
   error?: string;
+  /** "dark" when the field sits on the dark ground / sheer glass (dashboards). */
+  tone?: "frosted" | "dark";
 };
 
 const webTransition =
   Platform.OS === "web" ? ({ transitionProperty: "border-color", transitionDuration: "140ms" } as any) : null;
 
-export default function AuthTextField({ label, error, style, onFocus, onBlur, ...inputProps }: Props) {
+export default function AuthTextField({ label, error, tone = "frosted", style, onFocus, onBlur, ...inputProps }: Props) {
   const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, tone === "dark" && styles.labelDark]}>{label}</Text>
       <TextInput
         style={[
           styles.input,
@@ -54,6 +56,9 @@ const styles = StyleSheet.create({
     // box below it — needs the on-frosted dark-text pair, not `textPrimary`.
     color: colors.textOnFrosted,
     marginBottom: spacing.xs,
+  },
+  labelDark: {
+    color: colors.textSecondary,
   },
   input: {
     borderWidth: 1.5,

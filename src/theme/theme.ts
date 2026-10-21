@@ -13,7 +13,7 @@
 // shadows read as raised/inset instead of disappearing into a too-saturated
 // backdrop.
 
-export const colors = {
+export const darkColors = {
   // Primary brand — teacher role accent
   primaryTeal: "#7C6CF5",
   primaryTealDark: "#5A50A8",
@@ -88,7 +88,135 @@ export const colors = {
   textTertiary: "#5F6878",
   textDim: "#6E7788",
   textOnGlass: "#C3CAD6",
+
+  // Student learning layer (Graphite Aurora design system, "Kids" tokens).
+  // Every value is an existing hue named by its role - see the design
+  // system's RN implementation notes. Gold/green NEVER sit on frosted glass
+  // (1.35:1 / 1.03:1), so the student plan uses sheer glass.
+  starFilled: "#F2B23E", // = accentCoral - a counted pass
+  starEmpty: "#7D8799", // = adminGray - outline of a star not earned yet
+  starResting: "#C08420", // = accentCoralDark - newest star during cooldown (always with the moon)
+  celebrationGlow: "rgba(242,178,62,0.35)", // accentCoral @35%
+  masteredRing: "#3FB56A", // = success
+  tipAccent: "#9A8DF8", // = primaryTealLight - tip lightbulb + label
+  holdTrack: "rgba(255,255,255,0.08)",
+
+  // Added for the phone light theme (KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §2.1).
+  // Where the handoff's guessed key already existed under another name, the
+  // existing token is reused (surfaceInset = neuWell, hairline =
+  // neuShadowLight, onPrimary = textOnPrimary, onAccent = textOnAccent);
+  // the rest are new and only used by phone-layout components.
+  surfaceInset: "#1D222B",
+  surfacePressed: "#1F2430",
+  surfaceSelected: "#2A2F45",
+  hairline: "#2E3644",
+  controlBorder: "#717A8F",
+  textMuted: "#909AAE",
+  primaryTealText: "#B3A8FF",
+  onPrimary: "#FFFFFF",
+  onAccent: "#1B2029",
+  accentCoralText: "#F2B23E",
+  successText: "#5FD08A",
+  needsPracticeText: "#FF7A85",
+  onStatus: "#1B2029",
+  cameraBezel: "#12151B",
+  onCamera: "#FFFFFF",
+  cameraScrim: "rgba(18,21,27,0.62)",
 };
+
+export type ThemeColors = typeof darkColors;
+export type ThemeName = "dark" | "light";
+
+// Phone-only light palette (the handoff's "light" column). Every dark key has
+// a value here so a screen can swap palettes without missing tokens. Tokens
+// whose dark meaning was "lighter shade for text on the dark ground"
+// (primaryTealLight, tipAccent, adminGrayLight, textOnGlass) take the
+// readable dark-on-light shade instead, and the glass tokens become opaque
+// surfaces - light GlassCards are solid cards (handoff §5).
+export const lightColors: ThemeColors = {
+  primaryTeal: "#6352E6",
+  primaryTealDark: "#5241C9",
+  primaryTealLight: "#5241C9",
+
+  accentCoral: "#F2B23E",
+  accentCoralDark: "#8A5A00",
+  textOnAccent: "#3A2A00",
+
+  background: "#EEF1F6",
+  surface: "#F8F9FC",
+  surfaceMuted: "#E4E8F0",
+
+  // success/needsPractice/successText are a shade darker than the handoff's
+  // #2A9152/#D9475A/#1E7B42 so white badge text and inset-well text reach 4.5:1.
+  success: "#237F48",
+  needsPractice: "#C73A4C",
+
+  adminGray: "#5A6478",
+  adminGrayLight: "#4A5266",
+
+  textPrimary: "#1B1F2A",
+  textSecondary: "#4A5266",
+  textOnPrimary: "#FFFFFF",
+  textOnFrosted: "#1B1F2A",
+  textOnFrostedMuted: "#4A5266",
+
+  border: "#D5DAE5",
+
+  surfaceElevated: "#FFFFFF",
+  overlay: "rgba(27,31,42,0.45)",
+  focusRing: "#4F3FD0",
+  disabledSurface: "#E4E8F0",
+  disabledText: "#7F889E",
+
+  gradientStart: "#EEF1F6",
+  gradientMid: "#EEF1F6",
+  gradientEnd: "#E9EDF4",
+  glassTint: "#F8F9FC",
+  glassTintFrosted: "#F8F9FC",
+  glassBorder: "#DCE0EA",
+
+  neuBase: "#F8F9FC",
+  neuShadowDark: "rgba(102,114,146,0.28)",
+  neuShadowLight: "rgba(255,255,255,0.9)",
+  neuWell: "#E4E8F0",
+  neuWellLight: "#ECEFF5",
+
+  textTertiary: "#5D6579",
+  textDim: "#5D6579",
+  textOnGlass: "#4A5266",
+
+  starFilled: "#F2B23E",
+  starEmpty: "#7F889E",
+  starResting: "#8A5A00",
+  celebrationGlow: "rgba(242,178,62,0.35)",
+  masteredRing: "#237F48",
+  tipAccent: "#5241C9",
+  holdTrack: "rgba(27,31,42,0.08)",
+
+  surfaceInset: "#E4E8F0",
+  surfacePressed: "#E6E9F1",
+  surfaceSelected: "#EAE7FF",
+  hairline: "#D5DAE5",
+  controlBorder: "#7F889E",
+  textMuted: "#5D6579",
+  primaryTealText: "#5241C9",
+  onPrimary: "#FFFFFF",
+  onAccent: "#3A2A00",
+  accentCoralText: "#8A5A00",
+  successText: "#1B713D",
+  needsPracticeText: "#B3303D",
+  onStatus: "#FFFFFF",
+  cameraBezel: "#12151B",
+  onCamera: "#FFFFFF",
+  cameraScrim: "rgba(18,21,27,0.62)",
+};
+
+export const palettes: Record<ThemeName, ThemeColors> = { dark: darkColors, light: lightColors };
+
+// The dark palette under its original name: screens not yet moved to
+// useTheme() (src/theme/ThemeProvider.tsx) keep importing this, and desktop/
+// tablet are always dark.
+export const colors = darkColors;
 
 // Layout breakpoints — one desk/laptop-width tier, one tablet tier, mobile
 // is "everything below tablet". See src/theme/responsive.ts.
@@ -147,12 +275,62 @@ export const typography = {
   },
 };
 
+// Kid-size type for the student learning layer. Every sentence a child reads
+// is kidBody; nothing child-facing uses caption/meta.
+export const kidTypography = {
+  kidTarget: { fontFamily: fonts.heading, fontSize: 104, lineHeight: 104 },
+  kidTargetWord: { fontFamily: fonts.heading, fontSize: 44, lineHeight: 48 },
+  kidHeadline: { fontFamily: fonts.heading, fontSize: 28, lineHeight: 32 },
+  kidTitle: { fontFamily: fonts.headingSemiBold, fontSize: 22, lineHeight: 26 },
+  tileGlyph: { fontFamily: fonts.heading, fontSize: 30, lineHeight: 30 },
+  kidBody: { fontFamily: fonts.bodyMedium, fontSize: 17, lineHeight: 26 },
+  kidLabel: { fontFamily: fonts.bodySemiBold, fontSize: 16, lineHeight: 20 },
+};
+
+// Phone type scale (handoff §2.2) - used only on the isMobile branch;
+// desktop/tablet keep `typography` / `kidTypography` above.
+export const mobileTypography = {
+  hero: { fontFamily: fonts.heading, fontSize: 32, lineHeight: 36 },
+  title: { fontFamily: fonts.heading, fontSize: 24, lineHeight: 30 },
+  heading: { fontFamily: fonts.headingSemiBold, fontSize: 20, lineHeight: 26 },
+  transcript: { fontFamily: fonts.heading, fontSize: 28, lineHeight: 34 },
+  body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 24 },
+  bodyStrong: { fontFamily: fonts.bodySemiBold, fontSize: 16, lineHeight: 24 },
+  label: { fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 20 },
+  caption: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 18 },
+  kidTitle: { fontFamily: fonts.heading, fontSize: 30, lineHeight: 36 },
+  kidBody: { fontFamily: fonts.bodyMedium, fontSize: 18, lineHeight: 26 },
+  kidLabel: { fontFamily: fonts.bodySemiBold, fontSize: 16, lineHeight: 22 },
+};
+
+// Fixed sizes for young hands - never shrink below these.
+export const sizes = {
+  // Phone layout sizes (handoff §2.3).
+  touchMin: 44,
+  recordButton: 72,
+  tabBarHeight: 52,
+  progressHeight: 10,
+  progressHeightHero: 14,
+  dialSize: 64,
+  tapMin: 48,
+  tileGlyph: 64,
+  tileWordH: 52,
+  buttonKidH: 56,
+  starSm: 14,
+  starLg: 40,
+  targetSlab: 200,
+  targetSlabMobile: 132,
+};
+
 export const theme = {
   colors,
   fonts,
   spacing,
   radii,
   typography,
+  kidTypography,
+  mobileTypography,
+  sizes,
 };
 
 export default theme;

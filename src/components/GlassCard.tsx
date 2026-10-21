@@ -18,7 +18,8 @@ import React from "react";
 import { StyleSheet, View, ViewStyle, StyleProp } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors, radii, spacing } from "../theme/theme";
+import { radii, spacing } from "../theme/theme";
+import { useTheme } from "../theme/ThemeProvider";
 
 type Tint = "sheer" | "frosted";
 
@@ -42,6 +43,12 @@ type Props = {
   dropShadow?: boolean;
 };
 
+// Light theme (phones only, KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §5): there is
+// no colorful backdrop to blur, so a card off the camera is a plain opaque
+// `surface` card with the light card shadow. Over video it is a dark scrim
+// with a dark blur in both themes' spirit; white text (`onCamera`) goes on it.
+// The dark theme is drawn exactly as before.
+
 const GRADIENT_STOPS: Record<"sheer" | "frosted" | "overVideo", [string, string]> = {
   sheer: ["rgba(255,255,255,0.13)", "rgba(255,255,255,0.035)"],
   frosted: ["rgba(255,255,255,0.58)", "rgba(255,255,255,0.44)"],
@@ -59,6 +66,22 @@ export default function GlassCard({
   overVideo = false,
   dropShadow = false,
 }: Props) {
+  const { colors, name, shadows } = useTheme();
+  if (name === "light") {
+    const lightCard = overVideo ? (
+      <View style={[styles.outer, { borderRadius: radius, borderColor: "rgba(255,255,255,0.22)" }, style]}>
+        <BlurView intensity={intensity ?? 40} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.cameraScrim }]} />
+        <View style={[{ padding }, contentStyle]}>{children}</View>
+      </View>
+    ) : (
+      <View style={[{ borderRadius: radius, backgroundColor: colors.surface }, shadows.shadow("md"), style]}>
+        <View style={[{ padding }, contentStyle]}>{children}</View>
+      </View>
+    );
+    return lightCard;
+  }
+
   const stops = overVideo ? GRADIENT_STOPS.overVideo : GRADIENT_STOPS[tint];
   const borderColor = overVideo ? "rgba(255,255,255,0.22)" : colors.glassBorder;
   const resolvedIntensity = intensity ?? (overVideo ? 18 : tint === "frosted" ? 26 : 16);

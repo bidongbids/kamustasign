@@ -8,7 +8,7 @@
 import React from "react";
 import { StyleSheet, View, ViewStyle, StyleProp } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors } from "../theme/theme";
+import { useTheme } from "../theme/ThemeProvider";
 
 type Props = {
   children: React.ReactNode;
@@ -20,6 +20,9 @@ type Props = {
 };
 
 export default function GradientBackground({ children, style, variant = "full" }: Props) {
+  // Light (phones only) is a near-flat pale ground: the gradient tokens are
+  // set almost equal there, so the same code draws it.
+  const { colors } = useTheme();
   const gradientColors: [string, string, string] =
     variant === "full"
       ? [colors.gradientStart, colors.gradientMid, colors.gradientEnd]

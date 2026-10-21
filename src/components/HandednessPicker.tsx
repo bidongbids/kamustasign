@@ -24,21 +24,28 @@ import { colors, fonts } from "../theme/theme";
 const STORAGE_KEY = "kamustasign:handedness";
 export type Handedness = "right" | "left";
 
+// Every mounted useHandedness() shares one value, so flipping the hand in one
+// place (e.g. Practice's "For grown-ups" panel) reaches the translator's own
+// instance immediately instead of only after a remount.
+const handednessListeners = new Set<(value: Handedness) => void>();
+
 export function useHandedness(): [Handedness, (value: Handedness) => void] {
   const [handedness, setHandedness] = useState<Handedness>("right");
 
   useEffect(() => {
     let cancelled = false;
+    handednessListeners.add(setHandedness);
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
       if (!cancelled && (saved === "left" || saved === "right")) setHandedness(saved);
     });
     return () => {
       cancelled = true;
+      handednessListeners.delete(setHandedness);
     };
   }, []);
 
   const update = (next: Handedness) => {
-    setHandedness(next);
+    handednessListeners.forEach((listener) => listener(next));
     AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
   };
 

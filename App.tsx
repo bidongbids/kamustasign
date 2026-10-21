@@ -10,16 +10,18 @@ import StudentDashboard from "./src/screens/dashboard/StudentDashboard";
 import TeacherDashboard from "./src/screens/dashboard/TeacherDashboard";
 import AdminDashboard from "./src/screens/dashboard/AdminDashboard";
 import { useAuthGate } from "./src/lib/authGate";
-import { colors } from "./src/theme/theme";
+import { ThemeColors } from "./src/theme/theme";
+import { ThemeProvider, useTheme, useThemedStyles } from "./src/theme/ThemeProvider";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 type Role = "student" | "teacher" | "admin";
 type Screen = Role | "translator" | null;
 
-const roleAccent: Record<Role, string> = {
+const roleAccentFor = (colors: ThemeColors): Record<Role, string> => ({
   student: colors.accentCoral,
   teacher: colors.primaryTeal,
   admin: colors.adminGray,
-};
+});
 
 // Restores the role the user was mid-signin-as after a Google OAuth redirect
 // bounces the web page away and back (see LoginScreen's redirectTo).
@@ -30,6 +32,20 @@ function roleFromQueryString(): Role | null {
 }
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
+  const { colors, name: themeName } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const roleAccent = roleAccentFor(colors);
+  const statusBarStyle = themeName === "light" ? "dark" : "light";
   const [fontsLoaded] = useFonts({
     Baloo2_700Bold,
     Baloo2_600SemiBold,
@@ -61,7 +77,7 @@ export default function App() {
   if (!role) {
     return (
       <>
-        <StatusBar style="light" />
+        <StatusBar style={statusBarStyle} />
         <RoleSelectScreen
           onSelectRole={setRole}
           onOpenTranslator={() => setRole("translator")}
@@ -73,7 +89,7 @@ export default function App() {
   if (role === "translator") {
     return (
       <>
-        <StatusBar style="light" />
+        <StatusBar style={statusBarStyle} />
         <TranslatorHubScreen onBack={() => setRole(null)} />
       </>
     );
@@ -84,7 +100,7 @@ export default function App() {
   if (showAuthFlow) {
     return (
       <>
-        <StatusBar style="light" />
+        <StatusBar style={statusBarStyle} />
         <AuthNavigator
           role={role}
           accentColor={roleAccent[role]}
@@ -104,7 +120,7 @@ export default function App() {
 
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style={statusBarStyle} />
       {role === "student" && <StudentDashboard {...dashboardProps} />}
       {role === "teacher" && <TeacherDashboard {...dashboardProps} />}
       {role === "admin" && <AdminDashboard {...dashboardProps} />}
@@ -112,7 +128,7 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   loading: {
     flex: 1,
     alignItems: "center",

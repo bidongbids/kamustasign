@@ -4,19 +4,27 @@
 // demoted to a bordered ghost button below an "OR SKIP SIGN-IN" rule, since
 // skipping sign-in entirely is a categorically different action from
 // choosing a role. Same destination (`onOpenTranslator`), no routing change.
-// Desktop gets a two-pane split (432px brand pane + role cards); mobile is a
-// single scrolling column with the ghost button pinned to the bottom.
+// Desktop gets a two-pane split (432px brand pane + role cards); tablet is a
+// single scrolling column with the ghost button pinned to the bottom. Phones
+// (<768) get the KAMUSTASIGN_LIGHT_THEME_HANDOFF.md layout (PhoneRoleSelect):
+// a "Kamusta!" greeting over a 2x2 grid of role tiles, Translator in the
+// bottom-right cell, in the light or dark theme.
 
 import React, { useEffect, useRef } from "react";
-import { Animated, View, Text, StyleSheet, ScrollView, Pressable, Platform, ViewStyle } from "react-native";
+import { Animated, View, Text, StyleSheet, ScrollView, Pressable, Platform, ViewStyle, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, RadialGradient, Stop, Rect } from "react-native-svg";
 import RoleCard from "../components/RoleCard";
 import HandLandmarkMark from "../components/HandLandmarkMark";
 import Wordmark from "../components/Wordmark";
 import GradientBackground from "../components/GradientBackground";
-import { colors, typography, spacing } from "../theme/theme";
+import RoleTile from "../components/RoleTile";
+import ThemeToggle from "../components/ThemeToggle";
+import { GraduationCapIcon, ClipboardCheckIcon, GearIcon, VideoCameraIcon } from "../components/icons/RoleIcons";
+import { colors, typography, spacing, mobileTypography, ThemeColors } from "../theme/theme";
 import { neuRaised } from "../theme/shadows";
 import { useResponsive } from "../theme/responsive";
+import { Theme, useTheme, useThemedStyles } from "../theme/ThemeProvider";
 
 type Role = "student" | "teacher" | "admin";
 
@@ -103,7 +111,91 @@ function SkipDivider() {
   );
 }
 
-export default function RoleSelectScreen({ onSelectRole, onOpenTranslator }: Props) {
+// ── phone layout ────────────────────────────────────────────────────────
+const PHONE_GUTTER = spacing.md;
+const PHONE_GAP = spacing.md;
+
+const makePhoneStyles = (c: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    scroll: { flexGrow: 1, paddingHorizontal: PHONE_GUTTER, paddingBottom: spacing.lg },
+    header: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    brand: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+    logoTile: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.surface,
+      ...theme.shadows.neuRaised("sm"),
+    },
+    wordmark: { ...mobileTypography.heading, color: c.textPrimary },
+    greeting: { marginTop: spacing.lg, marginBottom: spacing.lg, gap: spacing.xs },
+    hero: { ...mobileTypography.hero, color: c.textPrimary },
+    sub: { ...mobileTypography.body, color: c.textSecondary },
+    grid: { flexDirection: "row", flexWrap: "wrap", gap: PHONE_GAP },
+    footer: { ...mobileTypography.caption, color: c.textMuted, marginTop: "auto", paddingTop: spacing.xl, textAlign: "center" },
+  });
+
+function PhoneRoleSelect({ onSelectRole, onOpenTranslator }: Props) {
+  const { colors: c } = useTheme();
+  const styles = useThemedStyles(makePhoneStyles);
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const tileWidth = Math.floor((width - 2 * PHONE_GUTTER - PHONE_GAP) / 2);
+  const tiles = [
+    { key: "student", label: "Student", description: "Practice signs and see your stars", icon: <GraduationCapIcon color={c.accentCoralText} />, onPress: () => onSelectRole("student") },
+    { key: "teacher", label: "Teacher", description: "Classes, modules and calls", icon: <ClipboardCheckIcon color={c.primaryTealText} />, onPress: () => onSelectRole("teacher") },
+    { key: "admin", label: "Admin", description: "Accounts and classes", icon: <GearIcon color={c.adminGray} />, onPress: () => onSelectRole("admin") },
+    {
+      key: "translator",
+      label: "Translator",
+      description: "No account needed",
+      icon: <VideoCameraIcon color={c.successText} />,
+      onPress: onOpenTranslator,
+      accessibilityLabel: "Open the Translator, no account needed",
+    },
+  ];
+  return (
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: spacing.lg + insets.bottom }]}>
+        <View style={styles.header}>
+          <View style={styles.brand}>
+            <View style={styles.logoTile}>
+              <HandLandmarkMark size={24} color={c.primaryTeal} dotColor={c.accentCoral} animated={false} />
+            </View>
+            <Wordmark style={styles.wordmark} accentColor={c.accentCoralText} />
+          </View>
+          <ThemeToggle />
+        </View>
+
+        <View style={styles.greeting}>
+          <Text style={styles.hero} accessibilityRole="header">
+            Kamusta!
+          </Text>
+          <Text style={styles.sub}>Who's using KamustaSign?</Text>
+        </View>
+
+        <View style={styles.grid}>
+          {tiles.map(({ key, ...t }) => (
+            <RoleTile key={key} width={tileWidth} {...t} />
+          ))}
+        </View>
+
+        <Text style={styles.footer}>Real-time ASL and FSL interpretation for Liloan Central School.</Text>
+      </ScrollView>
+    </View>
+  );
+}
+
+export default function RoleSelectScreen(props: Props) {
+  const { isMobile } = useResponsive();
+  if (isMobile) return <PhoneRoleSelect {...props} />;
+  return <WideRoleSelect {...props} />;
+}
+
+function WideRoleSelect({ onSelectRole, onOpenTranslator }: Props) {
   const { isDesktop, isMobile } = useResponsive();
 
   const fade = useRef(new Animated.Value(0)).current;
