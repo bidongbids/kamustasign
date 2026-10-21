@@ -1,0 +1,106 @@
+// Draws MediaPipe hand landmarks as a connected skeleton rather than loose dots.
+//
+// The screens previously painted one filled circle per landmark, which reads as
+// a scatter of points sitting on top of the hand. Stroking the bones between
+// them instead makes the overlay legible as a hand - you can see which finger
+// is which, and whether tracking has gone wrong, at a glance.
+
+/**
+ * MediaPipe's 21-point hand topology.
+ *
+ *   0            wrist
+ *   1-4          thumb      (CMC, MCP, IP, tip)
+ *   5-8          index      (MCP, PIP, DIP, tip)
+ *   9-12         middle
+ *   13-16        ring
+ *   17-20        pinky
+ *
+ * The palm is closed by chaining the knuckles (5-9-13-17) and running edges
+ * from the wrist out to the index and pinky bases, which is what gives the
+ * fan shape rather than five disconnected sticks.
+ */
+export const HAND_CONNECTIONS: [number, number][] = [
+  [0, 1], [1, 2], [2, 3], [3, 4],          // thumb
+  [0, 5], [5, 6], [6, 7], [7, 8],          // index
+  [5, 9], [9, 10], [10, 11], [11, 12],     // middle
+  [9, 13], [13, 14], [14, 15], [15, 16],   // ring
+  [13, 17], [17, 18], [18, 19], [19, 20],  // pinky
+  [0, 17],                                 // wrist -> pinky base, closes the palm
+];
+
+export type HandSkeletonOptions = {
+  /** Stroke colour. Defaults to the mint used on the camera overlay. */
+  color?: string;
+  /** Bone thickness in px. Defaults to a fraction of canvas height. */
+  lineWidth?: number;
+  /** Soft glow radius. 0 disables it. */
+  glow?: number;
+  /** Radius of the dot drawn at each joint. 0 (default) draws bones only. */
+  jointRadius?: number;
+  /** Overrides the joint dot colour; falls back to `color`. */
+  jointColor?: string;
+};
+
+export const HAND_MINT = "#4FE8C8";
+
+/**
+ * Stroke one hand's bones onto a 2D canvas context.
+ *
+ * `landmarks` are MediaPipe's normalised 0-1 coordinates, so they're scaled by
+ * the canvas dimensions here. Line width defaults to ~1.1% of canvas height so
+ * the overlay keeps the same visual weight whether the video is 480p or 1080p -
+ * a fixed pixel width looks heavy on small canvases and hairline on large ones.
+ */
+export function drawHandSkeleton(
+  ctx: CanvasRenderingContext2D,
+  canvas: { width: number; height: number },
+  landmarks: { x: number; y: number }[],
+  options: HandSkeletonOptions = {}
+) {
+  if (!landmarks || landmarks.length < 21) return;
+
+  const {
+    color = HAND_MINT,
+    lineWidth = Math.max(2, canvas.height * 0.011),
+    glow = lineWidth * 1.6,
+    jointRadius = 0,
+    jointColor,
+  } = options;
+
+  const px = (i: number) => [landmarks[i].x * canvas.width, landmarks[i].y * canvas.height];
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  if (glow > 0) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = glow;
+  }
+
+  // One path for the whole skeleton: the glow is applied per stroke call, so
+  // stroking 21 separate paths would stack 21 overlapping glows and bloom the
+  // overlay into a smear.
+  ctx.beginPath();
+  for (const [a, b] of HAND_CONNECTIONS) {
+    const [ax, ay] = px(a);
+    const [bx, by] = px(b);
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+  }
+  ctx.stroke();
+
+  if (jointRadius > 0) {
+    ctx.fillStyle = jointColor ?? color;
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 21; i++) {
+      const [x, y] = px(i);
+      ctx.beginPath();
+      ctx.arc(x, y, jointRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}

@@ -1,0 +1,356 @@
+// Classroom practice: the translator with a target sign. Not a fork of either
+// translator screen - it renders the real LiveTranslatorScreen (letters /
+// numbers) or WordTranslatorScreen (words) with their optional targetSign +
+// onPracticeResult props, and owns the camera stream and landmarker queue the
+// same way TranslatorHubScreen does (useSharedCameraStream /
+// useSharedLandmarkers), so the MediaPipe lifecycle is exactly the one the
+// translator already uses. Unmounting this screen releases both.
+//
+// What gets written (one lesson_progress upsert per attempt, via
+// recordAttempt()):
+//  - Letters/Numbers predict continuously. Each time the target holds at the
+//    pass threshold is a passed attempt (the student must let go of the sign
+//    before the next one - see LiveTranslatorScreen). A session with no pass
+//    is recorded as one plain attempt when the student leaves (only if a
+//    hand was ever seen - opening and closing the screen isn't practice).
+//  - Words: every classified clip is an attempt.
+// Every pass is sent as a pass. Whether it COUNTS toward mastery is decided
+// in SQL by the cooldown (PASS_COOLDOWN_MINUTES, 0007 migration), and the
+// row that comes back tells this screen which it was.
+import React, { useEffect, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import GradientBackground from "../../components/GradientBackground";
+import LiveTranslatorScreen from "../LiveTranslatorScreen";
+import WordTranslatorScreen from "../WordTranslatorScreen";
+import { useSelectedLanguage } from "../../components/LanguagePicker";
+import { ChevronLeftIcon } from "../../components/icons/UiIcons";
+import { useSharedCameraStream } from "../../hooks/useSharedCameraStream";
+import { useSharedLandmarkers } from "../../hooks/useSharedLandmarkers";
+import { recordAttempt, type LessonProgressRow } from "../../lib/queries";
+import {
+  MASTERY_PASSES,
+  PASS_COOLDOWN_MINUTES,
+  PROGRESS_RULES_TEXT,
+  getGroup,
+  getLanguage,
+  nextCountedPassAt,
+  type SignGroup,
+  type SignLanguage,
+} from "../../lib/curriculum";
+import { colors, spacing, typography } from "../../theme/theme";
+import { neuInset, neuRaised } from "../../theme/shadows";
+import { useResponsive } from "../../theme/responsive";
+
+type Props = {
+  studentId: string;
+  language: SignLanguage;
+  group: SignGroup;
+  sign: string;
+  /** Counted passes already on record, for the "x of 3" readout. */
+  priorPasses: number;
+  /** The last counted pass, so the screen can say when the next one counts. */
+  lastPassedAt: string | null;
+  accentColor: string;
+  /** Called after any pending progress write has finished. */
+  onDone: () => void;
+};
+
+type Feedback =
+  | { kind: "waiting" }
+  | { kind: "trying"; best: number }
+  // counted: null while the write is in flight.
+  | { kind: "passed"; counted: boolean | null }
+  | { kind: "retry"; predicted: string | null; confidence: number };
+
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+const clock = (d: Date) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+export default function PracticeScreen({
+  studentId,
+  language,
+  group,
+  sign,
+  priorPasses,
+  lastPassedAt: initialLastPassedAt,
+  accentColor,
+  onDone,
+}: Props) {
+  const { isDesktop } = useResponsive();
+  const [targetLanguage] = useSelectedLanguage();
+  const { getCameraStream } = useSharedCameraStream();
+  const { createHandLandmarker, createHolisticLandmarker, releaseLandmarker } = useSharedLandmarkers();
+
+  const [feedback, setFeedback] = useState<Feedback>({ kind: "waiting" });
+  const [passes, setPasses] = useState(priorPasses);
+  const [lastPassedAt, setLastPassedAt] = useState(initialLastPassedAt);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  // Re-render periodically so "next pass counts after ..." clears itself.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Session bookkeeping lives in refs: the translator callbacks fire from
+  // async frame/classification code, and the unmount cleanup needs the
+  // latest values without re-running.
+  const sessionRef = useRef({ started: false, best: 0, recorded: false });
+  const passesRef = useRef(priorPasses);
+  const writesRef = useRef<Promise<unknown>>(Promise.resolve());
+
+  const isLive = group !== "words";
+  const languageLabel = getLanguage(language).label;
+  const groupLabel = getGroup(language, group).label;
+  const nextPassAt = nextCountedPassAt(lastPassedAt);
+
+  /** Resolves to whether a pass counted (false for non-pass attempts or on error). */
+  function write(passed: boolean, confidence: number): Promise<boolean> {
+    const job = writesRef.current.then(async () => {
+      const { data, error } = await recordAttempt(studentId, language, group, sign, passed, confidence);
+      if (error) {
+        setSaveError(`Couldn't save this attempt: ${error.message}`);
+        return false;
+      }
+      setSaveError(null);
+      const row = (Array.isArray(data) ? data[0] : data) as LessonProgressRow | null;
+      if (!row) return false;
+      const counted = row.passes > passesRef.current;
+      passesRef.current = row.passes;
+      setPasses(row.passes);
+      setLastPassedAt(row.last_passed_at);
+      return counted;
+    });
+    writesRef.current = job.catch(() => {});
+    return job;
+  }
+
+  function showPass(confidence: number) {
+    setFeedback({ kind: "passed", counted: null });
+    void write(true, confidence).then((counted) =>
+      // Only resolve the message if nothing newer (a retry) replaced it.
+      setFeedback((f) => (f.kind === "passed" && f.counted === null ? { kind: "passed", counted } : f))
+    );
+  }
+
+  // Live (letters/numbers).
+  function handleLiveResult({ passed, confidence }: { passed: boolean; confidence: number }) {
+    const s = sessionRef.current;
+    s.started = true;
+    s.best = Math.max(s.best, confidence);
+    if (passed) {
+      s.recorded = true;
+      showPass(confidence);
+    } else {
+      // Keep a pass message up while the student lowers their hand.
+      setFeedback((f) => (f.kind === "passed" ? f : { kind: "trying", best: s.best }));
+    }
+  }
+
+  // Words: one attempt per classified clip.
+  function handleWordResult({
+    passed,
+    confidence,
+    predicted,
+  }: {
+    passed: boolean;
+    confidence: number;
+    predicted: string | null;
+  }) {
+    const s = sessionRef.current;
+    s.started = true;
+    s.recorded = true;
+    if (passed) {
+      showPass(confidence);
+    } else {
+      setFeedback({ kind: "retry", predicted, confidence });
+      void write(false, confidence);
+    }
+  }
+
+  // Leaving without any recorded attempt still counts as one (letters/numbers
+  // only; words recorded each clip as it went). The unmount path covers
+  // leaving some other way than the back button, e.g. signing out mid-practice.
+  function recordUnfinishedSession() {
+    const s = sessionRef.current;
+    if (s.started && !s.recorded) {
+      s.recorded = true;
+      return write(false, s.best);
+    }
+    return writesRef.current;
+  }
+
+  useEffect(() => {
+    return () => {
+      void recordUnfinishedSession();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleBack() {
+    if (leaving) return;
+    setLeaving(true);
+    await recordUnfinishedSession();
+    onDone();
+  }
+
+  const instruction = isLive
+    ? `Make the sign for “${sign}” and hold it steady.`
+    : `Press Record, sign “${sign}”, then press Stop.`;
+
+  const mastered = passes >= MASTERY_PASSES;
+
+  const feedbackLine = (() => {
+    switch (feedback.kind) {
+      case "waiting":
+        return { text: "Waiting for your first try…", color: colors.textSecondary };
+      case "trying":
+        return {
+          text: feedback.best > 0 ? `Keep going - best so far ${pct(feedback.best)}` : "Not recognised yet - keep trying",
+          color: colors.textSecondary,
+        };
+      case "passed":
+        if (feedback.counted === null) return { text: "Correct! Saving…", color: colors.success };
+        if (feedback.counted)
+          return {
+            text: mastered
+              ? "Correct! That pass counted - you've mastered this sign."
+              : `Correct! That pass counted (${passes} of ${MASTERY_PASSES}).`,
+            color: colors.success,
+          };
+        return {
+          text: nextPassAt
+            ? `Correct! Passes need ${PASS_COOLDOWN_MINUTES} minutes between them - your next one counts after ${clock(nextPassAt)}.`
+            : "Correct!",
+          color: colors.success,
+        };
+      case "retry":
+        return {
+          text: feedback.predicted
+            ? feedback.predicted === sign
+              ? `Close - recognised, but only at ${pct(feedback.confidence)}. Try again.`
+              : `That looked like “${feedback.predicted}”. Try again.`
+            : "Not sure what that was - try again.",
+          color: colors.needsPractice,
+        };
+    }
+  })();
+
+  return (
+    <GradientBackground variant="subtle" style={styles.root}>
+      <View style={[styles.header, !isDesktop && styles.headerMobile]}>
+        <Pressable
+          onPress={handleBack}
+          style={[styles.backButton, neuRaised("sm")]}
+          accessibilityRole="button"
+          accessibilityLabel="Back to your learning plan"
+          disabled={leaving}
+        >
+          <ChevronLeftIcon size={16} color={colors.textSecondary} />
+          <Text style={styles.backLabel}>{leaving ? "Saving…" : "Done"}</Text>
+        </Pressable>
+
+        <View style={[styles.targetTile, neuInset("sm")]}>
+          <Text style={[typography.meta, styles.eyebrow]}>
+            PRACTISE · {languageLabel} {groupLabel.toUpperCase()}
+          </Text>
+          <Text style={[styles.targetText, { color: accentColor }]} numberOfLines={1}>
+            {sign}
+          </Text>
+        </View>
+
+        <View style={styles.feedbackBlock}>
+          <Text style={styles.instruction}>{instruction}</Text>
+          <Text style={[styles.feedback, { color: feedbackLine.color }]}>{feedbackLine.text}</Text>
+          <Text style={styles.passes}>
+            Passes: {Math.min(passes, MASTERY_PASSES)} of {MASTERY_PASSES}
+            {mastered ? " · Mastered" : nextPassAt ? ` · next pass counts after ${clock(nextPassAt)}` : ""}
+          </Text>
+          {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
+        </View>
+      </View>
+      <Text style={[styles.rules, !isDesktop && styles.rulesMobile]}>{PROGRESS_RULES_TEXT}</Text>
+
+      <View style={styles.body}>
+        {isLive ? (
+          <LiveTranslatorScreen
+            targetLanguage={targetLanguage}
+            getCameraStream={getCameraStream}
+            createHandLandmarker={createHandLandmarker}
+            releaseLandmarker={releaseLandmarker}
+            alphabet={group === "numbers" ? "numbers" : "letters"}
+            targetSign={sign}
+            onPracticeResult={handleLiveResult}
+          />
+        ) : (
+          <WordTranslatorScreen
+            targetLanguage={targetLanguage}
+            getCameraStream={getCameraStream}
+            createHolisticLandmarker={createHolisticLandmarker}
+            releaseLandmarker={releaseLandmarker}
+            language={language}
+            mode="manual"
+            targetSign={sign}
+            onPracticeResult={handleWordResult}
+          />
+        )}
+      </View>
+    </GradientBackground>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: 30,
+    paddingTop: spacing.md,
+    width: "100%",
+    maxWidth: 1600,
+    alignSelf: "center",
+  },
+  headerMobile: {
+    flexWrap: "wrap",
+    paddingHorizontal: 20,
+    rowGap: 10,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: colors.neuBase,
+  },
+  backLabel: { ...typography.labelSm, color: colors.textSecondary },
+  targetTile: {
+    minWidth: 120,
+    maxWidth: 280,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+    backgroundColor: colors.neuWell,
+    alignItems: "center",
+  },
+  eyebrow: { color: colors.textSecondary, marginBottom: 6 },
+  targetText: { ...typography.h1, fontSize: 34, lineHeight: 38 },
+  feedbackBlock: { flex: 1, minWidth: 220 },
+  instruction: { ...typography.bodySm, color: colors.textPrimary },
+  feedback: { ...typography.label, lineHeight: 20, marginTop: 2 },
+  passes: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  error: { ...typography.caption, color: colors.needsPractice, marginTop: 2 },
+  rules: {
+    ...typography.caption,
+    color: colors.textDim,
+    paddingHorizontal: 30,
+    paddingTop: 6,
+    width: "100%",
+    maxWidth: 1600,
+    alignSelf: "center",
+  },
+  rulesMobile: { paddingHorizontal: 20 },
+  body: { flex: 1, minHeight: 0 },
+});

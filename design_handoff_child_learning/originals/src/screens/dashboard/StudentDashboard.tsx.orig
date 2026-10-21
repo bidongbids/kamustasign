@@ -1,0 +1,316 @@
+// Student dashboard: the classroom's fixed learning plan (CLASSROOM_REDESIGN.md).
+// ASL/FSL, each split into Letters/Numbers/Words from src/lib/curriculum.ts;
+// a tile per sign shows not-started / attempted / mastered, and tapping one
+// opens practice (PracticeScreen) with that sign as the target. Progress is
+// read from and written to lesson_progress, scoped by RLS
+// (0006_lesson_progress_rls.sql) - not just by what this screen asks for.
+//
+// The plan doesn't need a class: a student with no class can still practise.
+// The class only decides who the "Call your teacher" button rings.
+import React, { useCallback, useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import DashboardShell, { DashboardCard, dashboardStyles as ds } from "./DashboardShell";
+import CurriculumTabs from "./CurriculumTabs";
+import PracticeScreen from "./PracticeScreen";
+import AuthButton from "../../components/auth/AuthButton";
+import ProgressBar from "../../components/ProgressBar";
+import { colors, fonts, radii, spacing } from "../../theme/theme";
+import {
+  getMyProfile,
+  getClassTeacher,
+  getLessonProgress,
+  getMasteredCounts,
+  toOne,
+  type LessonProgressRow,
+  type Profile,
+} from "../../lib/queries";
+import {
+  MASTERY_PASSES,
+  OVERALL_CAPTION,
+  PROGRESS_RULES_TEXT,
+  computeOverall,
+  getGroup,
+  groupFraction,
+  groupKey,
+  isMastered,
+  type MasteredCounts,
+  type SignGroup,
+  type SignLanguage,
+} from "../../lib/curriculum";
+import { useVideoCall } from "../../hooks/useVideoCall";
+import VideoCallScreen from "../videocall/VideoCallScreen";
+import type { CallPeer } from "../../lib/callSignaling";
+
+type Props = {
+  accentColor: string;
+  onSignOut: () => void;
+  onExitToRoleSelect: () => void;
+};
+
+type TileStatus = "not-started" | "attempted" | "mastered";
+
+function tileStatus(row: LessonProgressRow | undefined): TileStatus {
+  if (!row || row.attempts === 0) return "not-started";
+  return isMastered(row) ? "mastered" : "attempted";
+}
+
+export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleSelect }: Props) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [teacher, setTeacher] = useState<CallPeer | null>(null);
+  const [mastered, setMastered] = useState<MasteredCounts>({});
+  const [language, setLanguage] = useState<SignLanguage>("asl");
+  const [group, setGroup] = useState<SignGroup>("letters");
+  const [rows, setRows] = useState<Map<string, LessonProgressRow>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [practising, setPractising] = useState<string | null>(null);
+
+  const self: CallPeer | null = profile ? { id: profile.id, name: profile.full_name } : null;
+  const call = useVideoCall(profile?.class_id ?? null, self);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data: me, error: profileError } = await getMyProfile();
+    if (profileError || !me) {
+      setError(profileError?.message ?? "Couldn't load your profile.");
+      setLoading(false);
+      return;
+    }
+    const meProfile = me as Profile;
+    setProfile(meProfile);
+
+    const [counts, klass] = await Promise.all([
+      getMasteredCounts(meProfile.id),
+      meProfile.class_id ? getClassTeacher(meProfile.class_id) : Promise.resolve({ data: null }),
+    ]);
+    if (counts.error) setError(counts.error.message);
+    else setMastered(counts.data ?? {});
+    const teacherProfile = toOne((klass.data as any)?.profiles ?? null);
+    setTeacher(teacherProfile ? { id: teacherProfile.id, name: teacherProfile.full_name } : null);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const groupDef = getGroup(language, group);
+
+  const loadGroup = useCallback(async () => {
+    if (!profile || !groupDef.available) {
+      setRows(new Map());
+      return;
+    }
+    setRows(new Map());
+    setGroupLoading(true);
+    const { data, error: err } = await getLessonProgress(profile.id, language, group);
+    setGroupLoading(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setRows(new Map(((data as LessonProgressRow[]) ?? []).map((r) => [r.sign, r])));
+  }, [profile, language, group, groupDef.available]);
+
+  useEffect(() => {
+    loadGroup();
+  }, [loadGroup]);
+
+  // Back from practice: re-read the bars, and (via the fresh profile ->
+  // loadGroup effect) the tiles, so what the student sees is what the
+  // database now holds - and what their teacher sees.
+  const handlePracticeDone = () => {
+    setPractising(null);
+    load();
+  };
+
+  if (call.callState !== "idle") {
+    return (
+      <VideoCallScreen
+        callState={call.callState}
+        incomingCallFrom={call.incomingCallFrom}
+        peer={call.peer}
+        localStream={call.localStream}
+        remoteStream={call.remoteStream}
+        error={call.error}
+        acceptCall={call.acceptCall}
+        declineCall={call.declineCall}
+        hangUp={call.hangUp}
+        accentColor={accentColor}
+      />
+    );
+  }
+
+  if (practising && profile) {
+    return (
+      <PracticeScreen
+        studentId={profile.id}
+        language={language}
+        group={group}
+        sign={practising}
+        priorPasses={rows.get(practising)?.passes ?? 0}
+        lastPassedAt={rows.get(practising)?.last_passed_at ?? null}
+        accentColor={accentColor}
+        onDone={handlePracticeDone}
+      />
+    );
+  }
+
+  const masteredHere = mastered[groupKey(language, group)] ?? 0;
+
+  return (
+    <DashboardShell
+      accentColor={accentColor}
+      roleLabel="Student"
+      userName={profile?.full_name ?? "..."}
+      onSignOut={onSignOut}
+      onExitToRoleSelect={onExitToRoleSelect}
+    >
+      {error ? <Text style={ds.errorText}>{error}</Text> : null}
+
+      {loading && !profile ? (
+        <Text style={ds.emptyText}>Loading...</Text>
+      ) : (
+        <>
+          <Text style={ds.sectionTitle}>My learning plan</Text>
+          <ProgressBar value={computeOverall(mastered)} label="Overall progress" caption={OVERALL_CAPTION} />
+
+          <CurriculumTabs
+            language={language}
+            group={group}
+            onChange={(l, g) => {
+              setLanguage(l);
+              setGroup(g);
+            }}
+          />
+
+          {groupDef.available ? (
+            <DashboardCard style={styles.groupCard}>
+              <ProgressBar
+                onFrosted
+                value={groupFraction(language, group, mastered)}
+                label={`${masteredHere} of ${groupDef.signs.length} mastered`}
+              />
+              <Text style={[ds.itemMeta, styles.rules]}>{PROGRESS_RULES_TEXT}</Text>
+              <View style={styles.legend}>
+                {(["not-started", "attempted", "mastered"] as TileStatus[]).map((st) => (
+                  <View key={st} style={styles.legendItem}>
+                    <View style={[styles.legendSwatch, tileStyles[st]]} />
+                    <Text style={ds.itemMeta}>{st.replace("-", " ")}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {groupLoading && rows.size === 0 ? (
+                <Text style={ds.emptyText}>Loading...</Text>
+              ) : (
+                <View style={styles.grid}>
+                  {groupDef.signs.map((sign) => {
+                    const row = rows.get(sign);
+                    const status = tileStatus(row);
+                    const passes = Math.min(row?.passes ?? 0, MASTERY_PASSES);
+                    return (
+                      <Pressable
+                        key={sign}
+                        onPress={() => setPractising(sign)}
+                        style={({ pressed }) => [
+                          styles.tile,
+                          group === "words" ? styles.tileWord : styles.tileGlyph,
+                          tileStyles[status],
+                          pressed && { opacity: 0.7 },
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Practise ${sign}, ${status.replace("-", " ")}, ${passes} of ${MASTERY_PASSES} passes`}
+                      >
+                        <Text
+                          style={[
+                            group === "words" ? styles.tileWordText : styles.tileGlyphText,
+                            status === "mastered" && styles.tileTextMastered,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {sign}
+                        </Text>
+                        {status === "attempted" && (
+                          <Text style={styles.tilePasses}>
+                            {passes}/{MASTERY_PASSES}
+                          </Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </DashboardCard>
+          ) : (
+            <DashboardCard style={styles.groupCard}>
+              <Text style={ds.emptyText}>{groupDef.unavailableNote ?? "Not available yet."}</Text>
+            </DashboardCard>
+          )}
+
+          {profile?.class_id ? (
+            <>
+              <Text style={ds.sectionTitle}>Video Call</Text>
+              <DashboardCard>
+                {teacher ? (
+                  <View style={ds.spaceBetween}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={ds.itemTitle}>{teacher.name}</Text>
+                      <Text style={ds.itemMeta}>Your teacher</Text>
+                    </View>
+                    <AuthButton
+                      label="Call"
+                      accentColor={accentColor}
+                      onPress={() => call.startCall(teacher)}
+                      style={styles.inlineButton}
+                    />
+                  </View>
+                ) : (
+                  <Text style={ds.emptyText}>No teacher assigned to your class yet.</Text>
+                )}
+              </DashboardCard>
+            </>
+          ) : (
+            <DashboardCard style={styles.noClass}>
+              <Text style={ds.emptyText}>
+                You're not in a class yet, so there's no teacher to call - ask an admin to assign one. You can
+                still practise everything above.
+              </Text>
+            </DashboardCard>
+          )}
+        </>
+      )}
+    </DashboardShell>
+  );
+}
+
+const tileStyles = StyleSheet.create({
+  "not-started": { backgroundColor: "rgba(255,255,255,0.35)", borderColor: "rgba(0,0,0,0.12)" },
+  attempted: { backgroundColor: "rgba(242,178,62,0.18)", borderColor: colors.accentCoralDark },
+  mastered: { backgroundColor: colors.success, borderColor: colors.success },
+});
+
+const styles = StyleSheet.create({
+  inlineButton: { minWidth: 110 },
+  groupCard: { marginTop: spacing.md },
+  noClass: { marginTop: spacing.lg },
+  rules: { marginTop: spacing.sm },
+  legend: { flexDirection: "row", gap: spacing.md, marginTop: spacing.sm, marginBottom: spacing.sm },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendSwatch: { width: 12, height: 12, borderRadius: 4, borderWidth: 1 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: spacing.xs },
+  tile: {
+    borderWidth: 1.5,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tileGlyph: { width: 52, height: 52 },
+  tileWord: { paddingVertical: 8, paddingHorizontal: 12, minHeight: 40, maxWidth: 200 },
+  tileGlyphText: { fontFamily: fonts.heading, fontSize: 22, color: colors.textOnFrosted },
+  tileWordText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textOnFrosted },
+  tileTextMastered: { color: colors.textOnPrimary },
+  tilePasses: { fontFamily: fonts.body, fontSize: 9, color: colors.textOnFrostedMuted, marginTop: 1 },
+});
