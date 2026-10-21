@@ -55,6 +55,13 @@ vendored copy of the MediaPipe runtime (`mediapipe/tasks-vision/`). The
 translator works with no internet; only accounts, translation, and video
 calls need a connection.
 
+**Installable app (PWA).** The production web build has a manifest and a
+service worker (`public/sw.js`), so Chrome/Edge offer "Install app", and
+after one online visit the app opens and translates with no connection.
+Each model is cached the first time it is used, so open the Fingerspelling
+and Words tabs (ASL and FSL) once while online on each classroom device.
+When shipping a retrained model, bump `CACHE` in `public/sw.js`.
+
 **For demos, use the production build** (`npm run electron:build`, or
 `npx expo export --platform web` served statically), not `npm run web`. The
 Metro dev server serves large static files slowly (about 0.4 MB/s measured

@@ -31,6 +31,29 @@ function roleFromQueryString(): Role | null {
   return value === "student" || value === "teacher" || value === "admin" ? value : null;
 }
 
+// Installable app / offline shell (public/sw.js). Production web builds only:
+// in dev it would cache Metro's bundles, and Electron's app:// scheme has no
+// service worker support (it's offline anyway).
+if (
+  !__DEV__ &&
+  Platform.OS === "web" &&
+  typeof window !== "undefined" &&
+  "serviceWorker" in navigator &&
+  window.location.protocol.startsWith("http")
+) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((err) => console.warn("[sw] registration failed", err));
+    // This page, its bundle and fonts loaded before the worker existed, so it
+    // never saw them; hand it the list so one online visit is enough.
+    navigator.serviceWorker.ready.then((reg) =>
+      reg.active?.postMessage({
+        type: "cache-urls",
+        urls: ["/", ...performance.getEntriesByType("resource").map((e) => e.name)],
+      })
+    );
+  });
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
