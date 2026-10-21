@@ -39,9 +39,40 @@ export type CallState =
   | "connected"
   | "ended";
 
+// STUN alone only works when both peers can reach each other directly; on
+// school Wi-Fi / mobile data (symmetric NAT, blocked UDP) calls need a TURN
+// relay. Set EXPO_PUBLIC_TURN_URLS (comma-separated, e.g.
+// "turn:global.relay.metered.ca:80,turns:global.relay.metered.ca:443?transport=tcp")
+// plus EXPO_PUBLIC_TURN_USERNAME / EXPO_PUBLIC_TURN_CREDENTIAL in .env.
+// Expo only inlines EXPO_PUBLIC_* when read as a literal property access.
+const TURN_URLS = (process.env.EXPO_PUBLIC_TURN_URLS ?? "")
+  .split(",")
+  .map((u) => u.trim())
+  .filter(Boolean);
+
+export const hasTurnRelay = TURN_URLS.length > 0;
+
 const ICE_SERVERS: RTCConfiguration = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  iceServers: [
+    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+    ...(hasTurnRelay
+      ? [
+          {
+            urls: TURN_URLS,
+            username: process.env.EXPO_PUBLIC_TURN_USERNAME ?? "",
+            credential: process.env.EXPO_PUBLIC_TURN_CREDENTIAL ?? "",
+          },
+        ]
+      : []),
+  ],
 };
+
+if (!hasTurnRelay) {
+  console.info(
+    "[videocall] No TURN relay configured (EXPO_PUBLIC_TURN_URLS) - calls across " +
+      "different networks may fail to connect."
+  );
+}
 
 const RING_TIMEOUT_MS = 45_000;
 const CONNECT_TIMEOUT_MS = 30_000;
