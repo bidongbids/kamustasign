@@ -124,6 +124,9 @@ def per_class(probs, y, classes, only=None):
         rows[c] = {"n": n, "top1": rec, "top3": float(top3[m].mean()), "precision": prec,
                    "f1": 2 * prec * rec / (prec + rec) if n_pred and prec + rec else 0.0,
                    "pass_rate": float((ok & m & (conf >= PASS_CONFIDENCE)).sum() / n),
+                   # what a correctly made letter typically scores - the
+                   # 3-star reference for practice (export_star_reference.py)
+                   "conf_when_right": float(conf[ok & m].mean()) if (ok & m).any() else "",
                    "most_confused_with": confused}
     return rows, {"n": int(len(y)), "top1": float(ok.mean()), "top3": float(top3.mean()),
                   "pass_rate": float((ok & (conf >= PASS_CONFIDENCE)).mean())}
@@ -159,7 +162,7 @@ def main():
           f"top-1 {hg['top1']:.2%} (as-is {hg['top1_as_is']:.2%}), pass rate {hg['pass_rate']:.2%}")
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    cols = ["n", "top1", "top3", "precision", "f1", "pass_rate", "most_confused_with"]
+    cols = ["n", "top1", "top3", "precision", "f1", "pass_rate", "conf_when_right", "most_confused_with"]
     with open(os.path.join(OUT_DIR, "letters_per_class.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["letter"] + [f"heldout_{c}" for c in cols] + [f"signers_{c}" for c in cols])

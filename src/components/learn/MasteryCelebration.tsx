@@ -6,11 +6,14 @@ import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "r
 import GlassCard from "../GlassCard";
 import KidButton from "./KidButton";
 import { StarRow } from "./Stars";
+import { STAR_COUNT } from "../../lib/starReference";
 import { ArrowRightIcon, CheckIcon } from "../icons/UiIcons";
 import { colors, kidTypography, radii } from "../../theme/theme";
 
 type Props = {
   sign: string;
+  /** Accuracy stars at the moment of learning (0-3). */
+  stars: number;
   nextSign: string | null;
   groupLabel: string;
   reduceMotion: boolean;
@@ -30,7 +33,7 @@ const DOTS: [number, number, number, string][] = [
   [310, -40, 6, colors.accentCoral],
 ];
 
-export default function MasteryCelebration({ sign, nextSign, groupLabel, reduceMotion, onNext, onBack, onDismiss }: Props) {
+export default function MasteryCelebration({ sign, stars, nextSign, groupLabel, reduceMotion, onNext, onBack, onDismiss }: Props) {
   const t = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
   const [done, setDone] = useState(reduceMotion);
   const nextRef = useRef<View>(null);
@@ -112,9 +115,11 @@ export default function MasteryCelebration({ sign, nextSign, groupLabel, reduceM
               {nextSign ? `You learned ${sign}!` : `You finished ${groupLabel}!`}
             </Text>
             <View style={styles.stars}>
-              <StarRow filled={3} size={40} gap={12} animateIndex={2} scale={starScale as any} />
+              <StarRow filled={stars} size={40} gap={12} animateIndex={Math.max(0, Math.ceil(stars) - 1)} scale={starScale as any} />
             </View>
-            <Text style={[kidTypography.kidBody, styles.body]}>You earned all 3 stars.</Text>
+            <Text style={[kidTypography.kidBody, styles.body]}>
+              {stars >= STAR_COUNT ? "3 good tries - and all 3 stars!" : "3 good tries! Keep practising to fill your stars."}
+            </Text>
             <View style={styles.buttons}>
               {nextSign ? (
                 <KidButton

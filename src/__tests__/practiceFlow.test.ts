@@ -32,10 +32,11 @@ describe("tileStatus", () => {
 });
 
 describe("starsFor", () => {
-  it("is one star per counted pass, capped at mastery", () => {
-    expect(starsFor(undefined)).toBe(0);
-    expect(starsFor(row(2))).toBe(2);
-    expect(starsFor(row(MASTERY_PASSES + 4))).toBe(MASTERY_PASSES);
+  it("is accuracy against the sign's reference, not passes", () => {
+    expect(starsFor(undefined, 0.8)).toBe(0);
+    expect(starsFor({ ...row(0, 1), best_confidence: 0.4 }, 0.8)).toBe(1.5);
+    // Many passes don't add stars by themselves.
+    expect(starsFor({ ...row(MASTERY_PASSES + 4), best_confidence: 0.2 }, 0.8)).toBe(0.75);
   });
 });
 

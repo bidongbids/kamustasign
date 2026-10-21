@@ -1,23 +1,25 @@
-// Stars = counted passes (lesson_progress.passes), one each, three to learn
-// a sign. Filled starFilled; not yet = starEmpty outline; the newest one in
-// starResting while its cooldown runs (always shown with the moon elsewhere).
+// Stars = accuracy (src/lib/starReference.ts): how close the student's best
+// attempt is to what the model gives a correctly made sign, 0-3 in quarter
+// steps. Each star fills left to right: an outline in starEmpty with the
+// filled star clipped to its fraction on top. Learning a sign is separate
+// (counted passes); the moon badge, not the stars, shows the pass cooldown.
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { StarIcon } from "../icons/UiIcons";
 import { colors, kidTypography, sizes } from "../../theme/theme";
 import { neuInset } from "../../theme/shadows";
 import { MASTERY_PASSES } from "../../lib/curriculum";
+import { STAR_COUNT, starsText } from "../../lib/starReference";
 
 export function StarRow({
   filled,
-  resting = false,
   size = sizes.starSm,
   gap = 3,
   animateIndex,
   scale,
 }: {
+  /** 0-3, fractions allowed (quarter steps). */
   filled: number;
-  resting?: boolean;
   size?: number;
   gap?: number;
   animateIndex?: number;
@@ -25,10 +27,18 @@ export function StarRow({
 }) {
   return (
     <View style={{ flexDirection: "row", gap }} accessible={false}>
-      {Array.from({ length: MASTERY_PASSES }).map((_, i) => {
-        const on = i < filled;
-        const color = !on ? colors.starEmpty : resting && i === filled - 1 ? colors.starResting : colors.starFilled;
-        const star = <StarIcon size={size} color={color} filled={on} />;
+      {Array.from({ length: STAR_COUNT }).map((_, i) => {
+        const part = Math.max(0, Math.min(1, filled - i));
+        const star = (
+          <View style={{ width: size, height: size }}>
+            <StarIcon size={size} color={part >= 1 ? colors.starFilled : colors.starEmpty} filled={part >= 1} />
+            {part > 0 && part < 1 && (
+              <View style={[StyleSheet.absoluteFill, { width: size * part, overflow: "hidden" }]}>
+                <StarIcon size={size} color={colors.starFilled} />
+              </View>
+            )}
+          </View>
+        );
         return i === animateIndex && scale ? (
           <Animated.View key={i} style={{ transform: [{ scale }] }}>
             {star}
@@ -43,42 +53,52 @@ export function StarRow({
 
 /** P3: the three big stars on the practice screen, in an inset well. */
 export function StarMeter({
+  stars,
   passes,
   resting,
   size = sizes.starLg,
   reduceMotion,
   showCaption = true,
 }: {
+  /** Accuracy stars, 0-3. */
+  stars: number;
+  /** Counted passes - learning the sign, shown in the caption. */
   passes: number;
   resting: boolean;
   size?: number;
   reduceMotion?: boolean;
   showCaption?: boolean;
 }) {
-  const filled = Math.min(passes, MASTERY_PASSES);
   const scale = useRef(new Animated.Value(1)).current;
-  const prev = useRef(filled);
+  const prev = useRef(stars);
   useEffect(() => {
-    if (filled > prev.current && !reduceMotion) {
-      scale.setValue(0);
+    if (stars > prev.current && !reduceMotion) {
+      scale.setValue(0.6);
       Animated.spring(scale, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }).start();
     }
-    prev.current = filled;
-  }, [filled, reduceMotion, scale]);
+    prev.current = stars;
+  }, [stars, reduceMotion, scale]);
 
+  const good = Math.min(passes, MASTERY_PASSES);
   const caption =
-    filled >= MASTERY_PASSES
+    good >= MASTERY_PASSES
       ? "You learned it!"
       : resting
-        ? "Your star is resting"
-        : filled === 0
-          ? "Earn 3 stars"
-          : `${filled} star${filled === 1 ? "" : "s"} · ${MASTERY_PASSES - filled} to go`;
+        ? `${good} of ${MASTERY_PASSES} good tries · resting`
+        : good === 0
+          ? `${MASTERY_PASSES} good tries to learn it`
+          : `${good} of ${MASTERY_PASSES} good tries`;
 
   return (
-    <View style={styles.wrap} accessibilityRole="image" accessibilityLabel={`${filled} of ${MASTERY_PASSES} stars`}>
+    <View
+      style={styles.wrap}
+      accessibilityRole="image"
+      accessibilityLabel={`${starsText(stars)} of ${STAR_COUNT}. ${caption}`}
+    >
       <View style={[styles.well, neuInset("sm"), { paddingVertical: size * 0.25, paddingHorizontal: size * 0.4 }]}>
-        <StarRow filled={filled} resting={resting} size={size} gap={size * 0.22} animateIndex={filled - 1} scale={scale} />
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <StarRow filled={stars} size={size} gap={size * 0.22} />
+        </Animated.View>
       </View>
       {showCaption ? <Text style={styles.caption}>{caption}</Text> : null}
     </View>

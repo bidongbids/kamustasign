@@ -43,6 +43,7 @@ import { useReduceMotion } from "../../hooks/useReduceMotion";
 import { recordAttempt, type LessonProgressRow } from "../../lib/queries";
 import { MASTERY_PASSES, getGroup, getLanguage, nextCountedPassAt, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { nextPracticeSign } from "../../lib/practiceFlow";
+import { accuracyStars, starReference } from "../../lib/starReference";
 import { getMotionHint, getSignMedia } from "../../lib/referenceMedia";
 import { buildFeedback, type PracticeFeedbackState } from "../../lib/learnCopy";
 import { colors, fonts, kidTypography, radii, spacing } from "../../theme/theme";
@@ -90,6 +91,8 @@ export default function PracticeScreen({
   const [feedback, setFeedback] = useState<PracticeFeedbackState>({ kind: "waiting" });
   const [passes, setPasses] = useState(initialRow?.passes ?? 0);
   const [lastPassedAt, setLastPassedAt] = useState<string | null>(initialRow?.last_passed_at ?? null);
+  // Stored best (all sessions) - with this session's `best`, drives the stars.
+  const [storedBest, setStoredBest] = useState(Number(initialRow?.best_confidence ?? 0));
   const [saveError, setSaveError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [hold, setHold] = useState(0);
@@ -141,6 +144,7 @@ export default function PracticeScreen({
     lastKindRef.current = "waiting";
     setPasses(row?.passes ?? 0);
     setLastPassedAt(row?.last_passed_at ?? null);
+    setStoredBest(Number(row?.best_confidence ?? 0));
     setFeedback({ kind: "waiting" });
     setSaveError(null);
     setHold(0);
@@ -156,6 +160,8 @@ export default function PracticeScreen({
   const nextPassAt = nextCountedPassAt(lastPassedAt, now);
   const mastered = passes >= MASTERY_PASSES;
   const resting = !mastered && nextPassAt !== null;
+  // Rises live as soon as this session beats the stored best.
+  const stars = accuracyStars(Math.max(storedBest, best), starReference(language, group, sign));
   const nextSign = nextPracticeSign(signs, rows, sign, now);
 
   /** Feedback setter that also rotates the tip on each new "not yet" moment. */
@@ -185,6 +191,7 @@ export default function PracticeScreen({
       passesRef.current = row.passes;
       setPasses(row.passes);
       setLastPassedAt(row.last_passed_at);
+      setStoredBest(Number(row.best_confidence ?? 0));
       return {
         counted: row.passes > prev,
         crossed: prev < MASTERY_PASSES && row.passes >= MASTERY_PASSES,
@@ -425,7 +432,7 @@ export default function PracticeScreen({
                     {isLive ? (isDesktop ? "Make the sign for " : "Sign ") : "Sign "}
                     <Text style={{ color: colors.accentCoral }}>{isLive ? sign : `“${sign}”`}</Text>
                   </Text>
-                  <StarMeter passes={passes} resting={resting} size={isDesktop ? 30 : 26} reduceMotion={reduceMotion} />
+                  <StarMeter stars={stars} passes={passes} resting={resting} size={isDesktop ? 30 : 26} reduceMotion={reduceMotion} />
                 </View>
               </View>
               {!isLive && (
@@ -508,6 +515,7 @@ export default function PracticeScreen({
       {celebrate && (
         <MasteryCelebration
           sign={sign}
+          stars={stars}
           nextSign={nextSign}
           groupLabel={groupLabel}
           reduceMotion={reduceMotion}

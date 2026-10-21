@@ -1,18 +1,22 @@
 // One sign in the learning plan - a raised neumorphic slab (tiles are
-// controls). State is shape, not just colour: no stars (not started), star
-// outlines (tried), filled stars (counted passes), moon (resting), check +
-// ring (learned), "Next" chip (next up). All from lesson_progress.
+// controls). State is shape, not just colour: no stars (not started), stars
+// filled by accuracy (tried - see starReference.ts), moon (resting: the next
+// good try won't count yet), check + ring (learned), "Next" chip (next up).
+// All from lesson_progress.
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { StarRow } from "./Stars";
 import { CheckIcon, MoonIcon } from "../icons/UiIcons";
 import { colors, fonts, kidTypography, radii, sizes } from "../../theme/theme";
 import { neuRaised } from "../../theme/shadows";
-import { MASTERY_PASSES } from "../../lib/curriculum";
+import { MASTERY_PASSES, type SignGroup, type SignLanguage } from "../../lib/curriculum";
+import { starReference, starsText } from "../../lib/starReference";
 import { isResting, starsFor, tileStatus, type ProgressLike } from "../../lib/practiceFlow";
 
 type Props = {
   sign: string;
+  language: SignLanguage;
+  group: SignGroup;
   word?: boolean;
   row: ProgressLike | undefined;
   isNext?: boolean;
@@ -24,11 +28,11 @@ type Props = {
   width?: number;
 };
 
-export default function SignTile({ sign, word, row, isNext, now, onPress, size, width }: Props) {
+export default function SignTile({ sign, language, group, word, row, isNext, now, onPress, size, width }: Props) {
   const edge = Math.max(sizes.tileGlyph, size ?? sizes.tileGlyph);
   const glyphScale = edge / sizes.tileGlyph;
   const status = tileStatus(row);
-  const stars = starsFor(row);
+  const stars = starsFor(row, starReference(language, group, sign));
   const resting = isResting(row, now);
   const learned = status === "learned";
 
@@ -36,8 +40,10 @@ export default function SignTile({ sign, word, row, isNext, now, onPress, size, 
     status === "not-started"
       ? "not started"
       : learned
-        ? "learned"
-        : `${stars} of ${MASTERY_PASSES} stars${resting ? ", next star resting" : ""}`;
+        ? `learned, ${starsText(stars)}`
+        : `${starsText(stars)}, ${Math.min(row?.passes ?? 0, MASTERY_PASSES)} of ${MASTERY_PASSES} good tries${
+            resting ? ", resting" : ""
+          }`;
 
   return (
     <Pressable
@@ -73,7 +79,7 @@ export default function SignTile({ sign, word, row, isNext, now, onPress, size, 
         {sign}
       </Text>
       {status !== "not-started" && (
-        <StarRow filled={stars} resting={resting} size={word ? sizes.starSm : Math.round(sizes.starSm * Math.min(glyphScale, 1.3))} />
+        <StarRow filled={stars} size={word ? sizes.starSm : Math.round(sizes.starSm * Math.min(glyphScale, 1.3))} />
       )}
       {learned ? (
         <View style={[styles.badge, styles.badgeCheck]}>

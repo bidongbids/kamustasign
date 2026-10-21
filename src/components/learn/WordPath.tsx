@@ -8,11 +8,13 @@ import SignTile from "./SignTile";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "../icons/UiIcons";
 import { colors, fonts, kidTypography, radii, sizes } from "../../theme/theme";
 import { neuInset, neuRaised } from "../../theme/shadows";
-import { isMastered } from "../../lib/curriculum";
+import { isMastered, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { chunk, type ProgressLike } from "../../lib/practiceFlow";
 
 type Props = {
   signs: string[];
+  language: SignLanguage;
+  group: SignGroup;
   rows: Map<string, ProgressLike>;
   nextSign: string | null;
   now: number;
@@ -24,7 +26,7 @@ type Props = {
 
 const CHALLENGE_STAGES = 4;
 
-export default function WordPath({ signs, rows, nextSign, now, onPressSign, chunkSize = 10, columns = 1 }: Props) {
+export default function WordPath({ signs, language, group, rows, nextSign, now, onPressSign, chunkSize = 10, columns = 1 }: Props) {
   const stages = useMemo(() => chunk(signs, chunkSize), [signs, chunkSize]);
   const doneCounts = stages.map((st) => st.filter((s) => isMastered(rows.get(s))).length);
   const firstOpen = doneCounts.findIndex((d, i) => d < stages[i].length);
@@ -130,6 +132,8 @@ export default function WordPath({ signs, rows, nextSign, now, onPressSign, chun
                   <SignTile
                     key={sign}
                     sign={sign}
+                    language={language}
+                    group={group}
                     word
                     row={rows.get(sign)}
                     isNext={sign === nextSign}

@@ -2,13 +2,16 @@
 // over the lesson_progress columns that already exist - nothing here adds a
 // rule. Mastery, the pass threshold and the cooldown still come from
 // curriculum.ts; this only decides how they are SHOWN (tile state, the
-// "Next" sign, the resting star, stages).
-import { MASTERY_PASSES, isMastered, nextCountedPassAt } from "./curriculum";
+// "Next" sign, resting, stages). Stars are accuracy (starReference.ts).
+import { isMastered, nextCountedPassAt } from "./curriculum";
+import { accuracyStars } from "./starReference";
 
 export type ProgressLike = {
   attempts: number;
   passes: number;
   last_passed_at: string | null;
+  /** Best recognition confidence so far (0-1) - drives the stars. */
+  best_confidence?: number;
 };
 
 export type TileStatus = "not-started" | "tried" | "learned";
@@ -18,12 +21,12 @@ export function tileStatus(row: ProgressLike | null | undefined): TileStatus {
   return isMastered(row) ? "learned" : "tried";
 }
 
-/** Counted passes, capped at MASTERY_PASSES (one star each). */
-export function starsFor(row: ProgressLike | null | undefined): number {
-  return Math.min(row?.passes ?? 0, MASTERY_PASSES);
+/** Accuracy stars (0-3, quarter steps) against the sign's model reference (starReference()). */
+export function starsFor(row: ProgressLike | null | undefined, reference: number | null): number {
+  return accuracyStars(row?.best_confidence, reference);
 }
 
-/** The newest star is "resting": a pass now would not count (cooldown). Never for a learned sign. */
+/** "Resting": a pass now would not count towards learning (cooldown). Never for a learned sign. */
 export function isResting(row: ProgressLike | null | undefined, now = Date.now()): boolean {
   if (!row || isMastered(row)) return false;
   return nextCountedPassAt(row.last_passed_at, now) !== null;

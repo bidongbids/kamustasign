@@ -67,7 +67,8 @@ import {
   type SignLanguage,
   MASTERY_PASSES,
 } from "../../lib/curriculum";
-import { nextPracticeSign, starsFor, isResting } from "../../lib/practiceFlow";
+import { nextPracticeSign, starsFor } from "../../lib/practiceFlow";
+import { starReference } from "../../lib/starReference";
 import { useVideoCall } from "../../hooks/useVideoCall";
 import VideoCallScreen from "../videocall/VideoCallScreen";
 import type { CallPeer } from "../../lib/callSignaling";
@@ -293,7 +294,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
                 <Text style={styles.nextLabel}>
                   {activeModule ? activeModule.title : `${lang.label} ${groupDef.label}`}
                 </Text>
-                <StarRow filled={starsFor(rows.get(nextUp))} resting={isResting(rows.get(nextUp), now)} size={16} />
+                <StarRow filled={starsFor(rows.get(nextUp), starReference(language, group, nextUp))} size={16} />
               </View>
             </View>
             <KidButton
@@ -364,14 +365,14 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
         )}
         <View style={styles.legend}>
           <LegendItem icon={<StarIcon size={15} color={colors.starEmpty} filled={false} />} label="Not yet" />
-          <LegendItem icon={<StarIcon size={15} color={colors.starFilled} />} label="Star = 1 good try" />
+          <LegendItem icon={<StarIcon size={15} color={colors.starFilled} />} label="Stars = how well you sign it" />
           <LegendItem
             icon={
               <View style={[styles.legendBadge, { backgroundColor: colors.success }]}>
                 <CheckIcon size={11} color={colors.textOnFrosted} strokeWidth={3.6} />
               </View>
             }
-            label="Learned"
+            label="Learned (3 good tries)"
           />
           <LegendItem
             icon={
@@ -410,6 +411,8 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
             <WordPath
               key={`${language}:${group}:${activeModuleId ?? "all"}:${category ?? "all"}`}
               signs={signs}
+              language={language}
+              group={group}
               rows={rows}
               nextSign={nextUp}
               now={now}
@@ -423,6 +426,8 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
               <SignTile
                 key={sign}
                 sign={sign}
+                language={language}
+                group={group}
                 row={rows.get(sign)}
                 isNext={sign === nextUp}
                 now={now}

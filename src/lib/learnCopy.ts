@@ -77,18 +77,18 @@ export function buildFeedback(args: {
         ? { icon: "handGold", headline: "Keep going!", body: "You are close. Try again.", tone: "neutral", tip }
         : { icon: "handGold", headline: "Keep going!", body: `The computer hasn't seen “${sign}” yet.`, tone: "neutral", tip };
     case "passed": {
-      if (state.counted === null) return { icon: "star", headline: "Correct!", body: "Saving your star…", tone: "success" };
+      if (state.counted === null) return { icon: "star", headline: "Correct!", body: "Saving your good try…", tone: "success" };
       if (state.alreadyLearned)
         return { icon: "star", headline: "Correct!", body: "You already learned this one. Great practice!", tone: "success" };
       if (state.counted && passes >= MASTERY_PASSES) {
-        return { icon: "star", headline: "You earned a star!", body: "You learned this sign!", tone: "success" };
+        return { icon: "star", headline: "That one counts!", body: "You learned this sign!", tone: "success" };
       }
       if (state.counted) {
         const left = Math.max(0, MASTERY_PASSES - passes);
         return {
           icon: "star",
-          headline: "You earned a star!",
-          body: `${passes} star${passes === 1 ? "" : "s"} · ${left} more to learn this sign.`,
+          headline: "That one counts!",
+          body: `${passes} of ${MASTERY_PASSES} good tries · ${left} more to learn this sign.`,
           tone: "success",
         };
       }
@@ -96,12 +96,12 @@ export function buildFeedback(args: {
         return {
           icon: "moon",
           headline: "Correct! Great signing.",
-          body: "Your next star is resting. Come back later to earn it.",
+          body: "Resting now. Your next good try counts after a short break.",
           chip: `Ready in ${minutesUntil(nextPassAt, now)} min`,
           tone: "success",
         };
       }
-      return { icon: "star", headline: "Correct!", body: "Sign it again to earn your star.", tone: "success" };
+      return { icon: "star", headline: "Correct!", body: "Sign it again so it counts.", tone: "success" };
     }
     case "retry":
       if (!state.predicted)

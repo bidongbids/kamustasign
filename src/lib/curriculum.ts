@@ -57,7 +57,9 @@ export const PROGRESS_RULES_TEXT =
   `Attempted: practised at least once. ` +
   `Passed: recognised as the target sign at ${Math.round(PASS_CONFIDENCE * 100)}% confidence or more ` +
   `(letters and numbers must hold it for ${LIVE_PASS_HOLD_MS / 1000}s). ` +
-  `Mastered: ${MASTERY_PASSES} passes, each at least ${PASS_COOLDOWN_MINUTES} minutes after the last.`;
+  `Mastered: ${MASTERY_PASSES} passes, each at least ${PASS_COOLDOWN_MINUTES} minutes after the last. ` +
+  `Stars: the best attempt compared with what the model gives a correctly made sign of that kind ` +
+  `(3 stars = as good as a typical correct attempt), in quarter steps; they don't decide mastery.`;
 
 export const OVERALL_CAPTION = "average across groups";
 
