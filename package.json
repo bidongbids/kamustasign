@@ -9,11 +9,13 @@
     "ios": "expo start --ios",
     "electron:install": "cd electron && npm install",
     "electron:dev": "concurrently \"npm run web\" \"cd electron && npm start\"",
-    "electron:build": "npx expo export --platform web && cd electron && npx electron-builder"
+    "electron:build": "npx expo export --platform web && cd electron && npx electron-builder",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@expo-google-fonts/baloo-2": "*",
-    "@expo-google-fonts/inter": "*",
+    "@expo-google-fonts/baloo-2": "0.4.2",
+    "@expo-google-fonts/inter": "0.4.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/native": "^7.3.5",
     "@react-navigation/native-stack": "^7.17.7",
@@ -41,9 +43,13 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
-    "@types/react": "*",
+    "@react-native/jest-preset": "^0.85.3",
+    "@types/jest": "29.5.14",
+    "@types/react": "~19.2.17",
     "@types/three": "^0.186.0",
     "concurrently": "^9.0.0",
+    "jest": "~29.7.0",
+    "jest-expo": "~56.0.5",
     "typescript": "~6.0.3"
   },
   "private": true,
@@ -55,5 +61,11 @@
         ]
       }
     }
+  },
+  "jest": {
+    "preset": "jest-expo/web",
+    "testMatch": [
+      "<rootDir>/src/**/__tests__/**/*.test.ts?(x)"
+    ]
   }
 }
