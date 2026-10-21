@@ -24,6 +24,7 @@ import { GraduationCapIcon, ClipboardCheckIcon, GearIcon, VideoCameraIcon } from
 import { colors, typography, spacing, mobileTypography, ThemeColors } from "../theme/theme";
 import { neuRaised } from "../theme/shadows";
 import { useResponsive } from "../theme/responsive";
+import { useReduceMotion } from "../hooks/useReduceMotion";
 import { Theme, useTheme, useThemedStyles } from "../theme/ThemeProvider";
 
 type Role = "student" | "teacher" | "admin";
@@ -199,9 +200,11 @@ function WideRoleSelect({ onSelectRole, onOpenTranslator }: Props) {
   const { isDesktop, isMobile } = useResponsive();
 
   const fade = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
-    Animated.timing(fade, { toValue: 1, duration: 480, useNativeDriver: true }).start();
-  }, [fade]);
+    if (reduceMotion) fade.setValue(1);
+    else Animated.timing(fade, { toValue: 1, duration: 480, useNativeDriver: true }).start();
+  }, [fade, reduceMotion]);
 
   if (isDesktop) {
     return (

@@ -7,6 +7,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated } from "react-native";
 import Svg, { Circle, Line } from "react-native-svg";
 import { colors } from "../theme/theme";
+import { useReduceMotion } from "../hooks/useReduceMotion";
 
 type Props = {
   size?: number;
@@ -46,9 +47,11 @@ export default function HandLandmarkMark({
   animated = true,
 }: Props) {
   const pulse = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReduceMotion();
 
   useEffect(() => {
-    if (!animated) return;
+    // An endless pulse is exactly what reduced motion asks us not to do.
+    if (!animated || reduceMotion) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 1, duration: 1700, useNativeDriver: true }),
@@ -57,7 +60,7 @@ export default function HandLandmarkMark({
     );
     loop.start();
     return () => loop.stop();
-  }, [animated, pulse]);
+  }, [animated, reduceMotion, pulse]);
 
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.045] });
 

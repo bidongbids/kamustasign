@@ -14,6 +14,7 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors, typography } from "../theme/theme";
 import { neuRaised } from "../theme/shadows";
+import { useReduceMotion } from "../hooks/useReduceMotion";
 
 type Props = {
   label: string;
@@ -52,11 +53,18 @@ export default function RoleCard({
   const entrance = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
+  const reduceMotion = useReduceMotion();
+
   useEffect(() => {
+    if (reduceMotion) {
+      entrance.setValue(1);
+      return;
+    }
     Animated.timing(entrance, { toValue: 1, duration: 420, delay: index * 90, useNativeDriver: true }).start();
-  }, [entrance, index]);
+  }, [entrance, index, reduceMotion]);
 
   const animateScale = (toValue: number) => {
+    if (reduceMotion) return;
     Animated.spring(scaleAnim, { toValue, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
   };
 

@@ -8,6 +8,7 @@ import GradientBackground from "../../components/GradientBackground";
 import GlassCard from "../../components/GlassCard";
 import { colors, fonts, spacing, radii } from "../../theme/theme";
 import { useResponsive } from "../../theme/responsive";
+import { useReduceMotion } from "../../hooks/useReduceMotion";
 
 type Props = {
   accentColor: string;
@@ -20,9 +21,11 @@ export default function AuthScreenShell({ accentColor, onBack, backLabel = "Back
   const { isDesktop } = useResponsive();
 
   const entrance = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
-    Animated.timing(entrance, { toValue: 1, duration: 420, useNativeDriver: true }).start();
-  }, [entrance]);
+    if (reduceMotion) entrance.setValue(1);
+    else Animated.timing(entrance, { toValue: 1, duration: 420, useNativeDriver: true }).start();
+  }, [entrance, reduceMotion]);
 
   return (
     <GradientBackground style={styles.root}>

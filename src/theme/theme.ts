@@ -85,8 +85,8 @@ export const darkColors = {
   neuWell: "#1D222B",
   neuWellLight: "#2A3140",
 
-  textTertiary: "#5F6878",
-  textDim: "#6E7788",
+  textTertiary: "#8A93A6", // was #5F6878 (2.3-3.0:1, below WCAG AA for text)
+  textDim: "#8A93A6", // was #6E7788 (2.9:1 on selected surfaces)
   textOnGlass: "#C3CAD6",
 
   // Student learning layer (Graphite Aurora design system, "Kids" tokens).
@@ -186,7 +186,7 @@ export const lightColors: ThemeColors = {
   textOnGlass: "#4A5266",
 
   starFilled: "#F2B23E",
-  starEmpty: "#7F889E",
+  starEmpty: "#737C92", // was #7F889E (2.9:1 on wells, below the 3:1 for UI parts)
   starResting: "#8A5A00",
   celebrationGlow: "rgba(242,178,62,0.35)",
   masteredRing: "#237F48",
@@ -197,7 +197,7 @@ export const lightColors: ThemeColors = {
   surfacePressed: "#E6E9F1",
   surfaceSelected: "#EAE7FF",
   hairline: "#D5DAE5",
-  controlBorder: "#7F889E",
+  controlBorder: "#737C92",
   textMuted: "#5D6579",
   primaryTealText: "#5241C9",
   onPrimary: "#FFFFFF",

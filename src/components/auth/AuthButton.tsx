@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Platform, Pressable, Text, StyleSheet, ViewStyle, StyleProp } from "react-native";
 import { colors, fonts, spacing, radii } from "../../theme/theme";
 import { shadow } from "../../theme/shadows";
+import { useReduceMotion } from "../../hooks/useReduceMotion";
 
 type Props = {
   label: string;
@@ -34,14 +35,15 @@ export default function AuthButton({
   const lifted = (hovered || focused) && !isDisabled;
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const reduceMotion = useReduceMotion();
 
   useEffect(() => {
-    if (isDisabled) return;
+    if (isDisabled || reduceMotion) return;
     Animated.spring(scaleAnim, { toValue: lifted ? 1.015 : 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
-  }, [lifted, isDisabled, scaleAnim]);
+  }, [lifted, isDisabled, reduceMotion, scaleAnim]);
 
   const animatePress = (toValue: number) => {
-    if (isDisabled) return;
+    if (isDisabled || reduceMotion) return;
     Animated.spring(scaleAnim, { toValue, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
   };
 
