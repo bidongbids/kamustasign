@@ -7,17 +7,29 @@
 // STUN-only (Google's public stun.l.google.com:19302), no TURN server - fine
 // for most same-network/open-NAT demo conditions, but calls between peers
 // behind restrictive/symmetric NATs may fail to connect without a TURN relay.
+//
+// Flow: the caller opens its camera, then rings. The callee opens its camera
+// when it accepts, then sends "accept". The caller answers that with the SDP
+// offer, the callee replies with the answer, and ICE candidates trickle both
+// ways. Each side opens its camera BEFORE telling the other to move on, so a
+// camera that is blocked or busy fails on the side that owns it, with a
+// message there, instead of after the other side is already waiting.
+//
+// Any failure, a hangup, a decline or a timeout ends in "ended" (never
+// straight to "idle"), so the dashboard keeps showing the call screen with
+// the reason until the user taps Back. Whenever this side gives up, it also
+// tells the other side, so nobody is left on "Connecting…".
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import {
-  callChannelName,
-  closeCallChannel,
+  newCallId,
   openCallChannel,
-  sendCallSignal,
+  type CallChannel,
   type CallPeer,
+  type CallSettings,
   type CallSignal,
+  type CallSignalBody,
 } from "../lib/callSignaling";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export type CallState =
   | "idle"
@@ -31,155 +43,292 @@ const ICE_SERVERS: RTCConfiguration = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
+const RING_TIMEOUT_MS = 45_000;
+const CONNECT_TIMEOUT_MS = 30_000;
+// "disconnected" is often a blip (Wi-Fi hiccup) that recovers on its own;
+// only give up if it lasts this long. "failed" ends the call immediately.
+const DISCONNECT_GRACE_MS = 10_000;
+
 export const isVideoCallSupported =
   Platform.OS === "web" && typeof window !== "undefined" && typeof window.RTCPeerConnection !== "undefined";
 
+function mediaErrorMessage(err: any): string {
+  switch (err?.name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Camera or microphone permission was blocked. Allow it in the browser's address bar, then call again.";
+    case "NotReadableError":
+    case "AbortError":
+      return "Your camera is being used by another app or tab. Close it there, then call again.";
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return "No camera or microphone was found.";
+    default:
+      return err?.message ?? "Could not open your camera.";
+  }
+}
+
 export function useVideoCall(classId: string | null, self: CallPeer | null) {
-  const [callState, setCallState] = useState<CallState>("idle");
-  const [incomingCallFrom, setIncomingCallFrom] = useState<CallPeer | null>(null);
+  const [callState, setCallStateRaw] = useState<CallState>("idle");
+  const [peer, setPeer] = useState<CallPeer | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The teacher's call settings as last received (student side only).
+  const [remoteSettings, setRemoteSettings] = useState<CallSettings | null>(null);
+  // The settings this side last sent (teacher side only), re-sent when the
+  // student asks - e.g. it joined after the first send went out.
+  const sentSettingsRef = useRef<CallSettings | null>(null);
 
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  // Signal handlers and async continuations read these refs rather than
+  // render-time state, so two signals arriving in the same tick (or an await
+  // that resumes after a state change) always see the latest values.
+  const callStateRef = useRef<CallState>("idle");
+  const selfRef = useRef(self);
+  selfRef.current = self;
+  const channelRef = useRef<CallChannel | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const peerRef = useRef<CallPeer | null>(null);
+  const callIdRef = useRef<string | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const graceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const setCallState = useCallback((next: CallState) => {
+    callStateRef.current = next;
+    setCallStateRaw(next);
+  }, []);
+
+  const clearTimers = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (graceRef.current) clearTimeout(graceRef.current);
+    timerRef.current = null;
+    graceRef.current = null;
+  }, []);
+
+  // Releases the camera and the peer connection. Bumping callIdRef to null
+  // also makes any still-running async step (a getUserMedia that hasn't
+  // resolved yet, say) notice it's stale and drop what it got.
   const teardownCall = useCallback(() => {
-    pcRef.current?.close();
+    clearTimers();
+    if (pcRef.current) {
+      pcRef.current.onicecandidate = null;
+      pcRef.current.ontrack = null;
+      pcRef.current.onconnectionstatechange = null;
+      pcRef.current.close();
+    }
     pcRef.current = null;
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     pendingIceRef.current = [];
     peerRef.current = null;
+    callIdRef.current = null;
+    sentSettingsRef.current = null;
     setLocalStream(null);
     setRemoteStream(null);
-    setIncomingCallFrom(null);
+    setRemoteSettings(null);
+  }, [clearTimers]);
+
+  const send = useCallback((signal: CallSignalBody) => {
+    const me = selfRef.current;
+    const to = peerRef.current;
+    const callId = callIdRef.current;
+    if (!me || !to || !callId || !channelRef.current) return;
+    channelRef.current.send({ ...signal, from: me, to: to.id, callId } as CallSignal);
   }, []);
 
-  const send = useCallback((signal: CallSignal) => {
-    if (channelRef.current) sendCallSignal(channelRef.current, signal);
-  }, []);
-
-  const createPeerConnection = useCallback(
-    (peer: CallPeer) => {
-      const pc = new RTCPeerConnection(ICE_SERVERS);
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          send({ kind: "ice-candidate", from: self!, to: peer.id, candidate: event.candidate.toJSON() });
-        }
-      };
-
-      pc.ontrack = (event) => {
-        setRemoteStream(event.streams[0] ?? null);
-      };
-
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "connected") setCallState("connected");
-        if (pc.connectionState === "failed" || pc.connectionState === "closed") {
-          setError((prev) => prev ?? "Call connection lost.");
-        }
-      };
-
-      pcRef.current = pc;
-      return pc;
+  // End the call from this side with a reason shown on the "Call ended"
+  // screen, telling the other side so it doesn't wait forever.
+  const fail = useCallback(
+    (message: string, notifyPeer = true) => {
+      if (notifyPeer) send({ kind: "hangup", reason: "failed" });
+      teardownCall();
+      setError(message);
+      setCallState("ended");
     },
-    [self, send]
+    [send, teardownCall, setCallState]
   );
 
-  const acquireLocalMedia = useCallback(async () => {
+  const startTimer = useCallback(
+    (ms: number, message: string) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => fail(message), ms);
+    },
+    [fail]
+  );
+
+  // Opens camera + mic for the call identified by callId. Returns null if the
+  // call was abandoned while the browser was still opening the camera.
+  const acquireLocalMedia = useCallback(async (callId: string) => {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    if (callIdRef.current !== callId) {
+      stream.getTracks().forEach((t) => t.stop());
+      return null;
+    }
     localStreamRef.current = stream;
     setLocalStream(stream);
     return stream;
   }, []);
 
+  // A function, not an inline comparison, so TypeScript doesn't carry an
+  // earlier narrowing of pcRef.current across the awaits in handleSignal.
+  const isCurrentPc = (pc: RTCPeerConnection) => pcRef.current === pc;
+
+  const createPeerConnection = useCallback(() => {
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const stream = localStreamRef.current;
+    stream?.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) send({ kind: "ice-candidate", candidate: event.candidate.toJSON() });
+    };
+    pc.ontrack = (event) => {
+      setRemoteStream(event.streams[0] ?? new MediaStream([event.track]));
+    };
+    pc.onconnectionstatechange = () => {
+      if (!isCurrentPc(pc)) return;
+      switch (pc.connectionState) {
+        case "connected":
+          clearTimers();
+          setCallState("connected");
+          break;
+        case "disconnected":
+          if (!graceRef.current) {
+            graceRef.current = setTimeout(() => fail("The connection was lost."), DISCONNECT_GRACE_MS);
+          }
+          break;
+        case "failed":
+          fail(
+            callStateRef.current === "connected"
+              ? "The connection was lost."
+              : "Couldn't connect the call. Your networks may be blocking it - try again, or from the same Wi-Fi."
+          );
+          break;
+      }
+      if (pc.connectionState !== "disconnected" && graceRef.current) {
+        clearTimeout(graceRef.current);
+        graceRef.current = null;
+      }
+    };
+
+    pcRef.current = pc;
+    return pc;
+  }, [send, clearTimers, setCallState, fail]);
+
   const flushPendingIce = useCallback(async (pc: RTCPeerConnection) => {
-    for (const candidate of pendingIceRef.current) {
+    const pending = pendingIceRef.current;
+    pendingIceRef.current = [];
+    for (const candidate of pending) {
       await pc.addIceCandidate(candidate).catch(() => {});
     }
-    pendingIceRef.current = [];
   }, []);
 
   const handleSignal = useCallback(
     async (signal: CallSignal) => {
-      if (!self) return;
+      const me = selfRef.current;
+      if (!me) return;
+      const state = callStateRef.current;
 
       if (signal.kind === "ring") {
-        if (callState !== "idle") {
+        if (state !== "idle" && state !== "ended") {
           // Busy - auto-decline rather than silently dropping the request.
-          send({ kind: "decline", from: self, to: signal.from.id });
+          channelRef.current?.send({ kind: "decline", reason: "busy", from: me, to: signal.from.id, callId: signal.callId });
           return;
         }
+        teardownCall();
         peerRef.current = signal.from;
-        setIncomingCallFrom(signal.from);
+        callIdRef.current = signal.callId;
+        setPeer(signal.from);
+        setError(null);
         setCallState("ringing-incoming");
+        // The caller gives up at RING_TIMEOUT_MS and says so; this is only a
+        // backstop in case that hangup never arrives.
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          teardownCall();
+          setCallState("idle");
+        }, RING_TIMEOUT_MS + 5_000);
         return;
       }
 
+      // Everything else must belong to the call we're in, with that peer.
+      if (signal.callId !== callIdRef.current || signal.from.id !== peerRef.current?.id) return;
+
       if (signal.kind === "decline") {
-        setError(`${signal.from.name} declined the call.`);
-        teardownCall();
-        setCallState("idle");
+        if (state !== "ringing-outgoing") return;
+        fail(
+          signal.reason === "busy" ? `${signal.from.name} is on another call.` : `${signal.from.name} declined the call.`,
+          false
+        );
         return;
       }
 
       if (signal.kind === "hangup") {
         teardownCall();
+        if (state === "ringing-incoming") {
+          // The caller cancelled before we picked up - nothing to report.
+          setCallState("idle");
+          return;
+        }
+        setError(signal.reason === "failed" ? `The call couldn't continue on ${signal.from.name}'s side.` : null);
         setCallState("ended");
         return;
       }
 
       if (signal.kind === "accept") {
-        // We're the caller: the callee is ready, so we're the offerer.
+        // We're the caller (camera already open): we make the offer.
+        if (state !== "ringing-outgoing") return;
         try {
           setCallState("connecting");
-          const peer = peerRef.current;
-          if (!peer) return;
-          const stream = await acquireLocalMedia();
-          const pc = createPeerConnection(peer);
-          stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+          startTimer(CONNECT_TIMEOUT_MS, "Couldn't connect the call. Try again.");
+          const pc = createPeerConnection();
           const offer = await pc.createOffer();
+          if (!isCurrentPc(pc)) return;
           await pc.setLocalDescription(offer);
-          send({ kind: "offer", from: self, to: peer.id, sdp: offer });
+          send({ kind: "offer", sdp: offer });
         } catch (err: any) {
-          setError(err?.message ?? "Could not start the call.");
-          teardownCall();
-          setCallState("idle");
+          fail(err?.message ?? "Could not start the call.");
         }
         return;
       }
 
       if (signal.kind === "offer") {
-        // We're the callee, already past ringing-incoming -> connecting once
-        // acceptCall() ran. Build our side of the connection now.
+        // We're the callee (camera opened in acceptCall): we answer.
+        if (state !== "connecting" || pcRef.current) return;
         try {
-          const peer = signal.from;
-          peerRef.current = peer;
-          const stream = await acquireLocalMedia();
-          const pc = createPeerConnection(peer);
-          stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+          const pc = createPeerConnection();
           await pc.setRemoteDescription(signal.sdp);
           await flushPendingIce(pc);
           const answer = await pc.createAnswer();
+          if (!isCurrentPc(pc)) return;
           await pc.setLocalDescription(answer);
-          send({ kind: "answer", from: self, to: peer.id, sdp: answer });
+          send({ kind: "answer", sdp: answer });
         } catch (err: any) {
-          setError(err?.message ?? "Could not answer the call.");
-          teardownCall();
-          setCallState("idle");
+          fail(err?.message ?? "Could not answer the call.");
         }
         return;
       }
 
       if (signal.kind === "answer") {
         const pc = pcRef.current;
-        if (!pc) return;
-        await pc.setRemoteDescription(signal.sdp);
-        await flushPendingIce(pc);
+        if (!pc || pc.signalingState !== "have-local-offer") return;
+        try {
+          await pc.setRemoteDescription(signal.sdp);
+          await flushPendingIce(pc);
+        } catch (err: any) {
+          fail(err?.message ?? "Could not connect the call.");
+        }
+        return;
+      }
+
+      if (signal.kind === "settings") {
+        setRemoteSettings(signal.settings);
+        return;
+      }
+
+      if (signal.kind === "settings-request") {
+        if (sentSettingsRef.current) send({ kind: "settings", settings: sentSettingsRef.current });
         return;
       }
 
@@ -192,75 +341,114 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
         await pc.addIceCandidate(signal.candidate).catch(() => {});
       }
     },
-    [self, callState, send, acquireLocalMedia, createPeerConnection, flushPendingIce, teardownCall]
+    [teardownCall, setCallState, fail, startTimer, createPeerConnection, send, flushPendingIce]
   );
 
-  // The channel subscription effect below only (re)subscribes when
-  // classId/self.id change, but handleSignal is recreated on every render
-  // (it closes over callState). Routing the subscription callback through a
-  // ref that's updated every render keeps it seeing current state instead of
-  // being permanently stuck with the closure from the first subscribe.
   const handleSignalRef = useRef(handleSignal);
   handleSignalRef.current = handleSignal;
 
   useEffect(() => {
-    if (!classId || !self || !isVideoCallSupported) return;
-    channelRef.current = openCallChannel(classId, self.id, (signal) => {
-      handleSignalRef.current(signal);
+    if (!classId || !self?.id || !isVideoCallSupported) return;
+    const channel = openCallChannel(classId, self.id, (signal) => {
+      void handleSignalRef.current(signal);
     });
+    channelRef.current = channel;
     return () => {
-      if (channelRef.current) closeCallChannel(channelRef.current);
-      channelRef.current = null;
+      // Leaving the class channel (sign-out, class switch, unmount) ends any
+      // call in progress - say so first, so the other side isn't left waiting.
+      const state = callStateRef.current;
+      if (state !== "idle" && state !== "ended") send({ kind: "hangup" });
+      channel.close();
+      if (channelRef.current === channel) channelRef.current = null;
       teardownCall();
+      setPeer(null);
+      setCallState("idle");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId, self?.id]);
 
   const startCall = useCallback(
-    (peer: CallPeer) => {
-      if (!self || callState !== "idle") return;
+    async (to: CallPeer) => {
+      const state = callStateRef.current;
+      if (!selfRef.current || (state !== "idle" && state !== "ended")) return;
+      teardownCall();
+      const callId = newCallId();
+      peerRef.current = to;
+      callIdRef.current = callId;
+      setPeer(to);
       setError(null);
-      peerRef.current = peer;
       setCallState("ringing-outgoing");
-      send({ kind: "ring", from: self, to: peer.id });
+      try {
+        if (!(await acquireLocalMedia(callId))) return;
+      } catch (err) {
+        fail(mediaErrorMessage(err), false);
+        return;
+      }
+      send({ kind: "ring" });
+      startTimer(RING_TIMEOUT_MS, `${to.name} didn't answer.`);
     },
-    [self, callState, send]
+    [teardownCall, setCallState, acquireLocalMedia, fail, send, startTimer]
   );
 
-  const acceptCall = useCallback(() => {
-    if (!self || !incomingCallFrom) return;
+  const acceptCall = useCallback(async () => {
+    const callId = callIdRef.current;
+    if (callStateRef.current !== "ringing-incoming" || !callId) return;
+    clearTimers();
     setError(null);
-    send({ kind: "accept", from: self, to: incomingCallFrom.id });
     setCallState("connecting");
-  }, [self, incomingCallFrom, send]);
+    try {
+      if (!(await acquireLocalMedia(callId))) return;
+    } catch (err) {
+      fail(mediaErrorMessage(err));
+      return;
+    }
+    send({ kind: "accept" });
+    startTimer(CONNECT_TIMEOUT_MS, "Couldn't connect the call. Try again.");
+  }, [clearTimers, setCallState, acquireLocalMedia, fail, send, startTimer]);
 
   const declineCall = useCallback(() => {
-    if (!self || !incomingCallFrom) return;
-    send({ kind: "decline", from: self, to: incomingCallFrom.id });
+    if (callStateRef.current !== "ringing-incoming") return;
+    send({ kind: "decline" });
     teardownCall();
+    setPeer(null);
     setCallState("idle");
-  }, [self, incomingCallFrom, send, teardownCall]);
+  }, [send, teardownCall, setCallState]);
 
+  // Leave / Cancel / Back. From "ended" this just returns to the dashboard.
   const hangUp = useCallback(() => {
-    if (self && peerRef.current) {
-      send({ kind: "hangup", from: self, to: peerRef.current.id });
-    }
+    const state = callStateRef.current;
+    if (state !== "idle" && state !== "ended") send({ kind: "hangup" });
     teardownCall();
+    setPeer(null);
+    setError(null);
     setCallState("idle");
-  }, [self, send, teardownCall]);
+  }, [send, teardownCall, setCallState]);
+
+  // Teacher side: push the call settings to the student.
+  const sendSettings = useCallback(
+    (settings: CallSettings) => {
+      sentSettingsRef.current = settings;
+      send({ kind: "settings", settings });
+    },
+    [send]
+  );
+
+  // Student side: ask for the teacher's current settings.
+  const requestSettings = useCallback(() => send({ kind: "settings-request" }), [send]);
 
   return {
     callState,
-    incomingCallFrom,
-    peer: peerRef.current,
+    incomingCallFrom: callState === "ringing-incoming" ? peer : null,
+    peer,
     localStream,
     remoteStream,
     error,
+    remoteSettings,
+    sendSettings,
+    requestSettings,
     startCall,
     acceptCall,
     declineCall,
     hangUp,
   };
 }
-
-export { callChannelName };
