@@ -1,17 +1,21 @@
 // Words mode: the ASL and FSL word models, sharing one camera.
 //
-// ASL (the 133-word model) and FSL (FSL-105's 105 words and phrases) are
+// ASL (the 344-word model) and FSL (FSL-105's 105 words and phrases) are
 // separate ensembles with separate vocabularies - see modelLoader.ts. FSL is
 // the language KamustaSign's users actually sign; ASL stays for comparison
 // and for its larger trained vocabulary.
 //
-// Switching here does NOT restart the camera: WordTranslatorScreen keeps its
-// stream and Holistic graph and only swaps the ensemble behind them, the same
-// way FingerspellingScreen swaps alphabets.
+// Second toggle: Auto (hands-free - each sign is detected from hand movement,
+// see signSegmenter.ts) or Manual (Record/Stop). Remembered across sessions.
+//
+// Switching either toggle does NOT restart the camera: WordTranslatorScreen
+// keeps its stream and Holistic graph and only swaps the ensemble or the
+// capture logic behind them, the same way FingerspellingScreen swaps alphabets.
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import WordTranslatorScreen from "./WordTranslatorScreen";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import WordTranslatorScreen, { type CaptureMode } from "./WordTranslatorScreen";
 import SegmentedToggle from "../components/SegmentedToggle";
 import type { SignLanguage } from "../ml/modelLoader";
 
@@ -19,6 +23,13 @@ const LANGUAGES: { key: SignLanguage; label: string }[] = [
   { key: "asl", label: "ASL" },
   { key: "fsl", label: "FSL" },
 ];
+
+const MODES: { key: CaptureMode; label: string }[] = [
+  { key: "auto", label: "Auto" },
+  { key: "manual", label: "Manual" },
+];
+
+const MODE_STORAGE_KEY = "kamustasign:wordCaptureMode";
 
 type Props = {
   targetLanguage: string;
@@ -34,10 +45,27 @@ export default function WordsScreen({
   releaseLandmarker,
 }: Props) {
   const [language, setLanguage] = useState<SignLanguage>("asl");
+  const [mode, setMode] = useState<CaptureMode>("auto");
+
+  useEffect(() => {
+    AsyncStorage.getItem(MODE_STORAGE_KEY)
+      .then((saved) => {
+        if (saved === "auto" || saved === "manual") setMode(saved);
+      })
+      .catch(() => {});
+  }, []);
+
+  function changeMode(next: CaptureMode) {
+    setMode(next);
+    AsyncStorage.setItem(MODE_STORAGE_KEY, next).catch(() => {});
+  }
 
   return (
     <View style={styles.root}>
-      <SegmentedToggle options={LANGUAGES} value={language} onChange={setLanguage} />
+      <View style={styles.toggles}>
+        <SegmentedToggle options={LANGUAGES} value={language} onChange={setLanguage} />
+        <SegmentedToggle options={MODES} value={mode} onChange={changeMode} />
+      </View>
 
       <View style={styles.body}>
         <WordTranslatorScreen
@@ -46,6 +74,7 @@ export default function WordsScreen({
           createHolisticLandmarker={createHolisticLandmarker}
           releaseLandmarker={releaseLandmarker}
           language={language}
+          mode={mode}
         />
       </View>
     </View>
@@ -56,6 +85,12 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     minHeight: 0,
+  },
+  toggles: {
+    flexDirection: "row",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    columnGap: 12,
   },
   body: {
     flex: 1,

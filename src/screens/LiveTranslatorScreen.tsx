@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Svg, { Rect } from "react-native-svg";
+import { Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import Svg, { Circle } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { loadAlphabet, type Alphabet } from "../ml/modelLoader";
 import * as tf from "@tensorflow/tfjs";
@@ -13,9 +13,13 @@ import ConfidenceDial from "../components/ConfidenceDial";
 import HandednessPicker, { useHandedness, mirrorFlatLandmarks } from "../components/HandednessPicker";
 import HoldDurationControl, { useHoldDuration } from "../components/HoldDurationControl";
 import TranslatorPanel from "../components/TranslatorPanel";
-import { BackspaceIcon } from "../components/icons/UiIcons";
+import { BackspaceIcon, CheckIcon, ClockIcon, EyeIcon, HandIcon, SpeakerIcon } from "../components/icons/UiIcons";
+import { useReduceMotion } from "../hooks/useReduceMotion";
 import { useTranslateAndSpeak } from "../hooks/useTranslateAndSpeak";
 import { findLanguage } from "../lib/languages";
+import { drawHandSkeleton } from "../lib/handSkeleton";
+import { LIVE_PASS_HOLD_MS, PASS_CONFIDENCE } from "../lib/curriculum";
+import PracticeCameraOverlay from "../components/learn/PracticeCameraOverlay";
 
 // Confidence (0-100) a live prediction needs before it's "stable" enough to
 // commit to the accumulated word. Keeps a hand pausing mid-transition (low
@@ -41,6 +45,35 @@ type Props = {
    *  separate models because several ASL digits share a handshape with a
    *  letter (O/0, F/9, V/2, W/6) - see modelLoader.ts. */
   alphabet?: Alphabet;
+  /** Classroom practice mode: the sign the student is trying to make. */
+  targetSign?: string;
+  /**
+   * Practice mode only. Reports the session's state whenever it changes:
+   * once when a hand first appears ({ passed: false, confidence: 0 }), each
+   * time the target's best confidence rises, and on each pass - the target
+   * held at PASS_CONFIDENCE for LIVE_PASS_HOLD_MS. After a pass the student
+   * has to let go of the sign (or lower the hand) before the next one can be
+   * reported, so holding one sign reports a single pass, not one per 500 ms.
+   * Whether a pass COUNTS toward mastery is decided by the database.
+   */
+  onPracticeResult?: (result: { passed: boolean; confidence: number }) => void;
+  /**
+   * "practice": the classroom layout (Graphite Aurora student layer) - only
+   * the camera device, with child-facing overlays (hand box, camera loading
+   * / error). The confidence dial, commit speed, holding meter and reading
+   * strip are not rendered; PracticeScreen draws the target, stars and
+   * feedback itself. Same component, same camera + MediaPipe lifecycle - not
+   * a fork. Default "full" is the translator as before.
+   */
+  variant?: "full" | "practice";
+  /**
+   * Practice mode only: how far the current hold of the target is towards a
+   * pass, 0-1 (LIVE_PASS_HOLD_MS). 0 when the target drops below
+   * PASS_CONFIDENCE, 1 on a pass (until the student lets go). Throttled.
+   */
+  onHoldProgress?: (progress: number) => void;
+  /** Practice mode: "Try again" on the camera-error overlay. */
+  onRetry?: () => void;
 };
 
 export default function LiveTranslatorScreen({
@@ -49,6 +82,11 @@ export default function LiveTranslatorScreen({
   createHandLandmarker,
   releaseLandmarker,
   alphabet = "letters",
+  targetSign,
+  onPracticeResult,
+  variant = "full",
+  onHoldProgress,
+  onRetry,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -70,6 +108,20 @@ export default function LiveTranslatorScreen({
   const languageName = findLanguage(targetLanguage)?.name ?? "English";
 
   const [accumulatedWord, setAccumulatedWord] = useState<string[]>([]);
+  // "Show to someone": the word full-screen, big enough to read across a desk.
+  const [showBig, setShowBig] = useState(false);
+  const reduceMotion = useReduceMotion();
+  // Visual confirmation for every added letter (there is no sound cue): the
+  // newest tile pops in.
+  const letterPop = useRef(new Animated.Value(1)).current;
+  const prevWordLength = useRef(0);
+  useEffect(() => {
+    if (accumulatedWord.length > prevWordLength.current && !reduceMotion) {
+      letterPop.setValue(0.55);
+      Animated.spring(letterPop, { toValue: 1, friction: 5, tension: 160, useNativeDriver: true }).start();
+    }
+    prevWordLength.current = accumulatedWord.length;
+  }, [accumulatedWord.length, reduceMotion, letterPop]);
   const lastCommittedRef = useRef<string>("");
   const holdLabelRef = useRef<string | null>(null);
   const holdStartRef = useRef<number>(0);
@@ -98,6 +150,24 @@ export default function LiveTranslatorScreen({
   useEffect(() => {
     handednessRef.current = handedness;
   }, [handedness]);
+
+  // Practice mode state, read by the mount-once frame loop (same ref pattern
+  // as handedness above). `best` is the target's best confidence (0-1).
+  const targetSignRef = useRef(targetSign);
+  targetSignRef.current = targetSign;
+  const onPracticeResultRef = useRef(onPracticeResult);
+  onPracticeResultRef.current = onPracticeResult;
+  const practiceRef = useRef({ started: false, best: 0, armed: true, holdStart: null as number | null });
+  const onHoldProgressRef = useRef(onHoldProgress);
+  onHoldProgressRef.current = onHoldProgress;
+  const lastHoldRef = useRef(0);
+  // Practice-variant overlay only (hand box colour/label).
+  const [practiceHold, setPracticeHold] = useState(0);
+  useEffect(() => {
+    practiceRef.current = { started: false, best: 0, armed: true, holdStart: null };
+    lastHoldRef.current = 0;
+    setPracticeHold(0);
+  }, [targetSign]);
 
   const [holdDuration, setHoldDuration] = useHoldDuration();
   const holdDurationRef = useRef(holdDuration);
@@ -203,8 +273,66 @@ export default function LiveTranslatorScreen({
       loop();
     }
 
+    // Practice mode: hold-ring progress, throttled to ~25 steps per hold so
+    // it doesn't re-render every frame.
+    function reportHold(progress: number) {
+      const p = Math.max(0, Math.min(1, progress));
+      const last = lastHoldRef.current;
+      if (p === last) return;
+      if (p !== 0 && p !== 1 && Math.abs(p - last) < 0.04) return;
+      lastHoldRef.current = p;
+      onHoldProgressRef.current?.(p);
+      setPracticeHold(p);
+    }
+
+    // Practice mode: compare one classified frame against the target.
+    function trackPractice(label: string, confidence: number, nowMs: number) {
+      const target = targetSignRef.current;
+      const report = onPracticeResultRef.current;
+      const p = practiceRef.current;
+      if (!target || !report) return;
+      if (!p.started) {
+        p.started = true;
+        report({ passed: false, confidence: 0 });
+      }
+      const onTarget = label === target && confidence >= PASS_CONFIDENCE;
+      if (label === target && confidence > p.best) {
+        p.best = confidence;
+        report({ passed: false, confidence: p.best });
+      }
+      if (!onTarget) {
+        // Letting go of the sign re-arms the next pass.
+        p.holdStart = null;
+        p.armed = true;
+        reportHold(0);
+        return;
+      }
+      if (!p.armed) {
+        reportHold(1);
+        return;
+      }
+      if (p.holdStart === null) {
+        p.holdStart = nowMs;
+        reportHold(0.02);
+      } else if (nowMs - p.holdStart >= LIVE_PASS_HOLD_MS) {
+        p.armed = false;
+        p.holdStart = null;
+        reportHold(1);
+        report({ passed: true, confidence });
+      } else {
+        reportHold((nowMs - p.holdStart) / LIVE_PASS_HOLD_MS);
+      }
+    }
+
     function loop() {
-      if (stopped || !handLandmarker || !videoRef.current || !modelRef.current) return;
+      if (stopped || !handLandmarker || !videoRef.current) return;
+      // The classifier is swapped out (null) while the Letters/Numbers toggle
+      // loads the other alphabet. Keep the loop alive through that instead of
+      // returning, or it never restarts once the model arrives.
+      if (!modelRef.current) {
+        animationId = requestAnimationFrame(loop);
+        return;
+      }
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -227,16 +355,7 @@ export default function LiveTranslatorScreen({
           setLandmarkCount(landmarks.length);
 
           if (ctx) {
-            landmarks.forEach((lm: any, i: number) => {
-              const isWrist = i === 0;
-              ctx!.beginPath();
-              ctx!.fillStyle = isWrist ? colors.accentCoral : colors.primaryTeal;
-              ctx!.shadowColor = isWrist ? colors.accentCoral : colors.primaryTeal;
-              ctx!.shadowBlur = isWrist ? 10 : 8;
-              ctx!.arc(lm.x * canvas!.width, lm.y * canvas!.height, isWrist ? 6 : 4.5, 0, 2 * Math.PI);
-              ctx!.fill();
-            });
-            ctx.shadowBlur = 0;
+            drawHandSkeleton(ctx, canvas!, landmarks);
           }
 
           let flat: number[] = [];
@@ -259,6 +378,7 @@ export default function LiveTranslatorScreen({
             const pct = arr[maxIndex] * 100;
             setPrediction(label);
             setConfidence(pct);
+            trackPractice(label, arr[maxIndex], nowMs);
 
             if (pct >= COMMIT_THRESHOLD && label !== "-") {
               if (label !== holdLabelRef.current) {
@@ -297,6 +417,9 @@ export default function LiveTranslatorScreen({
           lastCommittedRef.current = "";
           holdLabelRef.current = null;
           setHeldMs(0);
+          practiceRef.current.holdStart = null;
+          practiceRef.current.armed = true;
+          if (targetSignRef.current) reportHold(0);
         }
       }
 
@@ -340,7 +463,7 @@ export default function LiveTranslatorScreen({
       video.srcObject = stream;
       video.play().catch(() => {});
     }
-  }, [isDesktop]);
+  }, [isDesktop, variant]);
 
   function handleBackspace() {
     setAccumulatedWord((prev) => prev.slice(0, -1));
@@ -362,6 +485,34 @@ export default function LiveTranslatorScreen({
     if (word) speak(word);
   }
 
+  // Space between words without a sign; also re-arms the last letter so a
+  // word can start with the letter that ended the previous one.
+  function handleSpace() {
+    setAccumulatedWord((prev) => (prev.length && prev[prev.length - 1] !== " " ? [...prev, " "] : prev));
+    lastCommittedRef.current = "";
+  }
+
+  // Keyboard shortcuts (web, full translator only): Backspace deletes the last
+  // letter, Escape clears (or closes the big view), Enter speaks.
+  useEffect(() => {
+    if (Platform.OS !== "web" || variant !== "full") return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === "Escape") {
+        if (showBig) setShowBig(false);
+        else handleClear();
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        handleBackspace();
+      } else if (e.key === "Enter") {
+        handleSpeak();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   if (Platform.OS !== "web") {
     return (
       <View style={styles.unsupported}>
@@ -379,48 +530,59 @@ export default function LiveTranslatorScreen({
   const displayedLetters = isDesktop ? accumulatedWord : accumulatedWord.slice(-3);
   const wordText = accumulatedWord.join("");
 
-  // Desktop detection box is the exact 186x226 @ (52,36) box from the
-  // instrument-panel handoff (mock 4a) - the mobile badge+box combo is the
-  // earlier material-pass treatment, kept as-is since mobile isn't in scope
-  // for this handoff.
+  // --- What's happening right now, in words (nothing here relies on sound) ---
+  const camError = status.startsWith("ERROR");
+  const aboveThreshold = handDetected && confidence >= COMMIT_THRESHOLD;
+  const heldFrac = aboveThreshold && holdDuration > 0 ? Math.min(1, heldMs / holdDuration) : 0;
+  const nameOf = (l: string) => (l === "space" ? "space" : l === "del" ? "delete" : l);
+  const committedNow = aboveThreshold && heldFrac >= 1 && prediction === lastCommittedRef.current;
+  const liveState: { text: string; sub?: string; chip: string; tone: "neutral" | "gold" | "success" } = !ready
+    ? { text: camError ? "The camera isn't working." : "Getting the camera ready…", chip: "Starting", tone: "neutral" }
+    : !handDetected
+      ? { text: "Show your hand to the camera.", sub: "Keep it inside the box.", chip: "No hand", tone: "neutral" }
+      : !aboveThreshold
+        ? { text: "Not sure yet.", sub: "Make the handshape clearer and hold it still.", chip: "Not sure", tone: "neutral" }
+        : committedNow
+          ? {
+              text: `Added “${nameOf(prediction)}”. Sign the next letter.`,
+              sub: "To repeat it (like LL), lower your hand, then sign it again.",
+              chip: "Added",
+              tone: "success",
+            }
+          : { text: `Hold still… adding “${nameOf(prediction)}”.`, chip: "Hold still", tone: "gold" };
+  const sureWord =
+    !handDetected ? "No hand" : confidence >= 80 ? "Sure" : confidence >= COMMIT_THRESHOLD ? "Almost sure" : "Not sure";
+  const toneColor = liveState.tone === "success" ? colors.success : liveState.tone === "gold" ? colors.accentCoral : colors.textSecondary;
+  const speakText =
+    speechStatus === "speaking" ? "Speaking…" : speechStatus === "translating" ? "Translating…" : "Speak it aloud";
+  const glyph = !handDetected || prediction === "-" ? "?" : nameOf(prediction);
+
+  const showBigModal = (
+    <Modal visible={showBig} transparent animationType={reduceMotion ? "none" : "fade"} onRequestClose={() => setShowBig(false)}>
+      <Pressable style={styles.bigScrim} onPress={() => setShowBig(false)} accessibilityLabel="Close big view">
+        <Text
+          style={[styles.bigText, { fontSize: Math.max(48, Math.min(220, 1500 / Math.max(wordText.length, 1))) }]}
+          accessibilityRole="header"
+        >
+          {wordText}
+        </Text>
+        <Text style={styles.bigHint}>Tap anywhere to close</Text>
+      </Pressable>
+    </Modal>
+  );
+
+  // Camera overlay: the hand box tells you where to sign, turns gold while a
+  // letter is holding and green the moment it's added; camera loading /
+  // error states are shown on the feed itself.
   const overlays = (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {handDetected && isDesktop && (
-        <Svg width={186} height={226} style={{ position: "absolute", left: 52, top: 36 }}>
-          <Rect
-            x={0.75}
-            y={0.75}
-            width={186 - 1.5}
-            height={226 - 1.5}
-            rx={14}
-            fill="none"
-            stroke="rgba(124,108,245,0.6)"
-            strokeWidth={1.5}
-            strokeDasharray="6 5"
-          />
-        </Svg>
-      )}
-      {handDetected && !isDesktop && (
-        <>
-          <View style={[styles.badge, { left: 96, top: 32 }]}>
-            <Text style={styles.badgeText}>{landmarkCount} landmarks locked</Text>
-          </View>
-          <Svg width={158} height={196} style={{ position: "absolute", left: 96, top: 56 }}>
-            <Rect
-              x={0.75}
-              y={0.75}
-              width={158 - 1.5}
-              height={196 - 1.5}
-              rx={14}
-              fill="none"
-              stroke="rgba(124,108,245,0.6)"
-              strokeWidth={1.5}
-              strokeDasharray="6 5"
-            />
-          </Svg>
-        </>
-      )}
-    </View>
+    <PracticeCameraOverlay
+      audience="general"
+      phase={camError ? "error" : ready ? "live" : "loading"}
+      handSeen={handDetected}
+      hold={heldFrac}
+      holdLabel="Hold still…"
+      doneLabel="Added!"
+    />
   );
 
   const cameraDevice = (
@@ -447,7 +609,7 @@ export default function LiveTranslatorScreen({
         style={[typography.h2, styles.translationText, { fontSize: isDesktop ? 24 : 20 }]}
         numberOfLines={1}
       >
-        {wordText ? `“${wordText}”` : "—"}
+        {wordText ? `“${wordText}”` : "Spell a word with your hand"}
       </Text>
       <Text style={styles.translationMeta}>
         {languageName} · {translationTag}
@@ -478,6 +640,11 @@ export default function LiveTranslatorScreen({
         />
       </View>
 
+      {!isDesktop && (
+        <Text style={[styles.liveStateMobile, { color: liveState.tone === "neutral" ? colors.textPrimary : toneColor }]}>
+          {liveState.text}
+        </Text>
+      )}
       {isDesktop && <View style={styles.divider} />}
 
       <View style={isDesktop ? undefined : styles.readingRowMobile}>
@@ -571,7 +738,20 @@ export default function LiveTranslatorScreen({
         accessibilityRole="button"
         accessibilityLabel="Speak the accumulated word"
       >
-        <Text style={[typography.label, styles.speakLabel]}>Speak it</Text>
+        <Text style={[typography.label, styles.speakLabel]}>{speakText}</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => setShowBig(true)}
+        disabled={!wordText}
+        style={[
+          styles.backspaceButton,
+          { width: isDesktop ? 46 : 56, height: isDesktop ? 46 : 56, backgroundColor: colors.neuBase, opacity: wordText ? 1 : 0.45 },
+          neuRaised("md"),
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="Show the word big"
+      >
+        <EyeIcon size={20} color={colors.textSecondary} />
       </Pressable>
       <Pressable
         onPress={handleBackspace}
@@ -588,48 +768,137 @@ export default function LiveTranslatorScreen({
     </View>
   );
 
+  if (variant === "practice") {
+    const cameraError = status.startsWith("ERROR");
+    return (
+      <View style={styles.practiceRoot}>
+        <CameraDevice
+          isDesktop
+          videoRef={videoRef}
+          canvasRef={canvasRef}
+          ledColor={cameraError ? colors.needsPractice : ready ? colors.success : colors.accentCoral}
+          statusText={cameraError ? "CAMERA OFF" : ready ? "30 FPS · READY" : "STARTING"}
+          overlays={
+            <PracticeCameraOverlay
+              phase={cameraError ? "error" : ready ? "live" : "loading"}
+              handSeen={handDetected}
+              hold={practiceHold}
+              onRetry={onRetry}
+            />
+          }
+          style={styles.practiceCamera}
+        />
+      </View>
+    );
+  }
+
   if (isDesktop) {
     // Reading strip: fit as many committed-letter tiles as the measured bay
     // width allows (tile 36 + gap 7), newest last - never wrap, never shrink
     // the tiles (handoff: "compute N from the bay width").
-    const fitCount = stripWidth > 0 ? Math.max(1, Math.floor((stripWidth + 7) / 43)) : accumulatedWord.length;
+    const fitCount = stripWidth > 0 ? Math.max(1, Math.floor((stripWidth + 8) / 52)) : accumulatedWord.length;
     const stripLetters = accumulatedWord.slice(-fitCount);
     const heldMsClamped = Math.min(heldMs, holdDuration);
     const heldFraction = holdDuration > 0 ? Math.min(1, heldMsClamped / holdDuration) : 0;
+    const RING = 188;
+    const ringR = 90;
+    const ringC = 2 * Math.PI * ringR;
 
     const bay2 = (
       <View style={styles.bay2Column}>
-        <Text style={[typography.meta, styles.eyebrow, { marginBottom: 20 }]}>RECOGNIZED</Text>
-        <View style={[styles.recognizedRow, { gap: 18 }]}>
-          <View style={[styles.letterTileBig, { backgroundColor: colors.neuBase }, neuRaised("lg")]}>
-            <Text style={styles.letterGlyphBig}>{prediction}</Text>
+        <View style={styles.bay2Header}>
+          <Text style={[typography.meta, styles.eyebrowBright]}>RECOGNIZED</Text>
+          <View
+            style={[
+              styles.stateChip,
+              {
+                backgroundColor:
+                  liveState.tone === "success" ? "rgba(63,181,106,0.16)" : liveState.tone === "gold" ? "rgba(242,178,62,0.16)" : colors.neuWell,
+              },
+            ]}
+          >
+            <View style={[styles.stateDot, { backgroundColor: toneColor }]} />
+            <Text style={[styles.stateChipText, { color: liveState.tone === "neutral" ? colors.textSecondary : toneColor }]}>
+              {liveState.chip}
+            </Text>
           </View>
-          <ConfidenceDial size={168} percent={confidence} pctSize={38} metaSize={9} />
         </View>
+        <View style={[styles.recognizedRow, { gap: 22, marginTop: 14 }]}>
+          <View style={{ width: RING, height: RING, alignItems: "center", justifyContent: "center" }}>
+            <View style={[styles.letterTileBig, { backgroundColor: colors.neuBase }, neuRaised("lg")]}>
+              <Text
+                style={[
+                  styles.letterGlyphBig,
+                  glyph.length > 1 && { fontSize: 34, lineHeight: 40 },
+                  glyph === "?" && { color: colors.textTertiary },
+                  committedNow && { color: colors.success },
+                ]}
+                accessibilityLabel={glyph === "?" ? "No letter yet" : `Recognized ${glyph}`}
+              >
+                {glyph}
+              </Text>
+            </View>
+            {/* Hold ring: fills while the letter holds steady; full = added. */}
+            <Svg width={RING} height={RING} style={StyleSheet.absoluteFill} pointerEvents="none">
+              <Circle cx={RING / 2} cy={RING / 2} r={ringR} fill="none" stroke={colors.holdTrack} strokeWidth={6} />
+              {heldFrac > 0 && (
+                <Circle
+                  cx={RING / 2}
+                  cy={RING / 2}
+                  r={ringR}
+                  fill="none"
+                  stroke={committedNow ? colors.success : colors.accentCoral}
+                  strokeWidth={6}
+                  strokeLinecap="round"
+                  strokeDasharray={`${ringC} ${ringC}`}
+                  strokeDashoffset={ringC * (1 - heldFrac)}
+                  transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
+                />
+              )}
+            </Svg>
+          </View>
+          <View style={{ alignItems: "center", gap: 6 }}>
+            <ConfidenceDial size={160} percent={confidence} pctSize={36} metaSize={9} />
+            <Text style={styles.sureWord}>{sureWord}</Text>
+          </View>
+        </View>
+        <Text style={[styles.liveStateText, liveState.tone !== "neutral" && { color: toneColor }]}>{liveState.text}</Text>
+        {liveState.sub ? <Text style={styles.liveStateSub}>{liveState.sub}</Text> : null}
         <View style={styles.bay2Rule} />
         <View style={styles.readingRow}>
-          <Text style={styles.readingRowLabelText}>Reading:</Text>
-          <Text style={styles.readingCountText}>{accumulatedWord.length} letters</Text>
+          <Text style={[typography.meta, styles.eyebrowBright]}>YOUR WORD</Text>
+          <Text style={styles.readingCountText}>
+            {accumulatedWord.filter((l) => l !== " ").length} letter{accumulatedWord.filter((l) => l !== " ").length === 1 ? "" : "s"}
+          </Text>
         </View>
         <View style={styles.tileStripDesktop} onLayout={(e) => setStripWidth(e.nativeEvent.layout.width)}>
           {stripLetters.length === 0 ? (
-            <Text style={styles.tileStripEmpty}>—</Text>
+            <View style={styles.wordEmpty}>
+              <Text style={styles.wordEmptyText}>Your word builds here, one letter at a time.</Text>
+            </View>
           ) : (
             stripLetters.map((letter, i) => {
               const isNewest = i === stripLetters.length - 1;
-              return (
+              const chip = (
                 <View
-                  key={`${letter}-${i}`}
                   style={[
                     styles.letterChipBig,
                     { backgroundColor: isNewest ? colors.surfaceElevated : colors.neuWell },
                     isNewest ? neuRaised("sm") : neuInset("sm"),
+                    letter === " " && styles.spaceChip,
                   ]}
                 >
-                  <Text style={[styles.letterChipLabel, { color: isNewest ? colors.accentCoral : colors.adminGray }]}>
-                    {letter}
+                  <Text style={[styles.letterChipLabel, { color: isNewest ? colors.accentCoral : colors.textPrimary }]}>
+                    {letter === " " ? "" : letter}
                   </Text>
                 </View>
+              );
+              return isNewest ? (
+                <Animated.View key={`${letter}-${i}`} style={{ transform: [{ scale: letterPop }] }}>
+                  {chip}
+                </Animated.View>
+              ) : (
+                <View key={`${letter}-${i}`}>{chip}</View>
               );
             })
           )}
@@ -660,7 +929,7 @@ export default function LiveTranslatorScreen({
     const holdingMeterCell = (
       <View style={styles.holdingCell}>
         <Text style={[typography.meta, styles.eyebrow, { marginBottom: 8 }]}>
-          HOLDING · {Math.round(heldMsClamped)} / {holdDuration} ms
+          HOLD PROGRESS · {Math.round(heldMsClamped)} / {holdDuration} ms
         </Text>
         <View style={styles.holdingWell}>
           <View style={styles.holdingTrough}>
@@ -677,23 +946,54 @@ export default function LiveTranslatorScreen({
     );
 
     const actionsRow = (
-      <View style={styles.actionsRowDesktop}>
+      <View style={{ gap: 12 }}>
         <Pressable
-          onPress={handleClear}
-          style={styles.clearButton}
+          onPress={() => setShowBig(true)}
+          disabled={!wordText}
+          style={[styles.showButton, !wordText && { opacity: 0.45 }]}
           accessibilityRole="button"
-          accessibilityLabel="Clear all letters"
+          accessibilityLabel="Show the word big, to show someone"
         >
-          <Text style={styles.clearLabel}>Clear</Text>
+          <EyeIcon size={18} color={colors.textPrimary} />
+          <Text style={styles.clearLabel}>Show to someone</Text>
         </Pressable>
-        <Pressable
-          onPress={handleBackspace}
-          style={[styles.backspaceButtonDesktop, { backgroundColor: colors.neuBase }, neuRaised("md")]}
-          accessibilityRole="button"
-          accessibilityLabel="Delete last letter"
-        >
-          <BackspaceIcon size={20} color={colors.textSecondary} />
-        </Pressable>
+        <View style={styles.actionsRowDesktop}>
+          <Pressable onPress={handleSpace} style={styles.clearButton} accessibilityRole="button" accessibilityLabel="Add a space">
+            <Text style={styles.clearLabel}>Space</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleClear}
+            style={styles.clearButton}
+            accessibilityRole="button"
+            accessibilityLabel="Clear all letters"
+          >
+            <Text style={styles.clearLabel}>Clear</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleBackspace}
+            style={[styles.backspaceButtonDesktop, { backgroundColor: colors.neuBase }, neuRaised("md")]}
+            accessibilityRole="button"
+            accessibilityLabel="Delete last letter"
+          >
+            <BackspaceIcon size={20} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+      </View>
+    );
+
+    const guide = (
+      <View style={styles.guide}>
+        {[
+          { icon: <HandIcon size={16} color={colors.tipAccent} />, text: "Sign one letter at a time." },
+          { icon: <ClockIcon size={16} color={colors.accentCoral} />, text: "Hold still until the ring fills. Then the letter is added." },
+          { icon: <CheckIcon size={16} color={colors.success} strokeWidth={2.6} />, text: "To repeat a letter, lower your hand first." },
+        ].map((step, i) => (
+          <View key={i} style={styles.guideRow}>
+            <View style={[styles.guideIcon, neuInset("sm")]}>{step.icon}</View>
+            <Text style={styles.guideText}>{step.text}</Text>
+          </View>
+        ))}
+        <Text style={styles.keysHint}>Keys: Backspace deletes · Esc clears · Enter speaks</Text>
       </View>
     );
 
@@ -712,7 +1012,11 @@ export default function LiveTranslatorScreen({
             />
           }
           bay2={bay2}
-          translationText={wordText || "—"}
+          translationText={wordText}
+          placeholder="Spell a word with your hand. It shows up here."
+          helperContent={guide}
+          speakLabel={speakText}
+          speakIcon={<SpeakerIcon size={16} color={colors.textOnAccent} />}
           statusLabel={`${languageName} · ${translationTag}`}
           helperText="Letters commit to the strip once they hold steady, then translate as a word. Clear empties the strip and starts a new word."
           onSpeak={handleSpeak}
@@ -720,6 +1024,7 @@ export default function LiveTranslatorScreen({
           actionsRow={actionsRow}
           stripCells={[signingHandCell, commitSpeedCell, holdingMeterCell]}
         />
+        {showBigModal}
       </View>
     );
   }
@@ -734,6 +1039,7 @@ export default function LiveTranslatorScreen({
         {holdDurationPanel}
         {actionRow}
       </View>
+      {showBigModal}
     </ScrollView>
   );
 }
@@ -753,6 +1059,18 @@ const styles = StyleSheet.create({
   unsupportedText: {
     ...typography.body,
     color: colors.textSecondary,
+  },
+
+  // Practice variant: the camera device fills whatever box PracticeScreen gives it.
+  practiceRoot: {
+    flex: 1,
+    minHeight: 0,
+    minWidth: 0,
+  },
+  practiceCamera: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
   },
 
   // Desktop root: fills the hub's body. TranslatorPanel measures this
@@ -929,6 +1247,72 @@ const styles = StyleSheet.create({
   },
 
   // --- Desktop instrument-panel bay 2 (Recognized) ---
+  bay2Header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  eyebrowBright: { color: colors.textSecondary },
+  stateChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  stateDot: { width: 8, height: 8, borderRadius: 4 },
+  stateChipText: { fontFamily: typography.label.fontFamily, fontSize: 13 },
+  sureWord: { fontFamily: typography.label.fontFamily, fontSize: 14, color: colors.textSecondary },
+  liveStateText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 18,
+    lineHeight: 26,
+    color: colors.textPrimary,
+    marginTop: 16,
+  },
+  liveStateSub: { fontFamily: typography.body.fontFamily, fontSize: 14, lineHeight: 20, color: colors.textSecondary, marginTop: 2 },
+  liveStateMobile: { fontFamily: fonts.bodyMedium, fontSize: 15, lineHeight: 22, marginTop: 10 },
+  wordEmpty: {
+    flex: 1,
+    height: 54,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: colors.border,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  wordEmptyText: { fontFamily: typography.body.fontFamily, fontSize: 14, color: colors.textSecondary },
+  spaceChip: { width: 22, opacity: 0.6 },
+  showButton: {
+    height: 52,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  guide: { gap: 10 },
+  guideRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  guideIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.neuWell,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  guideText: { flex: 1, fontFamily: typography.body.fontFamily, fontSize: 13, lineHeight: 19, color: colors.textPrimary },
+  keysHint: { fontFamily: typography.body.fontFamily, fontSize: 11, lineHeight: 16, color: colors.textSecondary, marginTop: 2 },
+  bigScrim: {
+    flex: 1,
+    backgroundColor: "rgba(10,12,16,0.96)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+    gap: 24,
+  },
+  bigText: { fontFamily: typography.hero.fontFamily, color: colors.textPrimary, textAlign: "center" },
+  bigHint: { fontFamily: typography.body.fontFamily, fontSize: 16, color: colors.textSecondary },
   bay2Column: {
     flex: 1,
     minHeight: 0,
@@ -950,8 +1334,8 @@ const styles = StyleSheet.create({
   bay2Rule: {
     height: 1,
     backgroundColor: "rgba(255,255,255,0.12)",
-    marginTop: 24,
-    marginBottom: 18,
+    marginTop: 18,
+    marginBottom: 14,
   },
   readingRow: {
     flexDirection: "row",
@@ -976,8 +1360,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   letterChipBig: {
-    width: 36,
-    height: 44,
+    width: 44,
+    height: 54,
     borderRadius: 10,
     flexGrow: 0,
     flexShrink: 0,
@@ -986,7 +1370,7 @@ const styles = StyleSheet.create({
   },
   letterChipLabel: {
     fontFamily: typography.label.fontFamily,
-    fontSize: 18,
+    fontSize: 24,
   },
 
   // --- Desktop control-strip cells ---

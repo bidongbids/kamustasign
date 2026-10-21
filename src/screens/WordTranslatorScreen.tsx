@@ -15,11 +15,14 @@ import { loadWordModels, type SignLanguage } from "../ml/modelLoader";
 import {
   landmarksToVector,
   trimToHandSpan,
+  TRIM_MARGIN,
+  ASL_TRIM_MARGIN,
   resampleSequence,
   normalizeSequence,
   SEQUENCE_LENGTH,
   MODEL_FEATURES_PER_FRAME,
 } from "../ml/wordLandmarks";
+import { SignSegmenter } from "../ml/signSegmenter";
 import { colors, typography } from "../theme/theme";
 import { neuInset, neuRaised } from "../theme/shadows";
 import { useResponsive } from "../theme/responsive";
@@ -30,6 +33,9 @@ import ClipLengthControl, { useClipLength } from "../components/ClipLengthContro
 import TranslatorPanel from "../components/TranslatorPanel";
 import { SpeakerIcon } from "../components/icons/UiIcons";
 import { findLanguage } from "../lib/languages";
+import { PASS_CONFIDENCE } from "../lib/curriculum";
+import { drawHandSkeleton } from "../lib/handSkeleton";
+import PracticeCameraOverlay from "../components/learn/PracticeCameraOverlay";
 import { useTranslateAndSpeak } from "../hooks/useTranslateAndSpeak";
 
 const TOP_K = 5;
@@ -39,6 +45,10 @@ const TOP_K = 5;
 // handoff, default Standard = 60 frames, same value this constant held
 // before the control existed.
 const FRAME_TARGET = 60;
+
+// Pose keypoints sit behind the hands, so they are deliberately dimmer and
+// cooler than the mint hand skeleton rather than competing with it.
+const POSE_DOT = "rgba(154,163,178,0.8)"; // neutral, matches the hand overlay (handSkeleton HAND_NEUTRAL)
 
 // Camera startup tracing. The camera panel has gone black after switching
 // between the Letters and Words tabs, with no error surfaced - which means
@@ -59,7 +69,48 @@ type Props = {
   releaseLandmarker: (instance: any) => void;
   /** Which sign language's word model classifies the recording. */
   language?: SignLanguage;
+  /**
+   * "auto": hands-free - SignSegmenter detects each sign from hand movement
+   * and classifies it when the hands settle. "manual": Record/Stop.
+   */
+  mode?: CaptureMode;
+  /** Classroom practice mode: the word the student is trying to sign. */
+  targetSign?: string;
+  /**
+   * Practice mode only: called once per classified clip. `confidence` is the
+   * model's probability (0-1) for the TARGET word, whatever it ranked;
+   * `passed` means the target was the top match at PASS_CONFIDENCE or more.
+   * `predicted` is the top match, or null when nothing cleared MIN_CONFIDENCE.
+   */
+  onPracticeResult?: (result: { passed: boolean; confidence: number; predicted: string | null }) => void;
+  /**
+   * "practice": the classroom layout - the camera device plus the record
+   * button only (the record button IS the action). The ranked top-5 list,
+   * the on-video translation bar and auto-speak are not rendered; the
+   * predicted word reaches PracticeScreen through onPracticeResult. Same
+   * component and camera lifecycle - not a fork. Default "full".
+   */
+  variant?: "full" | "practice";
+  /** Practice mode: drives the "1 · Press Record → 2 · Sign it → 3 · Press Stop" chips. */
+  onRecordingStateChange?: (state: "idle" | "recording" | "classifying") => void;
+  /** Practice mode: "Try again" on the camera-error overlay. */
+  onRetry?: () => void;
+  /** Practice mode: shown to the right of the record button (PracticeScreen's feedback). */
+  practiceAside?: React.ReactNode;
 };
+
+export type CaptureMode = "auto" | "manual";
+
+// A classification is only shown (and spoken) at or above this ensemble
+// confidence, in both modes. Below it the screen shows nothing - no word, no
+// runner-up list - just a "not sure" status, and any previous result is
+// cleared so it can't be mistaken for the answer to the new sign. On the FSL
+// held-out signer, >= 40% answers 86% of signs at 82% accuracy, versus 76%
+// when answering everything: a wrong word displayed or spoken costs more
+// than a "try again". It's also the guard against movement that isn't a
+// sign at all - those rarely produce a confident match.
+const MIN_CONFIDENCE = 40;
+const AUTO_REPEAT_MS = 2500;
 
 export default function WordTranslatorScreen({
   targetLanguage,
@@ -67,6 +118,13 @@ export default function WordTranslatorScreen({
   createHolisticLandmarker,
   releaseLandmarker,
   language = "asl",
+  mode = "manual",
+  targetSign,
+  onPracticeResult,
+  variant = "full",
+  onRecordingStateChange,
+  onRetry,
+  practiceAside,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -97,6 +155,49 @@ export default function WordTranslatorScreen({
   const languageRef = useRef(language);
   languageRef.current = language;
 
+  // Read by loop(), which lives in the mount-once camera effect - so mode
+  // changes reach it without rebuilding the camera/landmarker.
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const segmenterRef = useRef(new SignSegmenter());
+  // Auto mode: a sign is in progress (drives the REC pill / "Reading sign").
+  const [segmentActive, setSegmentActive] = useState(false);
+  // A segment that finished while the previous one was still classifying.
+  // Only the latest is kept: a backlog of stale words is worse than a skip.
+  const pendingSegmentRef = useRef<Float32Array[] | null>(null);
+  const classifyingRef = useRef(false);
+  // Last word auto mode spoke, and when. Lowering the arm after a held sign
+  // occasionally reads as a second segment of the SAME word (see rearmMs in
+  // signSegmenter.ts); re-speaking it within AUTO_REPEAT_MS would sound like
+  // a stutter. Auto-only and time-limited: the Speak button always speaks,
+  // and deliberately signing a word twice with a pause still speaks twice.
+  const lastAutoSpokenRef = useRef<{ word: string; at: number } | null>(null);
+
+  const readyText = () =>
+    modeRef.current === "auto"
+      ? "Watching for signs - sign a word, then lower or still your hands."
+      : "Ready. Press Record, sign a word, press Stop.";
+
+  useEffect(() => {
+    segmenterRef.current.reset();
+    pendingSegmentRef.current = null;
+    setSegmentActive(false);
+    if (mode === "auto" && recordingRef.current) {
+      // Switched to Auto mid-recording: drop the manual clip.
+      recordingRef.current = false;
+      setRecording(false);
+      framesRef.current = [];
+      setFrameCount(0);
+    }
+    // Any idle/auto status ("Watching", "Reading sign", "Not sure", "Too
+    // brief") belongs to the old mode; only a classification in flight or a
+    // load/camera status should survive the switch.
+    setStatus((s) =>
+      classifyingRef.current || /^(Loading|Camera ready|ERROR|Word model load failed)/.test(s) ? s : readyText()
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
   // Start the selected language's ensemble downloading, but do NOT await it
   // in setup(): the models are tens of MB and the camera has no dependency on
   // them, so awaiting meant a black camera panel for the entire download.
@@ -118,7 +219,7 @@ export default function WordTranslatorScreen({
         // Don't clobber a status the user is actively looking at (mid
         // record/classify); only upgrade the "still downloading" notice.
         setStatus((s) =>
-          s.startsWith("Camera ready") ? "Ready. Press Record, sign a word, press Stop." : s
+          s.startsWith("Camera ready") ? readyText() : s
         );
       })
       .catch((e: any) => {
@@ -176,7 +277,7 @@ export default function WordTranslatorScreen({
       setDetectorReady(true);
       setStatus(
         modelsReadyRef.current
-          ? "Ready. Press Record, sign a word, press Stop."
+          ? readyText()
           : "Camera ready - word models still downloading..."
       );
       loop();
@@ -290,7 +391,23 @@ export default function WordTranslatorScreen({
           }
         }
 
-        if (recordingRef.current) {
+        if (modeRef.current === "auto") {
+          const seg = segmenterRef.current;
+          const event = seg.push(landmarksToVector(result), performance.now());
+          if (event?.type === "start") {
+            setSegmentActive(true);
+            setStatus("Reading sign...");
+          } else if (event?.type === "end") {
+            setSegmentActive(false);
+            setFrameCount(event.frames.length);
+            autoClassifyRef.current(event.frames);
+          } else if (event?.type === "discard") {
+            setSegmentActive(false);
+            setFrameCount(0);
+            setStatus("Too brief to read as a sign - " + readyText().charAt(0).toLowerCase() + readyText().slice(1));
+          }
+          if (seg.isActive) setFrameCount(seg.length);
+        } else if (recordingRef.current) {
           framesRef.current.push(landmarksToVector(result));
           setFrameCount(framesRef.current.length);
         }
@@ -345,26 +462,60 @@ export default function WordTranslatorScreen({
       video.srcObject = stream;
       video.play().catch(() => {});
     }
-  }, [isDesktop]);
+  }, [isDesktop, variant]);
+
+  // Hands-free ("auto") counts a sign the segmenter is reading as recording.
+  const recordingState: "idle" | "recording" | "classifying" =
+    (mode === "auto" ? segmentActive : recording) ? "recording" : classifying ? "classifying" : "idle";
+  const onRecordingStateChangeRef = useRef(onRecordingStateChange);
+  onRecordingStateChangeRef.current = onRecordingStateChange;
+  useEffect(() => {
+    onRecordingStateChangeRef.current?.(recordingState);
+  }, [recordingState]);
 
   function drawLandmarks(ctx: any, canvas: any, result: any) {
-    const drawPoints = (points: any, color: string) => {
-      if (!points) return;
-      const list = Array.isArray(points[0]) ? points[0] : points;
-      ctx.fillStyle = color;
-      for (const lm of list) {
+    const unwrap = (points: any) =>
+      !points ? null : Array.isArray(points[0]) ? points[0] : points;
+
+    // Pose stays as discrete points - there is no single "pose skeleton" worth
+    // drawing here, and the arms are already implied by where the hands are.
+    const pose = unwrap(result.poseLandmarks);
+    if (pose) {
+      ctx.fillStyle = POSE_DOT;
+      for (const lm of pose) {
         ctx.beginPath();
         ctx.arc(lm.x * canvas.width, lm.y * canvas.height, 3, 0, 2 * Math.PI);
         ctx.fill();
       }
-    };
-    drawPoints(result.poseLandmarks, "#3BA3F2");
-    drawPoints(result.leftHandLandmarks, "#F2A93B");
-    drawPoints(result.rightHandLandmarks, "#F2A93B");
+    }
+
+    // Hands get the full bone skeleton, same renderer as the Fingerspelling
+    // overlay, so the two modes look like one product.
+    for (const hand of [unwrap(result.leftHandLandmarks), unwrap(result.rightHandLandmarks)]) {
+      if (hand) drawHandSkeleton(ctx, canvas, hand);
+    }
   }
 
-  async function classifyBuffer() {
-    const raw = framesRef.current;
+  // Auto mode: classify one finished segment, or park it if a classification
+  // is still running (only the newest parked segment survives - see
+  // pendingSegmentRef). Called from loop() through autoClassifyRef so it
+  // always sees the current render's speak()/language, not the first one's.
+  async function autoClassify(frames: Float32Array[]) {
+    if (classifyingRef.current) {
+      pendingSegmentRef.current = frames;
+      return;
+    }
+    let next: Float32Array[] | null = frames;
+    while (next) {
+      pendingSegmentRef.current = null;
+      await classifyBuffer(next, true);
+      next = modeRef.current === "auto" ? pendingSegmentRef.current : null;
+    }
+  }
+  const autoClassifyRef = useRef(autoClassify);
+  autoClassifyRef.current = autoClassify;
+
+  async function classifyBuffer(raw: Float32Array[] = framesRef.current, auto = false) {
     if (raw.length < 3) {
       setStatus("Too few frames captured - try signing a bit longer.");
       setPredictions([]);
@@ -372,12 +523,18 @@ export default function WordTranslatorScreen({
       return;
     }
 
+    classifyingRef.current = true;
     setClassifying(true);
     setStatus("Classifying...");
     const lang = languageRef.current;
-    // FSL was trained on clips trimmed to the hand-active span (see
-    // trimToHandSpan); ASL on whole clips, so it gets the buffer as-is.
-    const clip = lang === "fsl" ? trimToHandSpan(raw) : raw;
+    // In auto mode the next sign may already be under way by the time this
+    // one finishes scoring; don't stomp its "Reading sign..." status.
+    const settle = (text: string) => {
+      if (!(auto && segmenterRef.current.isActive)) setStatus(text);
+    };
+    // Both word models score clips trimmed to the hand-active span (see
+    // trimToHandSpan), so the sign fills the same 40 frames as in training.
+    const clip = trimToHandSpan(raw, lang === "fsl" ? TRIM_MARGIN : ASL_TRIM_MARGIN);
     const resampled = resampleSequence(clip, SEQUENCE_LENGTH);
     const normalized = normalizeSequence(resampled);
 
@@ -389,31 +546,17 @@ export default function WordTranslatorScreen({
       flat.set(frame, i * MODEL_FEATURES_PER_FRAME)
     );
 
-    const { models, classes } = await loadWordModels(lang);
-    const inputTensor = tf.tensor3d(flat, [1, SEQUENCE_LENGTH, MODEL_FEATURES_PER_FRAME]);
-
+    let inputTensor: tf.Tensor3D | null = null;
     try {
-      // Run models one at a time, NOT via Promise.all. The GRU layers compile
-      // to a TF control-flow "while" loop in the converted graph, and running
-      // multiple executeAsync() calls concurrently against that dynamic graph
-      // (even on separate model instances) races over shared engine/backend
-      // state and disposes tensors still in use by another in-flight call
-      // ("Tensor is disposed"). Sequential awaits avoid the race entirely.
-      const allProbs: number[][] = [];
-      for (const m of models) {
-        const out = await (m as any).executeAsync(inputTensor);
-        const outTensor = Array.isArray(out) ? out[0] : out;
-        const data = await outTensor.data();
-        if (Array.isArray(out)) out.forEach((t: any) => t.dispose());
-        else outTensor.dispose();
-        allProbs.push(Array.from(data) as number[]);
-      }
+      const { model, classes } = await loadWordModels(lang);
+      inputTensor = tf.tensor3d(flat, [1, SEQUENCE_LENGTH, MODEL_FEATURES_PER_FRAME]);
 
-      const numClasses = allProbs[0].length;
-      const avgProbs = new Array(numClasses).fill(0);
-      for (const probs of allProbs) {
-        for (let i = 0; i < numClasses; i++) avgProbs[i] += probs[i] / allProbs.length;
-      }
+      // One fused graph returns the seed ensemble's averaged probabilities
+      // (see modelLoader.ts). It has no control flow, so the synchronous
+      // execute() is safe; data() still awaits the GPU without blocking.
+      const outTensor = model.execute(inputTensor) as tf.Tensor;
+      const avgProbs = Array.from(await outTensor.data());
+      outTensor.dispose();
 
       const ranked = avgProbs
         .map((p, i) => ({ word: classes[i] ?? "?", confidence: p * 100 }))
@@ -423,18 +566,53 @@ export default function WordTranslatorScreen({
       // Language switched while this was scoring: the old vocabulary's
       // matches would show (and be spoken) under the new language's toggle.
       if (languageRef.current !== lang) {
-        setStatus("Ready. Press Record, sign a word, press Stop.");
+        settle(readyText());
         return;
       }
 
+      if (targetSign && onPracticeResult) {
+        const targetIndex = classes.indexOf(targetSign);
+        const targetConfidence = targetIndex >= 0 ? avgProbs[targetIndex] : 0;
+        const top = ranked[0];
+        onPracticeResult({
+          passed: !!top && top.word === targetSign && targetConfidence >= PASS_CONFIDENCE,
+          confidence: targetConfidence,
+          predicted: top && top.confidence >= MIN_CONFIDENCE ? top.word : null,
+        });
+      }
+
+      if (ranked.length === 0 || ranked[0].confidence < MIN_CONFIDENCE) {
+        // Unsure: display nothing and say nothing (see MIN_CONFIDENCE). The
+        // previous word and its translation are cleared too, so they can't
+        // read as the answer to this sign.
+        setPredictions([]);
+        resetSpeech();
+        settle(
+          auto
+            ? "Not sure what that was - try the sign again."
+            : "Not sure what that was - press Record and try again."
+        );
+        return;
+      }
       setPredictions(ranked);
-      setStatus("Ready. Press Record, sign a word, press Stop.");
+      settle(readyText());
+      if (auto) {
+        const now = performance.now();
+        const last = lastAutoSpokenRef.current;
+        if (last && last.word === ranked[0].word && now - last.at < AUTO_REPEAT_MS) return;
+        lastAutoSpokenRef.current = { word: ranked[0].word, at: now };
+      }
       // Automatic, immediate: the moment a sign is recognized it gets
       // translated (and spoken) in the standing target language, right where
       // the top prediction is computed - no separate "Translate" trigger.
-      if (ranked.length > 0) speak(ranked[0].word);
+      // Not in practice: there the result is feedback, not a translation, and
+      // saying a misrecognised word aloud would read as a verdict.
+      if (variant !== "practice") speak(ranked[0].word);
+    } catch (e: any) {
+      settle(`Classification failed: ${e?.message ?? e}`);
     } finally {
-      inputTensor.dispose();
+      inputTensor?.dispose();
+      classifyingRef.current = false;
       setClassifying(false);
     }
   }
@@ -460,11 +638,14 @@ export default function WordTranslatorScreen({
   // buffered clip and the ranked matches, returning the bay to its empty
   // state. No backspace equivalent on Words - nothing accumulates.
   function handleClear() {
+    segmenterRef.current.reset();
+    pendingSegmentRef.current = null;
+    setSegmentActive(false);
     framesRef.current = [];
     setFrameCount(0);
     setPredictions([]);
     resetSpeech();
-    setStatus("Ready. Press Record, sign a word, press Stop.");
+    setStatus(readyText());
   }
 
   if (Platform.OS !== "web") {
@@ -478,6 +659,16 @@ export default function WordTranslatorScreen({
     );
   }
 
+  const isAuto = mode === "auto";
+  // "Capturing" = frames are being gathered for a classification: a manual
+  // recording, or in auto mode a sign the segmenter is currently reading.
+  const capturing = isAuto ? segmentActive : recording;
+  const emptyText = isAuto
+    ? "No sign yet - sign a word and the top 5 matches appear here."
+    : "No prediction yet - record a sign to see the top 5 matches here.";
+  const recordTitle = isAuto
+    ? segmentActive ? "Reading sign" : classifying ? "Classifying" : "Hands-free"
+    : recording ? "Recording" : classifying ? "Classifying" : "Ready to record";
   const visibleRanks = isDesktop ? predictions : predictions.slice(0, 4);
   const top = predictions[0];
   const spokenLine = speechStatus === "translating" ? "Translating..." : translatedText || top?.word;
@@ -499,7 +690,7 @@ export default function WordTranslatorScreen({
 
       {!top ? (
         <Text style={[typography.bodySm, styles.emptyMatches]}>
-          No prediction yet - record a sign to see the top 5 matches here.
+          {emptyText}
         </Text>
       ) : (
         <>
@@ -577,52 +768,56 @@ export default function WordTranslatorScreen({
     </GlassCard>
   );
 
-  const recordingPanel = (
-    <GlassCard radius={22} padding={isDesktop ? 18 : 16} contentStyle={styles.recordingContent} style={isDesktop ? styles.recordingPanelDesktop : undefined}>
-      <Pressable
-        onPress={toggleRecording}
-        disabled={!recording && !detectorReady}
-        accessibilityRole="button"
-        accessibilityLabel={recording ? "Stop recording" : "Start recording"}
-        style={[styles.recordBezel, { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize }, !recording && !detectorReady && styles.recordDisabled]}
+  const recordButton = (
+    <Pressable
+      onPress={toggleRecording}
+      disabled={isAuto || (!recording && !detectorReady)}
+      accessibilityRole="button"
+      accessibilityLabel={isAuto ? "Hands-free: signs are detected automatically" : recording ? "Stop recording" : "Start recording"}
+      style={[styles.recordBezel, { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize }, ((isAuto && !capturing) || (!recording && !detectorReady)) && styles.recordDisabled]}
+    >
+      <LinearGradient
+        colors={["#3A414F", "#1A1E26"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.6, y: 1 }}
+        style={[
+          styles.recordBezelFill,
+          { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize },
+        ]}
       >
         <LinearGradient
-          colors={["#3A414F", "#1A1E26"]}
+          colors={["#E0525F", "#A8303C"]}
           start={{ x: 0, y: 0 }}
-          end={{ x: 0.6, y: 1 }}
+          end={{ x: 0, y: 1 }}
           style={[
-            styles.recordBezelFill,
-            { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize },
+            styles.recordCap,
+            { width: recordCapSize, height: recordCapSize, borderRadius: recordCapSize },
           ]}
         >
-          <LinearGradient
-            colors={["#E0525F", "#A8303C"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={[
-              styles.recordCap,
-              { width: recordCapSize, height: recordCapSize, borderRadius: recordCapSize },
-            ]}
-          >
-            {recording ? (
-              <View style={{ width: glyphSize, height: glyphSize, borderRadius: 5, backgroundColor: "#FFFFFF" }} />
-            ) : (
-              <View
-                style={{
-                  width: glyphSize,
-                  height: glyphSize,
-                  borderRadius: glyphSize,
-                  backgroundColor: "#FFFFFF",
-                }}
-              />
-            )}
-          </LinearGradient>
+          {capturing ? (
+            <View style={{ width: glyphSize, height: glyphSize, borderRadius: 5, backgroundColor: "#FFFFFF" }} />
+          ) : (
+            <View
+              style={{
+                width: glyphSize,
+                height: glyphSize,
+                borderRadius: glyphSize,
+                backgroundColor: "#FFFFFF",
+              }}
+            />
+          )}
         </LinearGradient>
-      </Pressable>
+      </LinearGradient>
+    </Pressable>
+  );
+
+  const recordingPanel = (
+    <GlassCard radius={22} padding={isDesktop ? 18 : 16} contentStyle={styles.recordingContent} style={isDesktop ? styles.recordingPanelDesktop : undefined}>
+      {recordButton}
 
       <View style={styles.recordTextBlock}>
         <Text style={[typography.h3, { fontSize: 17, color: colors.textPrimary }]}>
-          {recording ? "Recording" : classifying ? "Classifying" : "Ready to record"}
+          {recordTitle}
         </Text>
         <Text style={[typography.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>
           {recording ? "Hold the sign steady. Tap again to classify." : status}
@@ -631,8 +826,8 @@ export default function WordTranslatorScreen({
           {Array.from({ length: meterBarCount }).map((_, i) => {
             const height = 30 + ((i * 37) % 71); // deterministic 30-100% spread
             const isActive = i < activeBars;
-            const isCurrent = recording && i === activeBars - 1;
-            const isMarker = !recording && i === Math.floor(meterBarCount * 0.6);
+            const isCurrent = capturing && i === activeBars - 1;
+            const isMarker = !capturing && i === Math.floor(meterBarCount * 0.6);
             const barColor = isCurrent
               ? colors.needsPractice
               : isMarker
@@ -664,7 +859,7 @@ export default function WordTranslatorScreen({
   // on-video translation bar below is mobile-only now (unaffected screen).
   const cameraOverlays = (
     <>
-      {recording && (
+      {capturing && (
         <GlassCard
           overVideo
           radius={999}
@@ -673,9 +868,11 @@ export default function WordTranslatorScreen({
           contentStyle={styles.recPillContent}
         >
           <View style={styles.recDot} />
-          <Text style={[typography.labelSm, { color: "#FFFFFF" }]}>REC</Text>
+          <Text style={[typography.labelSm, { color: "#FFFFFF" }]}>{isAuto ? "READING" : "REC"}</Text>
           <Text style={[typography.caption, { fontSize: 11, color: "rgba(255,255,255,0.72)" }]}>
-            {isDesktop ? `${frameCount} / ${frameTarget} frames` : `${frameCount}/${frameTarget}`}
+            {isAuto
+              ? `${frameCount} frames`
+              : isDesktop ? `${frameCount} / ${frameTarget} frames` : `${frameCount}/${frameTarget}`}
           </Text>
         </GlassCard>
       )}
@@ -719,6 +916,65 @@ export default function WordTranslatorScreen({
     </>
   );
 
+  if (variant === "practice") {
+    const cameraError = status.startsWith("ERROR") || /failed/i.test(status);
+    const cameraReady = detectorReady;
+    return (
+      <View style={styles.practiceRoot}>
+        <CameraDevice
+          isDesktop
+          videoRef={videoRef}
+          canvasRef={canvasRef}
+          ledColor={cameraError || capturing ? colors.needsPractice : cameraReady ? colors.success : colors.accentCoral}
+          statusText={cameraError ? "CAMERA OFF" : !cameraReady ? "STARTING" : capturing ? `REC · ${frameCount} FRAMES` : classifying ? "CHECKING" : "READY"}
+          overlays={
+            <>
+              <PracticeCameraOverlay phase={cameraError ? "error" : cameraReady ? "live" : "loading"} recording={capturing} onRetry={onRetry} />
+              {capturing && (
+                <GlassCard overVideo radius={999} padding={0} style={[styles.recPill, styles.recPillDesktop]} contentStyle={styles.recPillContent}>
+                  <View style={styles.recDot} />
+                  <Text style={[typography.labelSm, { color: "#FFFFFF" }]}>REC</Text>
+                </GlassCard>
+              )}
+            </>
+          }
+          style={styles.practiceCamera}
+        />
+        <View style={[styles.practiceBottom, practiceAside ? { height: 120 } : null]}>
+        <GlassCard radius={22} padding={12} style={practiceAside ? styles.practiceRecordCard : undefined} contentStyle={styles.practiceRecordRow}>
+          {isAuto ? (
+            // Hands-free: no button - the segmenter starts and stops on its own.
+            <View
+              style={[
+                styles.handsFreeDot,
+                { backgroundColor: capturing ? "rgba(242,178,62,0.18)" : classifying ? "rgba(124,108,245,0.18)" : colors.neuWell },
+              ]}
+              accessibilityLabel={capturing ? "Reading your sign" : "Hands-free, watching"}
+            >
+              <View style={[styles.handsFreeCore, { backgroundColor: capturing ? colors.accentCoral : classifying ? colors.primaryTealLight : colors.success }]} />
+            </View>
+          ) : (
+            recordButton
+          )}
+          <View style={styles.recordTextBlock}>
+            <Text style={[typography.h3, { color: colors.textPrimary }]}>
+              {isAuto
+                ? capturing ? "Reading your sign…" : classifying ? "Checking…" : "Hands-free"
+                : recording ? "Recording…" : classifying ? "Checking…" : "Record"}
+            </Text>
+            <Text style={[typography.bodySm, { fontSize: 14, lineHeight: 19, color: colors.textSecondary }]}>
+              {isAuto
+                ? "Just sign. Pause when you finish."
+                : recording ? "Sign it, then press Stop." : "Press, sign, press again."}
+            </Text>
+          </View>
+        </GlassCard>
+        {practiceAside ? <View style={styles.practiceAside}>{practiceAside}</View> : null}
+        </View>
+      </View>
+    );
+  }
+
   if (isDesktop) {
     const translationTag =
       speechStatus === "translating" ? "translating…" : speechStatus === "speaking" ? "speaking…" : "ready";
@@ -734,7 +990,7 @@ export default function WordTranslatorScreen({
 
         {!top ? (
           <Text style={[typography.bodySm, styles.emptyMatches]}>
-            No prediction yet - record a sign to see the top 5 matches here.
+            {emptyText}
           </Text>
         ) : (
           <>
@@ -810,10 +1066,10 @@ export default function WordTranslatorScreen({
       <View style={styles.recordingCell}>
         <Pressable
           onPress={toggleRecording}
-          disabled={!recording && !detectorReady}
+          disabled={isAuto || (!recording && !detectorReady)}
           accessibilityRole="button"
-          accessibilityLabel={recording ? "Stop recording" : "Start recording"}
-          style={[styles.recordBezel, { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize }, !recording && !detectorReady && styles.recordDisabled]}
+          accessibilityLabel={isAuto ? "Hands-free: signs are detected automatically" : recording ? "Stop recording" : "Start recording"}
+          style={[styles.recordBezel, { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize }, ((isAuto && !capturing) || (!recording && !detectorReady)) && styles.recordDisabled]}
         >
           <LinearGradient
             colors={["#3A414F", "#1A1E26"]}
@@ -827,7 +1083,7 @@ export default function WordTranslatorScreen({
               end={{ x: 0, y: 1 }}
               style={[styles.recordCap, { width: recordCapSize, height: recordCapSize, borderRadius: recordCapSize }]}
             >
-              {recording ? (
+              {capturing ? (
                 <View style={{ width: glyphSize, height: glyphSize, borderRadius: 5, backgroundColor: "#FFFFFF" }} />
               ) : (
                 <View style={{ width: glyphSize, height: glyphSize, borderRadius: glyphSize, backgroundColor: "#FFFFFF" }} />
@@ -838,7 +1094,7 @@ export default function WordTranslatorScreen({
 
         <View style={styles.recordTextBlock}>
           <Text style={[typography.h3, { fontSize: 16, color: colors.textPrimary }]}>
-            {recording ? "Recording" : classifying ? "Classifying" : "Ready to record"}
+            {recordTitle}
           </Text>
           <Text style={styles.recordSubtitle} numberOfLines={1}>
             {recording ? "Tap again to classify." : status}
@@ -847,8 +1103,8 @@ export default function WordTranslatorScreen({
             {Array.from({ length: meterBarCount }).map((_, i) => {
               const height = 30 + ((i * 37) % 71);
               const isActive = i < activeBars;
-              const isCurrent = recording && i === activeBars - 1;
-              const isMarker = !recording && i === Math.floor(meterBarCount * 0.6);
+              const isCurrent = capturing && i === activeBars - 1;
+              const isMarker = !capturing && i === Math.floor(meterBarCount * 0.6);
               const barColor = isCurrent
                 ? colors.needsPractice
                 : isMarker
@@ -902,9 +1158,11 @@ export default function WordTranslatorScreen({
               isDesktop
               videoRef={videoRef}
               canvasRef={canvasRef}
-              ledColor={recording ? colors.needsPractice : colors.success}
+              ledColor={capturing ? colors.needsPractice : colors.success}
               statusText={
-                recording || classifying ? `CLASSIFYING · ${frameCount} FRAMES BUFFERED` : "30 FPS · MODEL READY"
+                capturing || classifying
+                  ? `CLASSIFYING · ${frameCount} FRAMES BUFFERED`
+                  : isAuto ? "HANDS-FREE · WATCHING" : "30 FPS · MODEL READY"
               }
               overlays={cameraOverlays}
               style={styles.cameraDesktopSize}
@@ -913,7 +1171,11 @@ export default function WordTranslatorScreen({
           bay2={bay2}
           translationText={top ? spokenLine ?? "—" : "—"}
           statusLabel={`${languageName} · ${translationTag}`}
-          helperText="Record a sign, hold it steady, then stop to classify. Clear discards the clip and the ranked matches."
+          helperText={
+            isAuto
+              ? "Hands-free: sign a word, then lower or still your hands - it's read and spoken automatically. If the model isn't confident, nothing is shown - just sign it again."
+              : "Record a sign, hold it steady, then stop to classify. If the model isn't confident, nothing is shown. Clear discards the clip and the ranked matches."
+          }
           onSpeak={() => top && speak(top.word)}
           speakDisabled={!top}
           actionsRow={actionsRow}
@@ -930,9 +1192,11 @@ export default function WordTranslatorScreen({
         isDesktop={false}
         videoRef={videoRef}
         canvasRef={canvasRef}
-        ledColor={recording ? colors.needsPractice : colors.success}
+        ledColor={capturing ? colors.needsPractice : colors.success}
         statusText={
-          recording || classifying ? `CLASSIFYING · ${frameCount} FRAMES BUFFERED` : "30 FPS · MODEL READY"
+          capturing || classifying
+                  ? `CLASSIFYING · ${frameCount} FRAMES BUFFERED`
+                  : isAuto ? "HANDS-FREE · WATCHING" : "30 FPS · MODEL READY"
         }
         mobileScreenHeight={282}
         overlays={cameraOverlays}
@@ -953,6 +1217,33 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     minHeight: 0,
+  },
+  // Practice variant: camera fills the box PracticeScreen gives it, record row below.
+  practiceRoot: {
+    flex: 1,
+    minHeight: 0,
+    minWidth: 0,
+    gap: 14,
+  },
+  practiceCamera: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+  },
+  practiceBottom: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 14,
+  },
+  practiceRecordCard: { width: 280, flexShrink: 0 },
+  handsFreeDot: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  handsFreeCore: { width: 22, height: 22, borderRadius: 11 },
+  practiceAside: { flex: 1, minWidth: 0 },
+  practiceRecordRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
   },
   // Desktop root: fills the hub's body. Must STRETCH (not shrink-center) so
   // TranslatorPanel's own onLayout measurement of this space is accurate -

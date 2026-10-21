@@ -42,6 +42,13 @@ type Props = {
   speakDisabled?: boolean;
   actionsRow: React.ReactNode;
   stripCells: [React.ReactNode, React.ReactNode, React.ReactNode];
+  /** Shown in place of the translation while it's empty (instead of a bare dash). */
+  placeholder?: string;
+  /** Replaces the helper paragraph (e.g. a short step-by-step guide). */
+  helperContent?: React.ReactNode;
+  /** Speak button label/icon override (e.g. "Speaking…" while audio plays). */
+  speakLabel?: string;
+  speakIcon?: React.ReactNode;
 };
 
 export default function TranslatorPanel({
@@ -54,6 +61,10 @@ export default function TranslatorPanel({
   speakDisabled = false,
   actionsRow,
   stripCells,
+  placeholder,
+  helperContent,
+  speakLabel,
+  speakIcon,
 }: Props) {
   const [container, setContainer] = useState({ width: 0, height: 0 });
 
@@ -90,11 +101,15 @@ export default function TranslatorPanel({
                   <Text style={[typography.meta, styles.eyebrow]}>TRANSLATION</Text>
                   <Text style={styles.statusLabel}>{statusLabel}</Text>
                 </View>
-                <Text style={styles.translationText} numberOfLines={1}>
-                  {translationText}
-                </Text>
+                {translationText || !placeholder ? (
+                  <Text style={styles.translationText} numberOfLines={1} adjustsFontSizeToFit>
+                    {translationText}
+                  </Text>
+                ) : (
+                  <Text style={styles.placeholderText}>{placeholder}</Text>
+                )}
                 <View style={styles.bay3Rule} />
-                <Text style={styles.helperText}>{helperText}</Text>
+                {helperContent ?? <Text style={styles.helperText}>{helperText}</Text>}
 
                 <View style={styles.bay3Bottom}>
                   <Pressable
@@ -104,8 +119,8 @@ export default function TranslatorPanel({
                     accessibilityLabel="Speak the translation"
                     style={[styles.speakButton, speakDisabled && styles.speakButtonDisabled]}
                   >
-                    <PlayIcon size={15} color={colors.textOnAccent} />
-                    <Text style={styles.speakLabel}>Speak it</Text>
+                    {speakIcon ?? <PlayIcon size={15} color={colors.textOnAccent} />}
+                    <Text style={styles.speakLabel}>{speakLabel ?? "Speak it"}</Text>
                   </Pressable>
                   {actionsRow}
                 </View>
@@ -192,13 +207,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  // Brighter than textTertiary (2.8:1) - labels have to be readable, not
+  // decorative, for someone relying entirely on the screen.
   eyebrow: {
-    color: colors.textTertiary,
+    color: colors.textSecondary,
   },
   statusLabel: {
     fontFamily: typography.body.fontFamily,
-    fontSize: 10,
-    color: colors.textTertiary,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  placeholderText: {
+    fontFamily: typography.body.fontFamily,
+    fontSize: 20,
+    lineHeight: 28,
+    color: colors.textSecondary,
+    marginTop: 14,
   },
   translationText: {
     ...typography.hero,

@@ -134,13 +134,18 @@ const videoStyle: any = {
   transform: "scaleX(-1)",
 };
 
+// The canvas must be fitted exactly like the <video> (object-fit: cover):
+// when the screen box isn't the camera's 4:3, the video is cropped to fill
+// it, and a stretched canvas would draw the skeleton off the real hand.
 const canvasStyle: any = {
   position: "absolute",
   top: 0,
   left: 0,
   width: "100%",
   height: "100%",
+  objectFit: "cover",
   transform: "scaleX(-1)",
+  pointerEvents: "none",
 };
 
 const styles = StyleSheet.create({

@@ -78,23 +78,24 @@ export function getLabelCount() {
   return alphabetCache.letters?.classes?.length ?? 0;
 }
 
-// --- Word-level sequence model (ensemble) ---------------------------------
-// Separate from the alphabet loader above: this loads several TF.js graph
-// models trained on different random seeds (see ml/scripts/train_word_
-// classifier.py) and their outputs are averaged at inference time, which
-// measurably beat any single model on the held-out test set (15.36% vs
-// 12.36% top-1 solo). Missing model slots are skipped rather than treated
-// as an error, so this still works if only some seeds have been deployed.
+// --- Word-level sequence model (fused ensemble) ---------------------------
+// Separate from the alphabet loader above. Each language's ensemble (4 seeds
+// of ml/scripts/train_word_classifier.py / train_fsl_classifier.py, whose
+// averaged output beats any single seed) ships as ONE graph that already
+// returns the seeds' averaged probabilities - see ml/scripts/
+// export_fused_word_ensemble.py. Converting the seeds one by one produced an
+// 83 MB, ~5,200-op graph per seed (unroll=True re-reads every GRU weight at
+// every timestep); fused, the whole ensemble is ~9 MB and ~1,100 ops, and a
+// classification is ~8x faster on WebGL.
 //
-// One ensemble per sign language: ASL (ml/scripts/train_word_classifier.py)
-// and FSL (train_fsl_classifier.py, FSL-105 vocabulary). Same feature
-// layout and architecture, different vocabularies, so each is cached under
-// its own key and the Words screen can swap between them without touching
-// the camera or the landmarker.
+// One model per sign language: ASL and FSL (FSL-105 vocabulary). Same
+// feature layout and architecture, different vocabularies, so each is
+// cached under its own key and the Words screen can swap between them
+// without touching the camera or the landmarker.
 
 export type SignLanguage = "asl" | "fsl";
 
-export type LoadedWordModels = { models: any[]; classes: string[] };
+export type LoadedWordModels = { model: any; classes: string[] };
 
 const WORD_MODEL_WEB_DIR: Record<SignLanguage, string> = {
   asl: "/word-model",
@@ -113,7 +114,8 @@ const WORD_MODEL_WEB_DIR: Record<SignLanguage, string> = {
 // Letters too after switching back. This fetch reads each body to the end
 // before handing it to TF.js, so a socket frees up as soon as its shard is
 // in, and caps concurrent shard downloads so a couple of sockets always stay
-// free for the rest of the page.
+// free for the rest of the page. (The fused models are only 3 shards, but
+// keep this so a larger model can never bring the deadlock back.)
 const MAX_CONCURRENT_WEIGHT_FETCHES = 4;
 let activeWeightFetches = 0;
 const waitingWeightFetches: Array<() => void> = [];
@@ -135,8 +137,6 @@ async function drainingFetch(input: RequestInfo | URL, init?: RequestInit): Prom
     else activeWeightFetches--;
   }
 }
-
-const WORD_MODEL_SLOTS = ["model0", "model1", "model2", "model3"];
 
 // The in-flight load is cached, not just its result: a second Words mount
 // or an early Record->Stop must join the download already under way rather
@@ -175,24 +175,22 @@ async function fetchWordModels(language: SignLanguage): Promise<LoadedWordModels
   }
   const classes: string[] = await res.json();
 
-  const models = [];
-  for (const slot of WORD_MODEL_SLOTS) {
-    const path = `${dir}/${slot}/model.json`;
-    try {
-      const check = await fetch(path, { method: "HEAD" });
-      if (!check.ok) continue;
-      models.push(await tf.loadGraphModel(path, { fetchFunc: drainingFetch }));
-    } catch (e) {
-      // Model slot not deployed - skip, ensemble just uses whichever exist.
-    }
-  }
-
-  if (models.length === 0) {
+  let model;
+  try {
+    model = await tf.loadGraphModel(`${dir}/model0/model.json`, { fetchFunc: drainingFetch });
+  } catch (e: any) {
     throw new Error(
-      `No word models found under ${dir}/. Deploy at least ` +
-        `public${dir}/model0/ (see FSL_MODEL_GUIDE.md / the training scripts).`
+      `No word model found at public${dir}/model0/ (${e?.message ?? e}) - export it with ` +
+        `ml/scripts/export_fused_word_ensemble.py and convert it (see that script).`
     );
   }
 
-  return { models, classes };
+  // Warm-up: WebGL compiles a shader for every op the first time it runs,
+  // which made the user's FIRST sign take ~6-7 s to classify. Pay that here,
+  // while the screen still says the models are loading, instead.
+  const warm = tf.tidy(() => model.execute(tf.zeros(model.inputs[0].shape as number[])) as tf.Tensor);
+  await warm.data();
+  warm.dispose();
+
+  return { model, classes };
 }

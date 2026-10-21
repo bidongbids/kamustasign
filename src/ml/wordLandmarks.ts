@@ -103,14 +103,22 @@ export function resampleSequence(
 
 /** Frames kept either side of the hand-active span (~0.1 s at 30 fps). */
 export const TRIM_MARGIN = 3;
+// ASL is trimmed with no margin: the new dataset's training clips start and
+// end with hands up, so a handless margin frame would mark a recording as
+// "not from that dataset" (see TRIM_MARGIN in consolidate_combined_words.py).
+export const ASL_TRIM_MARGIN = 0;
 
 // Cut a raw recording down to the frames from the first to the last one with
 // any hand detected, plus `margin` frames each side. Mirrors hand_span() in
-// ml/scripts/consolidate_fsl_landmarks.py: the FSL model was trained on clips
-// trimmed this way (FSL-105 clips are mostly idle, hands below the frame), so
-// its input must be trimmed the same way before resampling or the sign lands
-// on a different timescale than training. A recording with no hand at all is
-// returned unchanged. Not applied to ASL, whose training clips were untrimmed.
+// ml/scripts/consolidate_fsl_landmarks.py: both word models score clips
+// trimmed this way, so input must be trimmed the same way before resampling
+// or the sign lands on a different timescale than training. FSL-105 clips
+// are mostly idle, hands below the frame. For ASL, the new dataset's clips
+// are already cut to the signing while ours had rest at both ends, so an
+// untrimmed webcam recording looked like "one of our clips" and the model
+// leaned toward our 133 words (trimming took the new words recognised from
+// webcam clips from 44 to 77 of 211). A recording with no hand at all is
+// returned unchanged.
 export function trimToHandSpan(
   frames: Float32Array[],
   margin: number = TRIM_MARGIN

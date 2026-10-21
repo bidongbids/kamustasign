@@ -1,0 +1,2756 @@
+{
+  "asl/letters/A": {
+    "type": "image",
+    "uri": "/reference/asl-letters/A.jpg",
+    "credit": "asl-alphabet",
+    "source": "A/A521.jpg"
+  },
+  "asl/letters/B": {
+    "type": "image",
+    "uri": "/reference/asl-letters/B.jpg",
+    "credit": "asl-alphabet",
+    "source": "B/B1467.jpg"
+  },
+  "asl/letters/C": {
+    "type": "image",
+    "uri": "/reference/asl-letters/C.jpg",
+    "credit": "asl-alphabet",
+    "source": "C/C611.jpg"
+  },
+  "asl/letters/D": {
+    "type": "image",
+    "uri": "/reference/asl-letters/D.jpg",
+    "credit": "asl-alphabet",
+    "source": "D/D1962.jpg"
+  },
+  "asl/letters/E": {
+    "type": "image",
+    "uri": "/reference/asl-letters/E.jpg",
+    "credit": "asl-alphabet",
+    "source": "E/E1179.jpg"
+  },
+  "asl/letters/F": {
+    "type": "image",
+    "uri": "/reference/asl-letters/F.jpg",
+    "credit": "asl-alphabet",
+    "source": "F/F1638.jpg"
+  },
+  "asl/letters/G": {
+    "type": "image",
+    "uri": "/reference/asl-letters/G.jpg",
+    "credit": "asl-alphabet",
+    "source": "G/G1485.jpg"
+  },
+  "asl/letters/H": {
+    "type": "image",
+    "uri": "/reference/asl-letters/H.jpg",
+    "credit": "asl-alphabet",
+    "source": "H/H1278.jpg"
+  },
+  "asl/letters/I": {
+    "type": "image",
+    "uri": "/reference/asl-letters/I.jpg",
+    "credit": "asl-alphabet",
+    "source": "I/I1340.jpg"
+  },
+  "asl/letters/J": {
+    "type": "image",
+    "uri": "/reference/asl-letters/J.jpg",
+    "credit": "asl-alphabet",
+    "source": "J/J1278.jpg"
+  },
+  "asl/letters/K": {
+    "type": "image",
+    "uri": "/reference/asl-letters/K.jpg",
+    "credit": "asl-alphabet",
+    "source": "K/K1052.jpg"
+  },
+  "asl/letters/L": {
+    "type": "image",
+    "uri": "/reference/asl-letters/L.jpg",
+    "credit": "asl-alphabet",
+    "source": "L/L1638.jpg"
+  },
+  "asl/letters/M": {
+    "type": "image",
+    "uri": "/reference/asl-letters/M.jpg",
+    "credit": "asl-alphabet",
+    "source": "M/M1746.jpg"
+  },
+  "asl/letters/N": {
+    "type": "image",
+    "uri": "/reference/asl-letters/N.jpg",
+    "credit": "asl-alphabet",
+    "source": "N/N1151.jpg"
+  },
+  "asl/letters/O": {
+    "type": "image",
+    "uri": "/reference/asl-letters/O.jpg",
+    "credit": "asl-alphabet",
+    "source": "O/O1070.jpg"
+  },
+  "asl/letters/P": {
+    "type": "image",
+    "uri": "/reference/asl-letters/P.jpg",
+    "credit": "asl-alphabet",
+    "source": "P/P1962.jpg"
+  },
+  "asl/letters/Q": {
+    "type": "image",
+    "uri": "/reference/asl-letters/Q.jpg",
+    "credit": "asl-alphabet",
+    "source": "Q/Q1980.jpg"
+  },
+  "asl/letters/R": {
+    "type": "image",
+    "uri": "/reference/asl-letters/R.jpg",
+    "credit": "asl-alphabet",
+    "source": "R/R1656.jpg"
+  },
+  "asl/letters/S": {
+    "type": "image",
+    "uri": "/reference/asl-letters/S.jpg",
+    "credit": "asl-alphabet",
+    "source": "S/S1566.jpg"
+  },
+  "asl/letters/T": {
+    "type": "image",
+    "uri": "/reference/asl-letters/T.jpg",
+    "credit": "asl-alphabet",
+    "source": "T/T1917.jpg"
+  },
+  "asl/letters/U": {
+    "type": "image",
+    "uri": "/reference/asl-letters/U.jpg",
+    "credit": "asl-alphabet",
+    "source": "U/U1232.jpg"
+  },
+  "asl/letters/V": {
+    "type": "image",
+    "uri": "/reference/asl-letters/V.jpg",
+    "credit": "asl-alphabet",
+    "source": "V/V1610.jpg"
+  },
+  "asl/letters/W": {
+    "type": "image",
+    "uri": "/reference/asl-letters/W.jpg",
+    "credit": "asl-alphabet",
+    "source": "W/W1999.jpg"
+  },
+  "asl/letters/X": {
+    "type": "image",
+    "uri": "/reference/asl-letters/X.jpg",
+    "credit": "asl-alphabet",
+    "source": "X/X1980.jpg"
+  },
+  "asl/letters/Y": {
+    "type": "image",
+    "uri": "/reference/asl-letters/Y.jpg",
+    "credit": "asl-alphabet",
+    "source": "Y/Y1764.jpg"
+  },
+  "asl/letters/Z": {
+    "type": "image",
+    "uri": "/reference/asl-letters/Z.jpg",
+    "credit": "asl-alphabet",
+    "source": "Z/Z1890.jpg"
+  },
+  "asl/words/TV": {
+    "type": "video",
+    "uri": "/reference/asl-words/tv.mp4",
+    "credit": "asl-citizen",
+    "source": "tv/citizen_2524689648375804-TV.mp4"
+  },
+  "asl/words/accident": {
+    "type": "video",
+    "uri": "/reference/asl-words/accident.mp4",
+    "credit": "asl-citizen",
+    "source": "accident/citizen_20706644268783325-ACCIDENT.mp4"
+  },
+  "asl/words/add": {
+    "type": "video",
+    "uri": "/reference/asl-words/add.mp4",
+    "credit": "asl-citizen",
+    "source": "add/citizen_038452238067189004-ADD.mp4"
+  },
+  "asl/words/after": {
+    "type": "video",
+    "uri": "/reference/asl-words/after.mp4",
+    "credit": "asl-citizen",
+    "source": "after/citizen_12026210743939236-AFTER.mp4"
+  },
+  "asl/words/airplane": {
+    "type": "video",
+    "uri": "/reference/asl-words/airplane.mp4",
+    "credit": "asl-citizen",
+    "source": "airplane/citizen_18968990662795027-AIRPLANE.mp4"
+  },
+  "asl/words/all": {
+    "type": "video",
+    "uri": "/reference/asl-words/all.mp4",
+    "credit": "asl-citizen",
+    "source": "all/citizen_057126086628274564-ALL.mp4"
+  },
+  "asl/words/alligator": {
+    "type": "video",
+    "uri": "/reference/asl-words/alligator.mp4",
+    "credit": "wlasl",
+    "source": "alligator/02010.mp4"
+  },
+  "asl/words/alone": {
+    "type": "video",
+    "uri": "/reference/asl-words/alone.mp4",
+    "credit": "asl-citizen",
+    "source": "alone/citizen_09996243686090844-ALONE.mp4"
+  },
+  "asl/words/animal": {
+    "type": "video",
+    "uri": "/reference/asl-words/animal.mp4",
+    "credit": "asl-citizen",
+    "source": "animal/citizen_11940296372626724-ANIMAL.mp4"
+  },
+  "asl/words/another": {
+    "type": "video",
+    "uri": "/reference/asl-words/another.mp4",
+    "credit": "wlasl",
+    "source": "another/02699.mp4"
+  },
+  "asl/words/any": {
+    "type": "video",
+    "uri": "/reference/asl-words/any.mp4",
+    "credit": "asl-citizen",
+    "source": "any/citizen_11842735888140044-ANY.mp4"
+  },
+  "asl/words/apple": {
+    "type": "video",
+    "uri": "/reference/asl-words/apple.mp4",
+    "credit": "asl-citizen",
+    "source": "apple/citizen_06571173343741843-APPLE.mp4"
+  },
+  "asl/words/appointment": {
+    "type": "video",
+    "uri": "/reference/asl-words/appointment.mp4",
+    "credit": "asl-citizen",
+    "source": "appointment/citizen_17024194694285377-APPOINTMENT.mp4"
+  },
+  "asl/words/argue": {
+    "type": "video",
+    "uri": "/reference/asl-words/argue.mp4",
+    "credit": "asl-citizen",
+    "source": "argue/citizen_18834943246876978-ARGUE.mp4"
+  },
+  "asl/words/arm": {
+    "type": "video",
+    "uri": "/reference/asl-words/arm.mp4",
+    "credit": "wlasl",
+    "source": "arm/03337.mp4"
+  },
+  "asl/words/aunt": {
+    "type": "video",
+    "uri": "/reference/asl-words/aunt.mp4",
+    "credit": "asl-citizen",
+    "source": "aunt/citizen_012656572692498758-AUNT.mp4"
+  },
+  "asl/words/awake": {
+    "type": "video",
+    "uri": "/reference/asl-words/awake.mp4",
+    "credit": "asl-citizen",
+    "source": "awake/citizen_05830979721608753-AWAKE.mp4"
+  },
+  "asl/words/backyard": {
+    "type": "video",
+    "uri": "/reference/asl-words/backyard.mp4",
+    "credit": "asl-citizen",
+    "source": "backyard/citizen_25074232250606565-BACKYARD.mp4"
+  },
+  "asl/words/bad": {
+    "type": "video",
+    "uri": "/reference/asl-words/bad.mp4",
+    "credit": "asl-citizen",
+    "source": "bad/citizen_019466731254031755-BAD.mp4"
+  },
+  "asl/words/balance": {
+    "type": "video",
+    "uri": "/reference/asl-words/balance.mp4",
+    "credit": "asl-citizen",
+    "source": "balance/citizen_19629902767166008-BALANCE.mp4"
+  },
+  "asl/words/balloon": {
+    "type": "video",
+    "uri": "/reference/asl-words/balloon.mp4",
+    "credit": "asl-citizen",
+    "source": "balloon/citizen_1579489301535273-BALLOON.mp4"
+  },
+  "asl/words/bar": {
+    "type": "video",
+    "uri": "/reference/asl-words/bar.mp4",
+    "credit": "asl-citizen",
+    "source": "bar/citizen_2739086718850676-BAR.mp4"
+  },
+  "asl/words/basketball": {
+    "type": "video",
+    "uri": "/reference/asl-words/basketball.mp4",
+    "credit": "wlasl",
+    "source": "basketball/05234.mp4"
+  },
+  "asl/words/bath": {
+    "type": "video",
+    "uri": "/reference/asl-words/bath.mp4",
+    "credit": "asl-citizen",
+    "source": "bath/citizen_03931883221407073-BATH.mp4"
+  },
+  "asl/words/because": {
+    "type": "video",
+    "uri": "/reference/asl-words/because.mp4",
+    "credit": "asl-citizen",
+    "source": "because/citizen_11537897761751492-BECAUSE.mp4"
+  },
+  "asl/words/bed": {
+    "type": "video",
+    "uri": "/reference/asl-words/bed.mp4",
+    "credit": "wlasl",
+    "source": "bed/05631.mp4"
+  },
+  "asl/words/bedroom": {
+    "type": "video",
+    "uri": "/reference/asl-words/bedroom.mp4",
+    "credit": "asl-citizen",
+    "source": "bedroom/citizen_04181559183474581-BEDROOM.mp4"
+  },
+  "asl/words/bee": {
+    "type": "video",
+    "uri": "/reference/asl-words/bee.mp4",
+    "credit": "wlasl",
+    "source": "bee/05682.mp4"
+  },
+  "asl/words/before": {
+    "type": "video",
+    "uri": "/reference/asl-words/before.mp4",
+    "credit": "asl-citizen",
+    "source": "before/citizen_147667439674817-BEFORE.mp4"
+  },
+  "asl/words/beside": {
+    "type": "video",
+    "uri": "/reference/asl-words/beside.mp4",
+    "credit": "wlasl",
+    "source": "beside/06002.mp4"
+  },
+  "asl/words/better": {
+    "type": "video",
+    "uri": "/reference/asl-words/better.mp4",
+    "credit": "asl-citizen",
+    "source": "better/citizen_23314151865153954-BETTER.mp4"
+  },
+  "asl/words/big": {
+    "type": "video",
+    "uri": "/reference/asl-words/big.mp4",
+    "credit": "asl-citizen",
+    "source": "big/citizen_03884623593153802-BIG.mp4"
+  },
+  "asl/words/bird": {
+    "type": "video",
+    "uri": "/reference/asl-words/bird.mp4",
+    "credit": "asl-citizen",
+    "source": "bird/citizen_058506224158483056-BIRD.mp4"
+  },
+  "asl/words/black": {
+    "type": "video",
+    "uri": "/reference/asl-words/black.mp4",
+    "credit": "asl-citizen",
+    "source": "black/citizen_21793575059728565-BLACK.mp4"
+  },
+  "asl/words/blanket": {
+    "type": "video",
+    "uri": "/reference/asl-words/blanket.mp4",
+    "credit": "asl-citizen",
+    "source": "blanket/citizen_026396248381266085-BLANKET.mp4"
+  },
+  "asl/words/blow": {
+    "type": "video",
+    "uri": "/reference/asl-words/blow.mp4",
+    "credit": "asl-citizen",
+    "source": "blow/citizen_2969724708940531-BLOW.mp4"
+  },
+  "asl/words/blue": {
+    "type": "video",
+    "uri": "/reference/asl-words/blue.mp4",
+    "credit": "asl-citizen",
+    "source": "blue/citizen_09699208280508653-BLUE.mp4"
+  },
+  "asl/words/boat": {
+    "type": "video",
+    "uri": "/reference/asl-words/boat.mp4",
+    "credit": "asl-citizen",
+    "source": "boat/citizen_40396831272987344-BOAT.mp4"
+  },
+  "asl/words/book": {
+    "type": "video",
+    "uri": "/reference/asl-words/book.mp4",
+    "credit": "asl-citizen",
+    "source": "book/citizen_27449508901283615-BOOK.mp4"
+  },
+  "asl/words/bowling": {
+    "type": "video",
+    "uri": "/reference/asl-words/bowling.mp4",
+    "credit": "wlasl",
+    "source": "bowling/07397.mp4"
+  },
+  "asl/words/boy": {
+    "type": "video",
+    "uri": "/reference/asl-words/boy.mp4",
+    "credit": "asl-citizen",
+    "source": "boy/citizen_01147460965036129-BOY.mp4"
+  },
+  "asl/words/brother": {
+    "type": "video",
+    "uri": "/reference/asl-words/brother.mp4",
+    "credit": "asl-citizen",
+    "source": "brother/citizen_049689800905120096-seedBROTHER.mp4"
+  },
+  "asl/words/brown": {
+    "type": "video",
+    "uri": "/reference/asl-words/brown.mp4",
+    "credit": "asl-citizen",
+    "source": "brown/citizen_03131271844965133-BROWN.mp4"
+  },
+  "asl/words/bug": {
+    "type": "video",
+    "uri": "/reference/asl-words/bug.mp4",
+    "credit": "asl-citizen",
+    "source": "bug/citizen_05302661093854977-BUG.mp4"
+  },
+  "asl/words/bye": {
+    "type": "video",
+    "uri": "/reference/asl-words/bye.mp4",
+    "credit": "asl-citizen",
+    "source": "bye/citizen_2223181186410932-BYE.mp4"
+  },
+  "asl/words/call": {
+    "type": "video",
+    "uri": "/reference/asl-words/call.mp4",
+    "credit": "wlasl",
+    "source": "call/08702.mp4"
+  },
+  "asl/words/call on phone": {
+    "type": "video",
+    "uri": "/reference/asl-words/call-on-phone.mp4",
+    "credit": "asl-citizen",
+    "source": "phone/citizen_26154372036264695-PHONE.mp4"
+  },
+  "asl/words/can": {
+    "type": "video",
+    "uri": "/reference/asl-words/can.mp4",
+    "credit": "wlasl",
+    "source": "can/08938.mp4"
+  },
+  "asl/words/candy": {
+    "type": "video",
+    "uri": "/reference/asl-words/candy.mp4",
+    "credit": "wlasl",
+    "source": "candy/08924.mp4"
+  },
+  "asl/words/car": {
+    "type": "video",
+    "uri": "/reference/asl-words/car.mp4",
+    "credit": "asl-citizen",
+    "source": "car/citizen_11932520912401978-CAR.mp4"
+  },
+  "asl/words/carrot": {
+    "type": "video",
+    "uri": "/reference/asl-words/carrot.mp4",
+    "credit": "wlasl",
+    "source": "carrot/09305.mp4"
+  },
+  "asl/words/cat": {
+    "type": "video",
+    "uri": "/reference/asl-words/cat.mp4",
+    "credit": "wlasl",
+    "source": "cat/09532.mp4"
+  },
+  "asl/words/catch": {
+    "type": "video",
+    "uri": "/reference/asl-words/catch.mp4",
+    "credit": "wlasl",
+    "source": "catch/09464.mp4"
+  },
+  "asl/words/cereal": {
+    "type": "video",
+    "uri": "/reference/asl-words/cereal.mp4",
+    "credit": "asl-citizen",
+    "source": "cereal/citizen_101002370930392-CEREAL.mp4"
+  },
+  "asl/words/chair": {
+    "type": "video",
+    "uri": "/reference/asl-words/chair.mp4",
+    "credit": "asl-citizen",
+    "source": "chair/citizen_1354597833910054-CHAIR.mp4"
+  },
+  "asl/words/champion": {
+    "type": "video",
+    "uri": "/reference/asl-words/champion.mp4",
+    "credit": "asl-citizen",
+    "source": "champion/citizen_15479734714825932-CHAMPION.mp4"
+  },
+  "asl/words/change": {
+    "type": "video",
+    "uri": "/reference/asl-words/change.mp4",
+    "credit": "asl-citizen",
+    "source": "change/citizen_19591950123714175-CHANGE.mp4"
+  },
+  "asl/words/cheat": {
+    "type": "video",
+    "uri": "/reference/asl-words/cheat.mp4",
+    "credit": "wlasl",
+    "source": "cheat/10158.mp4"
+  },
+  "asl/words/check": {
+    "type": "video",
+    "uri": "/reference/asl-words/check.mp4",
+    "credit": "asl-citizen",
+    "source": "check/citizen_2525899141681416-CHECK.mp4"
+  },
+  "asl/words/cheek": {
+    "type": "video",
+    "uri": "/reference/asl-words/cheek.mp4",
+    "credit": "asl-citizen",
+    "source": "cheek/citizen_02227757864285973-CHEEK.mp4"
+  },
+  "asl/words/child": {
+    "type": "video",
+    "uri": "/reference/asl-words/child.mp4",
+    "credit": "asl-citizen",
+    "source": "child/citizen_12316183317611928-CHILD.mp4"
+  },
+  "asl/words/chin": {
+    "type": "video",
+    "uri": "/reference/asl-words/chin.mp4",
+    "credit": "asl-citizen",
+    "source": "chin/citizen_11642380273775732-CHIN 2.mp4"
+  },
+  "asl/words/chocolate": {
+    "type": "video",
+    "uri": "/reference/asl-words/chocolate.mp4",
+    "credit": "asl-citizen",
+    "source": "chocolate/citizen_1426131894457896-CHOCOLATE.mp4"
+  },
+  "asl/words/clean": {
+    "type": "video",
+    "uri": "/reference/asl-words/clean.mp4",
+    "credit": "asl-citizen",
+    "source": "clean/citizen_08488853396383722-CLEAN.mp4"
+  },
+  "asl/words/close": {
+    "type": "video",
+    "uri": "/reference/asl-words/close.mp4",
+    "credit": "asl-citizen",
+    "source": "close/citizen_23296863274555424-CLOSE.mp4"
+  },
+  "asl/words/closet": {
+    "type": "video",
+    "uri": "/reference/asl-words/closet.mp4",
+    "credit": "wlasl",
+    "source": "closet/11285.mp4"
+  },
+  "asl/words/cloud": {
+    "type": "video",
+    "uri": "/reference/asl-words/cloud.mp4",
+    "credit": "wlasl",
+    "source": "cloud/11359.mp4"
+  },
+  "asl/words/clown": {
+    "type": "video",
+    "uri": "/reference/asl-words/clown.mp4",
+    "credit": "asl-citizen",
+    "source": "clown/citizen_10932650590805237-CLOWN.mp4"
+  },
+  "asl/words/cold": {
+    "type": "video",
+    "uri": "/reference/asl-words/cold.mp4",
+    "credit": "asl-citizen",
+    "source": "cold/citizen_13808032394299397-COLD.mp4"
+  },
+  "asl/words/computer": {
+    "type": "video",
+    "uri": "/reference/asl-words/computer.mp4",
+    "credit": "asl-citizen",
+    "source": "computer/citizen_1408851244927558-COMPUTER.mp4"
+  },
+  "asl/words/convince": {
+    "type": "video",
+    "uri": "/reference/asl-words/convince.mp4",
+    "credit": "wlasl",
+    "source": "convince/13135.mp4"
+  },
+  "asl/words/cool": {
+    "type": "video",
+    "uri": "/reference/asl-words/cool.mp4",
+    "credit": "wlasl",
+    "source": "cool/13201.mp4"
+  },
+  "asl/words/corn": {
+    "type": "video",
+    "uri": "/reference/asl-words/corn.mp4",
+    "credit": "wlasl",
+    "source": "corn/13329.mp4"
+  },
+  "asl/words/country": {
+    "type": "video",
+    "uri": "/reference/asl-words/country.mp4",
+    "credit": "asl-citizen",
+    "source": "country/citizen_16453891474644244-COUNTRY.mp4"
+  },
+  "asl/words/cousin": {
+    "type": "video",
+    "uri": "/reference/asl-words/cousin.mp4",
+    "credit": "asl-citizen",
+    "source": "cousin/citizen_14487119629824807-COUSIN.mp4"
+  },
+  "asl/words/cow": {
+    "type": "video",
+    "uri": "/reference/asl-words/cow.mp4",
+    "credit": "asl-citizen",
+    "source": "cow/citizen_16872669562702725-COW.mp4"
+  },
+  "asl/words/cowboy": {
+    "type": "video",
+    "uri": "/reference/asl-words/cowboy.mp4",
+    "credit": "asl-citizen",
+    "source": "cowboy/citizen_18445957627404352-COWBOY.mp4"
+  },
+  "asl/words/cry": {
+    "type": "video",
+    "uri": "/reference/asl-words/cry.mp4",
+    "credit": "wlasl",
+    "source": "cry/14182.mp4"
+  },
+  "asl/words/cut": {
+    "type": "video",
+    "uri": "/reference/asl-words/cut.mp4",
+    "credit": "asl-citizen",
+    "source": "cut/citizen_1416288930335421-CUT 1.mp4"
+  },
+  "asl/words/cute": {
+    "type": "video",
+    "uri": "/reference/asl-words/cute.mp4",
+    "credit": "wlasl",
+    "source": "cute/14458.mp4"
+  },
+  "asl/words/dad": {
+    "type": "video",
+    "uri": "/reference/asl-words/dad.mp4",
+    "credit": "wlasl",
+    "source": "dad/69289.mp4"
+  },
+  "asl/words/dance": {
+    "type": "video",
+    "uri": "/reference/asl-words/dance.mp4",
+    "credit": "asl-citizen",
+    "source": "dance/citizen_1102717484663962-DANCE.mp4"
+  },
+  "asl/words/dark": {
+    "type": "video",
+    "uri": "/reference/asl-words/dark.mp4",
+    "credit": "wlasl",
+    "source": "dark/14675.mp4"
+  },
+  "asl/words/daughter": {
+    "type": "video",
+    "uri": "/reference/asl-words/daughter.mp4",
+    "credit": "asl-citizen",
+    "source": "daughter/citizen_24727432132547444-DAUGHTER.mp4"
+  },
+  "asl/words/deaf": {
+    "type": "video",
+    "uri": "/reference/asl-words/deaf.mp4",
+    "credit": "wlasl",
+    "source": "deaf/14882.mp4"
+  },
+  "asl/words/delay": {
+    "type": "video",
+    "uri": "/reference/asl-words/delay.mp4",
+    "credit": "wlasl",
+    "source": "delay/15326.mp4"
+  },
+  "asl/words/delicious": {
+    "type": "video",
+    "uri": "/reference/asl-words/delicious.mp4",
+    "credit": "asl-citizen",
+    "source": "delicious/citizen_35100992925798846-DELICIOUS.mp4"
+  },
+  "asl/words/different": {
+    "type": "video",
+    "uri": "/reference/asl-words/different.mp4",
+    "credit": "asl-citizen",
+    "source": "different/citizen_2647850986169875-seedDIFFERENT.mp4"
+  },
+  "asl/words/dirty": {
+    "type": "video",
+    "uri": "/reference/asl-words/dirty.mp4",
+    "credit": "asl-citizen",
+    "source": "dirty/citizen_2393258486640848-DIRTY.mp4"
+  },
+  "asl/words/discuss": {
+    "type": "video",
+    "uri": "/reference/asl-words/discuss.mp4",
+    "credit": "asl-citizen",
+    "source": "discuss/citizen_1602989401938104-DISCUSS.mp4"
+  },
+  "asl/words/dive": {
+    "type": "video",
+    "uri": "/reference/asl-words/dive.mp4",
+    "credit": "asl-citizen",
+    "source": "dive/citizen_007182814979122876-seedDIVE.mp4"
+  },
+  "asl/words/doctor": {
+    "type": "video",
+    "uri": "/reference/asl-words/doctor.mp4",
+    "credit": "wlasl",
+    "source": "doctor/17013.mp4"
+  },
+  "asl/words/dog": {
+    "type": "video",
+    "uri": "/reference/asl-words/dog.mp4",
+    "credit": "wlasl",
+    "source": "dog/17097.mp4"
+  },
+  "asl/words/doll": {
+    "type": "video",
+    "uri": "/reference/asl-words/doll.mp4",
+    "credit": "asl-citizen",
+    "source": "doll/citizen_16899633498082345-DOLL.mp4"
+  },
+  "asl/words/donkey": {
+    "type": "video",
+    "uri": "/reference/asl-words/donkey.mp4",
+    "credit": "asl-citizen",
+    "source": "donkey/citizen_0928424929651619-DONKEY.mp4"
+  },
+  "asl/words/down": {
+    "type": "video",
+    "uri": "/reference/asl-words/down.mp4",
+    "credit": "asl-citizen",
+    "source": "down/citizen_20799537009290803-DOWN.mp4"
+  },
+  "asl/words/drawer": {
+    "type": "video",
+    "uri": "/reference/asl-words/drawer.mp4",
+    "credit": "asl-citizen",
+    "source": "drawer/citizen_09142875027006236-DRAWER.mp4"
+  },
+  "asl/words/drink": {
+    "type": "video",
+    "uri": "/reference/asl-words/drink.mp4",
+    "credit": "wlasl",
+    "source": "drink/17712.mp4"
+  },
+  "asl/words/drop": {
+    "type": "video",
+    "uri": "/reference/asl-words/drop.mp4",
+    "credit": "asl-citizen",
+    "source": "drop/citizen_12311076726867798-DROP.mp4"
+  },
+  "asl/words/dry": {
+    "type": "video",
+    "uri": "/reference/asl-words/dry.mp4",
+    "credit": "asl-citizen",
+    "source": "dry/citizen_018297014348678697-DRY.mp4"
+  },
+  "asl/words/dryer": {
+    "type": "video",
+    "uri": "/reference/asl-words/dryer.mp4",
+    "credit": "asl-citizen",
+    "source": "dryer/citizen_19545257028212548-DRYER.mp4"
+  },
+  "asl/words/duck": {
+    "type": "video",
+    "uri": "/reference/asl-words/duck.mp4",
+    "credit": "wlasl",
+    "source": "duck/17950.mp4"
+  },
+  "asl/words/ear": {
+    "type": "video",
+    "uri": "/reference/asl-words/ear.mp4",
+    "credit": "asl-citizen",
+    "source": "ear/citizen_156747591554246-EAR.mp4"
+  },
+  "asl/words/elephant": {
+    "type": "video",
+    "uri": "/reference/asl-words/elephant.mp4",
+    "credit": "asl-citizen",
+    "source": "elephant/citizen_09876006524202241-ELEPHANT.mp4"
+  },
+  "asl/words/empty": {
+    "type": "video",
+    "uri": "/reference/asl-words/empty.mp4",
+    "credit": "wlasl",
+    "source": "empty/19051.mp4"
+  },
+  "asl/words/environment": {
+    "type": "video",
+    "uri": "/reference/asl-words/environment.mp4",
+    "credit": "asl-citizen",
+    "source": "environment/citizen_04842057869703775-seedENVIRONMENT.mp4"
+  },
+  "asl/words/every": {
+    "type": "video",
+    "uri": "/reference/asl-words/every.mp4",
+    "credit": "wlasl",
+    "source": "every/19849.mp4"
+  },
+  "asl/words/example": {
+    "type": "video",
+    "uri": "/reference/asl-words/example.mp4",
+    "credit": "asl-citizen",
+    "source": "example/citizen_28537953632287816-EXAMPLE.mp4"
+  },
+  "asl/words/eye": {
+    "type": "video",
+    "uri": "/reference/asl-words/eye.mp4",
+    "credit": "wlasl",
+    "source": "eye/20633.mp4"
+  },
+  "asl/words/face": {
+    "type": "video",
+    "uri": "/reference/asl-words/face.mp4",
+    "credit": "asl-citizen",
+    "source": "face/citizen_06117592760150714-FACE.mp4"
+  },
+  "asl/words/fall": {
+    "type": "video",
+    "uri": "/reference/asl-words/fall.mp4",
+    "credit": "asl-citizen",
+    "source": "fall1/citizen_20438188384925993-FALL 1.mp4"
+  },
+  "asl/words/family": {
+    "type": "video",
+    "uri": "/reference/asl-words/family.mp4",
+    "credit": "asl-citizen",
+    "source": "family/citizen_05708826093734798-FAMILY.mp4"
+  },
+  "asl/words/far": {
+    "type": "video",
+    "uri": "/reference/asl-words/far.mp4",
+    "credit": "asl-citizen",
+    "source": "far/citizen_12473630099714517-FAR.mp4"
+  },
+  "asl/words/farm": {
+    "type": "video",
+    "uri": "/reference/asl-words/farm.mp4",
+    "credit": "asl-citizen",
+    "source": "farm/citizen_3415029414126265-FARM.mp4"
+  },
+  "asl/words/fast": {
+    "type": "video",
+    "uri": "/reference/asl-words/fast.mp4",
+    "credit": "asl-citizen",
+    "source": "fast/citizen_04251771279467076-FAST.mp4"
+  },
+  "asl/words/fat": {
+    "type": "video",
+    "uri": "/reference/asl-words/fat.mp4",
+    "credit": "asl-citizen",
+    "source": "fat/citizen_37829180894650394-FAT.mp4"
+  },
+  "asl/words/fault": {
+    "type": "video",
+    "uri": "/reference/asl-words/fault.mp4",
+    "credit": "asl-citizen",
+    "source": "fault/citizen_2516681115185193-FAULT.mp4"
+  },
+  "asl/words/find": {
+    "type": "video",
+    "uri": "/reference/asl-words/find.mp4",
+    "credit": "asl-citizen",
+    "source": "find/citizen_07916829935948999-FIND.mp4"
+  },
+  "asl/words/fine": {
+    "type": "video",
+    "uri": "/reference/asl-words/fine.mp4",
+    "credit": "wlasl",
+    "source": "fine/21869.mp4"
+  },
+  "asl/words/finger": {
+    "type": "video",
+    "uri": "/reference/asl-words/finger.mp4",
+    "credit": "asl-citizen",
+    "source": "finger/citizen_31835717268957353-seedFINGER.mp4"
+  },
+  "asl/words/finish": {
+    "type": "video",
+    "uri": "/reference/asl-words/finish.mp4",
+    "credit": "asl-citizen",
+    "source": "finish/citizen_18286437913060416-FINISH.mp4"
+  },
+  "asl/words/fireman": {
+    "type": "video",
+    "uri": "/reference/asl-words/fireman.mp4",
+    "credit": "asl-citizen",
+    "source": "fireman1/citizen_09928717777265383-FIREMAN.mp4"
+  },
+  "asl/words/first": {
+    "type": "video",
+    "uri": "/reference/asl-words/first.mp4",
+    "credit": "asl-citizen",
+    "source": "first/citizen_1871515618939661-FIRST.mp4"
+  },
+  "asl/words/fish": {
+    "type": "video",
+    "uri": "/reference/asl-words/fish.mp4",
+    "credit": "asl-citizen",
+    "source": "fish/citizen_22158687515690545-FISH.mp4"
+  },
+  "asl/words/flag": {
+    "type": "video",
+    "uri": "/reference/asl-words/flag.mp4",
+    "credit": "wlasl",
+    "source": "flag/22273.mp4"
+  },
+  "asl/words/flower": {
+    "type": "video",
+    "uri": "/reference/asl-words/flower.mp4",
+    "credit": "asl-citizen",
+    "source": "flower/citizen_009014836902160983-FLOWER.mp4"
+  },
+  "asl/words/food": {
+    "type": "video",
+    "uri": "/reference/asl-words/food.mp4",
+    "credit": "wlasl",
+    "source": "food/22746.mp4"
+  },
+  "asl/words/for": {
+    "type": "video",
+    "uri": "/reference/asl-words/for.mp4",
+    "credit": "asl-citizen",
+    "source": "for/citizen_12428983919563952-FOR.mp4"
+  },
+  "asl/words/french fries": {
+    "type": "video",
+    "uri": "/reference/asl-words/french-fries.mp4",
+    "credit": "asl-citizen",
+    "source": "frenchfries/citizen_20205861950857518-FRENCHFRIES.mp4"
+  },
+  "asl/words/frog": {
+    "type": "video",
+    "uri": "/reference/asl-words/frog.mp4",
+    "credit": "asl-citizen",
+    "source": "frog/citizen_10310783916415955-FROG.mp4"
+  },
+  "asl/words/full": {
+    "type": "video",
+    "uri": "/reference/asl-words/full.mp4",
+    "credit": "asl-citizen",
+    "source": "full/citizen_1802107028588713-FULL.mp4"
+  },
+  "asl/words/future": {
+    "type": "video",
+    "uri": "/reference/asl-words/future.mp4",
+    "credit": "asl-citizen",
+    "source": "future/citizen_2327369932798895-FUTURE.mp4"
+  },
+  "asl/words/gift": {
+    "type": "video",
+    "uri": "/reference/asl-words/gift.mp4",
+    "credit": "asl-citizen",
+    "source": "gift/citizen_1845566008781072-GIFT.mp4"
+  },
+  "asl/words/giraffe": {
+    "type": "video",
+    "uri": "/reference/asl-words/giraffe.mp4",
+    "credit": "asl-citizen",
+    "source": "giraffe/citizen_04032612037358407-GIRAFFE.mp4"
+  },
+  "asl/words/girl": {
+    "type": "video",
+    "uri": "/reference/asl-words/girl.mp4",
+    "credit": "asl-citizen",
+    "source": "girl/citizen_12644868251197527-GIRL.mp4"
+  },
+  "asl/words/give": {
+    "type": "video",
+    "uri": "/reference/asl-words/give.mp4",
+    "credit": "asl-citizen",
+    "source": "give/citizen_1823075331771542-GIVE.mp4"
+  },
+  "asl/words/go": {
+    "type": "video",
+    "uri": "/reference/asl-words/go.mp4",
+    "credit": "asl-citizen",
+    "source": "go/citizen_22762374635521176-GO.mp4"
+  },
+  "asl/words/good": {
+    "type": "video",
+    "uri": "/reference/asl-words/good.mp4",
+    "credit": "asl-citizen",
+    "source": "good/citizen_18340714145664716-GOOD.mp4"
+  },
+  "asl/words/government": {
+    "type": "video",
+    "uri": "/reference/asl-words/government.mp4",
+    "credit": "asl-citizen",
+    "source": "government/citizen_16668410874117345-GOVERNMENT.mp4"
+  },
+  "asl/words/graduate": {
+    "type": "video",
+    "uri": "/reference/asl-words/graduate.mp4",
+    "credit": "asl-citizen",
+    "source": "graduate/citizen_13526963464309572-GRADUATE.mp4"
+  },
+  "asl/words/grandma": {
+    "type": "video",
+    "uri": "/reference/asl-words/grandma.mp4",
+    "credit": "wlasl",
+    "source": "grandma/69349.mp4"
+  },
+  "asl/words/grandpa": {
+    "type": "video",
+    "uri": "/reference/asl-words/grandpa.mp4",
+    "credit": "asl-citizen",
+    "source": "grandfather/citizen_009579953613939818-GRANDFATHER.mp4"
+  },
+  "asl/words/grass": {
+    "type": "video",
+    "uri": "/reference/asl-words/grass.mp4",
+    "credit": "asl-citizen",
+    "source": "grass/citizen_05975050487626654-GRASS.mp4"
+  },
+  "asl/words/green": {
+    "type": "video",
+    "uri": "/reference/asl-words/green.mp4",
+    "credit": "asl-citizen",
+    "source": "green/citizen_07543738136867639-GREEN.mp4"
+  },
+  "asl/words/gum": {
+    "type": "video",
+    "uri": "/reference/asl-words/gum.mp4",
+    "credit": "asl-citizen",
+    "source": "gum/citizen_018213254785876654-GUM.mp4"
+  },
+  "asl/words/hair": {
+    "type": "video",
+    "uri": "/reference/asl-words/hair.mp4",
+    "credit": "wlasl",
+    "source": "hair/26163.mp4"
+  },
+  "asl/words/happy": {
+    "type": "video",
+    "uri": "/reference/asl-words/happy.mp4",
+    "credit": "asl-citizen",
+    "source": "happy/citizen_07732970042675213-HAPPY.mp4"
+  },
+  "asl/words/hat": {
+    "type": "video",
+    "uri": "/reference/asl-words/hat.mp4",
+    "credit": "wlasl",
+    "source": "hat/26715.mp4"
+  },
+  "asl/words/hate": {
+    "type": "video",
+    "uri": "/reference/asl-words/hate.mp4",
+    "credit": "asl-citizen",
+    "source": "hate/citizen_056742150623056764-HATE.mp4"
+  },
+  "asl/words/have": {
+    "type": "video",
+    "uri": "/reference/asl-words/have.mp4",
+    "credit": "asl-citizen",
+    "source": "have/citizen_22733514464849502-HAVE.mp4"
+  },
+  "asl/words/have to": {
+    "type": "video",
+    "uri": "/reference/asl-words/have-to.mp4",
+    "credit": "asl-citizen",
+    "source": "must/citizen_17632165485035678-MUST.mp4"
+  },
+  "asl/words/head": {
+    "type": "video",
+    "uri": "/reference/asl-words/head.mp4",
+    "credit": "asl-citizen",
+    "source": "head/citizen_209949774531083-HEAD.mp4"
+  },
+  "asl/words/hear": {
+    "type": "video",
+    "uri": "/reference/asl-words/hear.mp4",
+    "credit": "wlasl",
+    "source": "hear/26944.mp4"
+  },
+  "asl/words/helicopter": {
+    "type": "video",
+    "uri": "/reference/asl-words/helicopter.mp4",
+    "credit": "wlasl",
+    "source": "helicopter/27157.mp4"
+  },
+  "asl/words/hello": {
+    "type": "video",
+    "uri": "/reference/asl-words/hello.mp4",
+    "credit": "asl-citizen",
+    "source": "hello/citizen_05614933522741539-HELLO.mp4"
+  },
+  "asl/words/help": {
+    "type": "video",
+    "uri": "/reference/asl-words/help.mp4",
+    "credit": "asl-citizen",
+    "source": "help/citizen_3000270038189985-HELP.mp4"
+  },
+  "asl/words/hen": {
+    "type": "video",
+    "uri": "/reference/asl-words/hen.mp4",
+    "credit": "asl-citizen",
+    "source": "hen/citizen_017996995027363516-HEN.mp4"
+  },
+  "asl/words/hide": {
+    "type": "video",
+    "uri": "/reference/asl-words/hide.mp4",
+    "credit": "asl-citizen",
+    "source": "hide/citizen_07258457713266142-HIDE.mp4"
+  },
+  "asl/words/high": {
+    "type": "video",
+    "uri": "/reference/asl-words/high.mp4",
+    "credit": "asl-citizen",
+    "source": "high/citizen_019405526867787515-HIGH.mp4"
+  },
+  "asl/words/home": {
+    "type": "video",
+    "uri": "/reference/asl-words/home.mp4",
+    "credit": "asl-citizen",
+    "source": "home/citizen_19580126719501179-HOME.mp4"
+  },
+  "asl/words/horse": {
+    "type": "video",
+    "uri": "/reference/asl-words/horse.mp4",
+    "credit": "asl-citizen",
+    "source": "horse/citizen_083600151422911-HORSE.mp4"
+  },
+  "asl/words/hot": {
+    "type": "video",
+    "uri": "/reference/asl-words/hot.mp4",
+    "credit": "asl-citizen",
+    "source": "hot/citizen_13316006185127205-HOT.mp4"
+  },
+  "asl/words/hungry": {
+    "type": "video",
+    "uri": "/reference/asl-words/hungry.mp4",
+    "credit": "asl-citizen",
+    "source": "hungry/citizen_08524949524247205-HUNGRY.mp4"
+  },
+  "asl/words/ice cream": {
+    "type": "video",
+    "uri": "/reference/asl-words/ice-cream.mp4",
+    "credit": "asl-citizen",
+    "source": "icecream/citizen_011812166692431347-ICECREAM.mp4"
+  },
+  "asl/words/if": {
+    "type": "video",
+    "uri": "/reference/asl-words/if.mp4",
+    "credit": "asl-citizen",
+    "source": "if/citizen_12497065151974662-IF.mp4"
+  },
+  "asl/words/improve": {
+    "type": "video",
+    "uri": "/reference/asl-words/improve.mp4",
+    "credit": "asl-citizen",
+    "source": "improve/citizen_04615258339586048-seedIMPROVE.mp4"
+  },
+  "asl/words/inform": {
+    "type": "video",
+    "uri": "/reference/asl-words/inform.mp4",
+    "credit": "wlasl",
+    "source": "inform/29650.mp4"
+  },
+  "asl/words/interest": {
+    "type": "video",
+    "uri": "/reference/asl-words/interest.mp4",
+    "credit": "asl-citizen",
+    "source": "interest/citizen_07804429997157225-INTEREST.mp4"
+  },
+  "asl/words/jacket": {
+    "type": "video",
+    "uri": "/reference/asl-words/jacket.mp4",
+    "credit": "wlasl",
+    "source": "jacket/30849.mp4"
+  },
+  "asl/words/join": {
+    "type": "video",
+    "uri": "/reference/asl-words/join.mp4",
+    "credit": "asl-citizen",
+    "source": "join/citizen_1174592625933808-JOIN.mp4"
+  },
+  "asl/words/jump": {
+    "type": "video",
+    "uri": "/reference/asl-words/jump.mp4",
+    "credit": "asl-citizen",
+    "source": "jump/citizen_06755295465771138-JUMP.mp4"
+  },
+  "asl/words/kiss": {
+    "type": "video",
+    "uri": "/reference/asl-words/kiss.mp4",
+    "credit": "wlasl",
+    "source": "kiss/31754.mp4"
+  },
+  "asl/words/kitty": {
+    "type": "video",
+    "uri": "/reference/asl-words/kitty.mp4",
+    "credit": "asl-citizen",
+    "source": "kitten/citizen_12622569603737022-KITTEN.mp4"
+  },
+  "asl/words/lamp": {
+    "type": "video",
+    "uri": "/reference/asl-words/lamp.mp4",
+    "credit": "wlasl",
+    "source": "lamp/32097.mp4"
+  },
+  "asl/words/language": {
+    "type": "video",
+    "uri": "/reference/asl-words/language.mp4",
+    "credit": "asl-citizen",
+    "source": "language/citizen_2471707461204955-LANGUAGE.mp4"
+  },
+  "asl/words/last": {
+    "type": "video",
+    "uri": "/reference/asl-words/last.mp4",
+    "credit": "asl-citizen",
+    "source": "last/citizen_20168992933962326-LAST.mp4"
+  },
+  "asl/words/later": {
+    "type": "video",
+    "uri": "/reference/asl-words/later.mp4",
+    "credit": "asl-citizen",
+    "source": "later/citizen_13635874572819362-LATER.mp4"
+  },
+  "asl/words/laugh": {
+    "type": "video",
+    "uri": "/reference/asl-words/laugh.mp4",
+    "credit": "asl-citizen",
+    "source": "laugh/citizen_09816533364939106-LAUGH.mp4"
+  },
+  "asl/words/leave": {
+    "type": "video",
+    "uri": "/reference/asl-words/leave.mp4",
+    "credit": "asl-citizen",
+    "source": "leave/citizen_3179718283976034-LEAVE.mp4"
+  },
+  "asl/words/letter": {
+    "type": "video",
+    "uri": "/reference/asl-words/letter.mp4",
+    "credit": "wlasl",
+    "source": "letter/32949.mp4"
+  },
+  "asl/words/like": {
+    "type": "video",
+    "uri": "/reference/asl-words/like.mp4",
+    "credit": "asl-citizen",
+    "source": "like/citizen_23961420213829476-LIKE.mp4"
+  },
+  "asl/words/lion": {
+    "type": "video",
+    "uri": "/reference/asl-words/lion.mp4",
+    "credit": "asl-citizen",
+    "source": "lion/citizen_05583345603217049-LION.mp4"
+  },
+  "asl/words/lips": {
+    "type": "video",
+    "uri": "/reference/asl-words/lips.mp4",
+    "credit": "asl-citizen",
+    "source": "lips/citizen_2139103366149382-LIPS.mp4"
+  },
+  "asl/words/listen": {
+    "type": "video",
+    "uri": "/reference/asl-words/listen.mp4",
+    "credit": "asl-citizen",
+    "source": "listen/citizen_025204171933608244-LISTEN.mp4"
+  },
+  "asl/words/look": {
+    "type": "video",
+    "uri": "/reference/asl-words/look.mp4",
+    "credit": "asl-citizen",
+    "source": "lookat/citizen_2567163641831285-LOOK AT.mp4"
+  },
+  "asl/words/loud": {
+    "type": "video",
+    "uri": "/reference/asl-words/loud.mp4",
+    "credit": "asl-citizen",
+    "source": "loud/citizen_13503699045678985-LOUD.mp4"
+  },
+  "asl/words/mad": {
+    "type": "video",
+    "uri": "/reference/asl-words/mad.mp4",
+    "credit": "asl-citizen",
+    "source": "mad/citizen_0288077178660322-MAD.mp4"
+  },
+  "asl/words/make": {
+    "type": "video",
+    "uri": "/reference/asl-words/make.mp4",
+    "credit": "asl-citizen",
+    "source": "make/citizen_10010774201312977-MAKE.mp4"
+  },
+  "asl/words/man": {
+    "type": "video",
+    "uri": "/reference/asl-words/man.mp4",
+    "credit": "asl-citizen",
+    "source": "man/citizen_14961111596310195-MAN.mp4"
+  },
+  "asl/words/many": {
+    "type": "video",
+    "uri": "/reference/asl-words/many.mp4",
+    "credit": "asl-citizen",
+    "source": "many/citizen_1389389020459244-MANY.mp4"
+  },
+  "asl/words/mean": {
+    "type": "video",
+    "uri": "/reference/asl-words/mean.mp4",
+    "credit": "wlasl",
+    "source": "mean/35291.mp4"
+  },
+  "asl/words/milk": {
+    "type": "video",
+    "uri": "/reference/asl-words/milk.mp4",
+    "credit": "wlasl",
+    "source": "milk/36047.mp4"
+  },
+  "asl/words/moon": {
+    "type": "video",
+    "uri": "/reference/asl-words/moon.mp4",
+    "credit": "asl-citizen",
+    "source": "moon/citizen_08016279519881464-MOON.mp4"
+  },
+  "asl/words/morning": {
+    "type": "video",
+    "uri": "/reference/asl-words/morning.mp4",
+    "credit": "asl-citizen",
+    "source": "morning/citizen_1838221296870719-MORNING.mp4"
+  },
+  "asl/words/mother": {
+    "type": "video",
+    "uri": "/reference/asl-words/mother.mp4",
+    "credit": "asl-citizen",
+    "source": "mother/citizen_21362573588805733-MOTHER.mp4"
+  },
+  "asl/words/mouse": {
+    "type": "video",
+    "uri": "/reference/asl-words/mouse.mp4",
+    "credit": "asl-citizen",
+    "source": "mouse/citizen_06505346301521464-MOUSE.mp4"
+  },
+  "asl/words/mouth": {
+    "type": "video",
+    "uri": "/reference/asl-words/mouth.mp4",
+    "credit": "asl-citizen",
+    "source": "mouth/citizen_03816967766642465-MOUTH.mp4"
+  },
+  "asl/words/move": {
+    "type": "video",
+    "uri": "/reference/asl-words/move.mp4",
+    "credit": "asl-citizen",
+    "source": "move/citizen_19102817848960396-MOVE.mp4"
+  },
+  "asl/words/my/mine": {
+    "type": "video",
+    "uri": "/reference/asl-words/my-mine.mp4",
+    "credit": "asl-citizen",
+    "source": "my/citizen_08450103948651932-MY.mp4"
+  },
+  "asl/words/napkin": {
+    "type": "video",
+    "uri": "/reference/asl-words/napkin.mp4",
+    "credit": "asl-citizen",
+    "source": "napkin/citizen_14531185621777554-NAPKIN.mp4"
+  },
+  "asl/words/night": {
+    "type": "video",
+    "uri": "/reference/asl-words/night.mp4",
+    "credit": "wlasl",
+    "source": "night/38337.mp4"
+  },
+  "asl/words/no": {
+    "type": "video",
+    "uri": "/reference/asl-words/no.mp4",
+    "credit": "asl-citizen",
+    "source": "no/citizen_08228267952066615-NO.mp4"
+  },
+  "asl/words/nose": {
+    "type": "video",
+    "uri": "/reference/asl-words/nose.mp4",
+    "credit": "asl-citizen",
+    "source": "nose/citizen_08859205707077078-NOSE.mp4"
+  },
+  "asl/words/not": {
+    "type": "video",
+    "uri": "/reference/asl-words/not.mp4",
+    "credit": "asl-citizen",
+    "source": "not/citizen_07730977592971522-NOT.mp4"
+  },
+  "asl/words/now": {
+    "type": "video",
+    "uri": "/reference/asl-words/now.mp4",
+    "credit": "asl-citizen",
+    "source": "now/citizen_10928494959813584-NOW.mp4"
+  },
+  "asl/words/nuts": {
+    "type": "video",
+    "uri": "/reference/asl-words/nuts.mp4",
+    "credit": "asl-citizen",
+    "source": "nut1/citizen_17558439147633798-NUT.mp4"
+  },
+  "asl/words/old": {
+    "type": "video",
+    "uri": "/reference/asl-words/old.mp4",
+    "credit": "asl-citizen",
+    "source": "old/citizen_035613515567295195-OLD.mp4"
+  },
+  "asl/words/on": {
+    "type": "video",
+    "uri": "/reference/asl-words/on.mp4",
+    "credit": "asl-citizen",
+    "source": "on/citizen_07042988053470389-ON.mp4"
+  },
+  "asl/words/open": {
+    "type": "video",
+    "uri": "/reference/asl-words/open.mp4",
+    "credit": "asl-citizen",
+    "source": "open/citizen_050352422459215784-OPEN.mp4"
+  },
+  "asl/words/orange": {
+    "type": "video",
+    "uri": "/reference/asl-words/orange.mp4",
+    "credit": "asl-citizen",
+    "source": "orange/citizen_023588612291894906-ORANGE.mp4"
+  },
+  "asl/words/order": {
+    "type": "video",
+    "uri": "/reference/asl-words/order.mp4",
+    "credit": "wlasl",
+    "source": "order/40172.mp4"
+  },
+  "asl/words/outside": {
+    "type": "video",
+    "uri": "/reference/asl-words/outside.mp4",
+    "credit": "asl-citizen",
+    "source": "outside/citizen_04872808066357104-OUTSIDE.mp4"
+  },
+  "asl/words/owl": {
+    "type": "video",
+    "uri": "/reference/asl-words/owl.mp4",
+    "credit": "asl-citizen",
+    "source": "owl/citizen_09992382191820015-OWL.mp4"
+  },
+  "asl/words/pen": {
+    "type": "video",
+    "uri": "/reference/asl-words/pen.mp4",
+    "credit": "asl-citizen",
+    "source": "pen/citizen_2772604677552697-PEN.mp4"
+  },
+  "asl/words/pencil": {
+    "type": "video",
+    "uri": "/reference/asl-words/pencil.mp4",
+    "credit": "asl-citizen",
+    "source": "pencil/citizen_18568006124658232-PENCIL.mp4"
+  },
+  "asl/words/penny": {
+    "type": "video",
+    "uri": "/reference/asl-words/penny.mp4",
+    "credit": "asl-citizen",
+    "source": "penny/citizen_31387196529348116-PENNY.mp4"
+  },
+  "asl/words/person": {
+    "type": "video",
+    "uri": "/reference/asl-words/person.mp4",
+    "credit": "asl-citizen",
+    "source": "person/citizen_1817196550268605-PERSON.mp4"
+  },
+  "asl/words/perspective": {
+    "type": "video",
+    "uri": "/reference/asl-words/perspective.mp4",
+    "credit": "asl-citizen",
+    "source": "perspective/citizen_10823826540284687-PERSPECTIVE.mp4"
+  },
+  "asl/words/pig": {
+    "type": "video",
+    "uri": "/reference/asl-words/pig.mp4",
+    "credit": "asl-citizen",
+    "source": "pig/citizen_23944609023603158-PIG.mp4"
+  },
+  "asl/words/pink": {
+    "type": "video",
+    "uri": "/reference/asl-words/pink.mp4",
+    "credit": "asl-citizen",
+    "source": "pink/citizen_11576233542635928-PINK.mp4"
+  },
+  "asl/words/pizza": {
+    "type": "video",
+    "uri": "/reference/asl-words/pizza.mp4",
+    "credit": "wlasl",
+    "source": "pizza/42958.mp4"
+  },
+  "asl/words/play": {
+    "type": "video",
+    "uri": "/reference/asl-words/play.mp4",
+    "credit": "asl-citizen",
+    "source": "play/citizen_16316522222182783-PLAY.mp4"
+  },
+  "asl/words/please": {
+    "type": "video",
+    "uri": "/reference/asl-words/please.mp4",
+    "credit": "asl-citizen",
+    "source": "please/citizen_3584447878251358-PLEASE.mp4"
+  },
+  "asl/words/point": {
+    "type": "video",
+    "uri": "/reference/asl-words/point.mp4",
+    "credit": "asl-citizen",
+    "source": "point/citizen_1185580949896683-POINT.mp4"
+  },
+  "asl/words/police": {
+    "type": "video",
+    "uri": "/reference/asl-words/police.mp4",
+    "credit": "wlasl",
+    "source": "police/43535.mp4"
+  },
+  "asl/words/potty": {
+    "type": "video",
+    "uri": "/reference/asl-words/potty.mp4",
+    "credit": "asl-citizen",
+    "source": "toilet/citizen_17205691499443687-TOILET.mp4"
+  },
+  "asl/words/pretend": {
+    "type": "video",
+    "uri": "/reference/asl-words/pretend.mp4",
+    "credit": "asl-citizen",
+    "source": "pretend/citizen_15517176121164677-PRETEND.mp4"
+  },
+  "asl/words/pretty": {
+    "type": "video",
+    "uri": "/reference/asl-words/pretty.mp4",
+    "credit": "asl-citizen",
+    "source": "pretty/citizen_026292968098281966-PRETTY.mp4"
+  },
+  "asl/words/quiet": {
+    "type": "video",
+    "uri": "/reference/asl-words/quiet.mp4",
+    "credit": "asl-citizen",
+    "source": "quiet/citizen_04986462534482361-QUIET.mp4"
+  },
+  "asl/words/radio": {
+    "type": "video",
+    "uri": "/reference/asl-words/radio.mp4",
+    "credit": "asl-citizen",
+    "source": "radio/citizen_0934918788120096-RADIO.mp4"
+  },
+  "asl/words/rain": {
+    "type": "video",
+    "uri": "/reference/asl-words/rain.mp4",
+    "credit": "asl-citizen",
+    "source": "rain/citizen_05938324974298559-RAIN.mp4"
+  },
+  "asl/words/read": {
+    "type": "video",
+    "uri": "/reference/asl-words/read.mp4",
+    "credit": "asl-citizen",
+    "source": "read/citizen_21828575560875674-READ.mp4"
+  },
+  "asl/words/ready": {
+    "type": "video",
+    "uri": "/reference/asl-words/ready.mp4",
+    "credit": "asl-citizen",
+    "source": "ready/citizen_2361568647138188-READY.mp4"
+  },
+  "asl/words/red": {
+    "type": "video",
+    "uri": "/reference/asl-words/red.mp4",
+    "credit": "asl-citizen",
+    "source": "red/citizen_03048260576074524-RED.mp4"
+  },
+  "asl/words/refrigerator": {
+    "type": "video",
+    "uri": "/reference/asl-words/refrigerator.mp4",
+    "credit": "asl-citizen",
+    "source": "refrigerator/citizen_19322215532432252-REFRIGERATOR.mp4"
+  },
+  "asl/words/ride": {
+    "type": "video",
+    "uri": "/reference/asl-words/ride.mp4",
+    "credit": "wlasl",
+    "source": "ride/48054.mp4"
+  },
+  "asl/words/room": {
+    "type": "video",
+    "uri": "/reference/asl-words/room.mp4",
+    "credit": "asl-citizen",
+    "source": "room/citizen_17679009686670621-ROOM.mp4"
+  },
+  "asl/words/sad": {
+    "type": "video",
+    "uri": "/reference/asl-words/sad.mp4",
+    "credit": "asl-citizen",
+    "source": "sad/citizen_0320912589498219-SAD.mp4"
+  },
+  "asl/words/same": {
+    "type": "video",
+    "uri": "/reference/asl-words/same.mp4",
+    "credit": "wlasl",
+    "source": "same/49176.mp4"
+  },
+  "asl/words/sandwich": {
+    "type": "video",
+    "uri": "/reference/asl-words/sandwich.mp4",
+    "credit": "wlasl",
+    "source": "sandwich/49247.mp4"
+  },
+  "asl/words/say": {
+    "type": "video",
+    "uri": "/reference/asl-words/say.mp4",
+    "credit": "wlasl",
+    "source": "say/49431.mp4"
+  },
+  "asl/words/scissors": {
+    "type": "video",
+    "uri": "/reference/asl-words/scissors.mp4",
+    "credit": "asl-citizen",
+    "source": "scissors/citizen_31827943243717827-SCISSORS.mp4"
+  },
+  "asl/words/score": {
+    "type": "video",
+    "uri": "/reference/asl-words/score.mp4",
+    "credit": "asl-citizen",
+    "source": "score/citizen_009801177877600153-SCORE.mp4"
+  },
+  "asl/words/secretary": {
+    "type": "video",
+    "uri": "/reference/asl-words/secretary.mp4",
+    "credit": "asl-citizen",
+    "source": "secretary/citizen_39771317354391655-SECRETARY.mp4"
+  },
+  "asl/words/see": {
+    "type": "video",
+    "uri": "/reference/asl-words/see.mp4",
+    "credit": "asl-citizen",
+    "source": "see/citizen_2322814887877973-SEE.mp4"
+  },
+  "asl/words/shirt": {
+    "type": "video",
+    "uri": "/reference/asl-words/shirt.mp4",
+    "credit": "wlasl",
+    "source": "shirt/51061.mp4"
+  },
+  "asl/words/shoe": {
+    "type": "video",
+    "uri": "/reference/asl-words/shoe.mp4",
+    "credit": "asl-citizen",
+    "source": "shoes/citizen_23009369301560212-SHOES.mp4"
+  },
+  "asl/words/short": {
+    "type": "video",
+    "uri": "/reference/asl-words/short.mp4",
+    "credit": "wlasl",
+    "source": "short/51221.mp4"
+  },
+  "asl/words/shower": {
+    "type": "video",
+    "uri": "/reference/asl-words/shower.mp4",
+    "credit": "asl-citizen",
+    "source": "shower/citizen_1585961133666418-SHOWER.mp4"
+  },
+  "asl/words/sick": {
+    "type": "video",
+    "uri": "/reference/asl-words/sick.mp4",
+    "credit": "asl-citizen",
+    "source": "sick/citizen_2393498289810021-SICK.mp4"
+  },
+  "asl/words/silly": {
+    "type": "video",
+    "uri": "/reference/asl-words/silly.mp4",
+    "credit": "asl-citizen",
+    "source": "silly/citizen_1338457656717602-SILLY.mp4"
+  },
+  "asl/words/sleep": {
+    "type": "video",
+    "uri": "/reference/asl-words/sleep.mp4",
+    "credit": "asl-citizen",
+    "source": "sleep/citizen_2281067908916985-SLEEP.mp4"
+  },
+  "asl/words/sleepy": {
+    "type": "video",
+    "uri": "/reference/asl-words/sleepy.mp4",
+    "credit": "wlasl",
+    "source": "sleepy/52354.mp4"
+  },
+  "asl/words/smile": {
+    "type": "video",
+    "uri": "/reference/asl-words/smile.mp4",
+    "credit": "wlasl",
+    "source": "smile/52617.mp4"
+  },
+  "asl/words/snack": {
+    "type": "video",
+    "uri": "/reference/asl-words/snack.mp4",
+    "credit": "wlasl",
+    "source": "snack/52691.mp4"
+  },
+  "asl/words/snow": {
+    "type": "video",
+    "uri": "/reference/asl-words/snow.mp4",
+    "credit": "wlasl",
+    "source": "snow/52862.mp4"
+  },
+  "asl/words/son": {
+    "type": "video",
+    "uri": "/reference/asl-words/son.mp4",
+    "credit": "asl-citizen",
+    "source": "son/citizen_2588605133045587-SON.mp4"
+  },
+  "asl/words/soon": {
+    "type": "video",
+    "uri": "/reference/asl-words/soon.mp4",
+    "credit": "wlasl",
+    "source": "soon/53301.mp4"
+  },
+  "asl/words/speech": {
+    "type": "video",
+    "uri": "/reference/asl-words/speech.mp4",
+    "credit": "wlasl",
+    "source": "speech/53706.mp4"
+  },
+  "asl/words/stairs": {
+    "type": "video",
+    "uri": "/reference/asl-words/stairs.mp4",
+    "credit": "asl-citizen",
+    "source": "stairs/citizen_09281901456223873-STAIRS.mp4"
+  },
+  "asl/words/stay": {
+    "type": "video",
+    "uri": "/reference/asl-words/stay.mp4",
+    "credit": "asl-citizen",
+    "source": "stay/citizen_03254182187219823-STAY.mp4"
+  },
+  "asl/words/sticky": {
+    "type": "video",
+    "uri": "/reference/asl-words/sticky.mp4",
+    "credit": "asl-citizen",
+    "source": "sticky/citizen_14406878275078006-STICKY.mp4"
+  },
+  "asl/words/store": {
+    "type": "video",
+    "uri": "/reference/asl-words/store.mp4",
+    "credit": "wlasl",
+    "source": "store/69489.mp4"
+  },
+  "asl/words/story": {
+    "type": "video",
+    "uri": "/reference/asl-words/story.mp4",
+    "credit": "wlasl",
+    "source": "story/55000.mp4"
+  },
+  "asl/words/stuck": {
+    "type": "video",
+    "uri": "/reference/asl-words/stuck.mp4",
+    "credit": "asl-citizen",
+    "source": "stuck/citizen_034397531877413234-STUCK.mp4"
+  },
+  "asl/words/study": {
+    "type": "video",
+    "uri": "/reference/asl-words/study.mp4",
+    "credit": "asl-citizen",
+    "source": "study/citizen_18757567875372372-STUDY.mp4"
+  },
+  "asl/words/sun": {
+    "type": "video",
+    "uri": "/reference/asl-words/sun.mp4",
+    "credit": "asl-citizen",
+    "source": "sun/citizen_14615094008591-SUN.mp4"
+  },
+  "asl/words/sweet": {
+    "type": "video",
+    "uri": "/reference/asl-words/sweet.mp4",
+    "credit": "asl-citizen",
+    "source": "sweet/citizen_23658072277926023-SWEET.mp4"
+  },
+  "asl/words/table": {
+    "type": "video",
+    "uri": "/reference/asl-words/table.mp4",
+    "credit": "asl-citizen",
+    "source": "table/citizen_041530200454215516-TABLE.mp4"
+  },
+  "asl/words/take": {
+    "type": "video",
+    "uri": "/reference/asl-words/take.mp4",
+    "credit": "asl-citizen",
+    "source": "take/citizen_18586165627230766-TAKE.mp4"
+  },
+  "asl/words/talk": {
+    "type": "video",
+    "uri": "/reference/asl-words/talk.mp4",
+    "credit": "wlasl",
+    "source": "talk/56813.mp4"
+  },
+  "asl/words/tall": {
+    "type": "video",
+    "uri": "/reference/asl-words/tall.mp4",
+    "credit": "wlasl",
+    "source": "tall/56841.mp4"
+  },
+  "asl/words/taste": {
+    "type": "video",
+    "uri": "/reference/asl-words/taste.mp4",
+    "credit": "asl-citizen",
+    "source": "taste/citizen_15774801660713456-TASTE.mp4"
+  },
+  "asl/words/tell": {
+    "type": "video",
+    "uri": "/reference/asl-words/tell.mp4",
+    "credit": "asl-citizen",
+    "source": "tell/citizen_02205485916234662-TELL.mp4"
+  },
+  "asl/words/thank you": {
+    "type": "video",
+    "uri": "/reference/asl-words/thank-you.mp4",
+    "credit": "asl-citizen",
+    "source": "thankyou/citizen_014439537236845323-THANK YOU.mp4"
+  },
+  "asl/words/thanksgiving": {
+    "type": "video",
+    "uri": "/reference/asl-words/thanksgiving.mp4",
+    "credit": "asl-citizen",
+    "source": "thanksgiving/citizen_1948729397882405-THANKSGIVING.mp4"
+  },
+  "asl/words/that": {
+    "type": "video",
+    "uri": "/reference/asl-words/that.mp4",
+    "credit": "asl-citizen",
+    "source": "that/citizen_061494394801220764-THAT.mp4"
+  },
+  "asl/words/theory": {
+    "type": "video",
+    "uri": "/reference/asl-words/theory.mp4",
+    "credit": "asl-citizen",
+    "source": "theory/citizen_23584777701082582-THEORY.mp4"
+  },
+  "asl/words/there": {
+    "type": "video",
+    "uri": "/reference/asl-words/there.mp4",
+    "credit": "asl-citizen",
+    "source": "there/citizen_08078343365317142-THERE.mp4"
+  },
+  "asl/words/thin": {
+    "type": "video",
+    "uri": "/reference/asl-words/thin.mp4",
+    "credit": "asl-citizen",
+    "source": "thin/citizen_25916813953377815-THIN.mp4"
+  },
+  "asl/words/think": {
+    "type": "video",
+    "uri": "/reference/asl-words/think.mp4",
+    "credit": "asl-citizen",
+    "source": "think/citizen_16629744901108845-THINK.mp4"
+  },
+  "asl/words/thirsty": {
+    "type": "video",
+    "uri": "/reference/asl-words/thirsty.mp4",
+    "credit": "asl-citizen",
+    "source": "thirsty/citizen_012755114496634024-THIRSTY.mp4"
+  },
+  "asl/words/thursday": {
+    "type": "video",
+    "uri": "/reference/asl-words/thursday.mp4",
+    "credit": "asl-citizen",
+    "source": "thursday/citizen_22279479045058315-THURSDAY.mp4"
+  },
+  "asl/words/tiger": {
+    "type": "video",
+    "uri": "/reference/asl-words/tiger.mp4",
+    "credit": "asl-citizen",
+    "source": "tiger/citizen_19052764505155118-TIGER.mp4"
+  },
+  "asl/words/time": {
+    "type": "video",
+    "uri": "/reference/asl-words/time.mp4",
+    "credit": "asl-citizen",
+    "source": "time/citizen_13296834273169988-TIME.mp4"
+  },
+  "asl/words/toast": {
+    "type": "video",
+    "uri": "/reference/asl-words/toast.mp4",
+    "credit": "asl-citizen",
+    "source": "toast/citizen_18513914748729787-seedTOAST.mp4"
+  },
+  "asl/words/tomorrow": {
+    "type": "video",
+    "uri": "/reference/asl-words/tomorrow.mp4",
+    "credit": "asl-citizen",
+    "source": "tomorrow/citizen_17146907031431446-TOMORROW.mp4"
+  },
+  "asl/words/tongue": {
+    "type": "video",
+    "uri": "/reference/asl-words/tongue.mp4",
+    "credit": "asl-citizen",
+    "source": "tongue/citizen_16538366877078858-TONGUE.mp4"
+  },
+  "asl/words/tooth": {
+    "type": "video",
+    "uri": "/reference/asl-words/tooth.mp4",
+    "credit": "wlasl",
+    "source": "tooth/58910.mp4"
+  },
+  "asl/words/toothbrush": {
+    "type": "video",
+    "uri": "/reference/asl-words/toothbrush.mp4",
+    "credit": "asl-citizen",
+    "source": "toothbrush/citizen_04426572173656429-TOOTHBRUSH.mp4"
+  },
+  "asl/words/touch": {
+    "type": "video",
+    "uri": "/reference/asl-words/touch.mp4",
+    "credit": "asl-citizen",
+    "source": "touch/citizen_05457793958586299-TOUCH.mp4"
+  },
+  "asl/words/toy": {
+    "type": "video",
+    "uri": "/reference/asl-words/toy.mp4",
+    "credit": "asl-citizen",
+    "source": "toy1/citizen_16276216605953775-TOY 3.mp4"
+  },
+  "asl/words/trade": {
+    "type": "video",
+    "uri": "/reference/asl-words/trade.mp4",
+    "credit": "wlasl",
+    "source": "trade/59207.mp4"
+  },
+  "asl/words/tree": {
+    "type": "video",
+    "uri": "/reference/asl-words/tree.mp4",
+    "credit": "asl-citizen",
+    "source": "tree/citizen_08248840585406048-TREE.mp4"
+  },
+  "asl/words/ugly": {
+    "type": "video",
+    "uri": "/reference/asl-words/ugly.mp4",
+    "credit": "asl-citizen",
+    "source": "ugly/citizen_15916101397139104-UGLY.mp4"
+  },
+  "asl/words/uncle": {
+    "type": "video",
+    "uri": "/reference/asl-words/uncle.mp4",
+    "credit": "asl-citizen",
+    "source": "uncle/citizen_08012788103867674-UNCLE.mp4"
+  },
+  "asl/words/underwear": {
+    "type": "video",
+    "uri": "/reference/asl-words/underwear.mp4",
+    "credit": "wlasl",
+    "source": "underwear/60571.mp4"
+  },
+  "asl/words/up": {
+    "type": "video",
+    "uri": "/reference/asl-words/up.mp4",
+    "credit": "asl-citizen",
+    "source": "up/citizen_19768631695836425-UP.mp4"
+  },
+  "asl/words/upset": {
+    "type": "video",
+    "uri": "/reference/asl-words/upset.mp4",
+    "credit": "wlasl",
+    "source": "upset/60948.mp4"
+  },
+  "asl/words/vacuum": {
+    "type": "video",
+    "uri": "/reference/asl-words/vacuum.mp4",
+    "credit": "asl-citizen",
+    "source": "vacuum/citizen_22145735379351894-VACUUM.mp4"
+  },
+  "asl/words/voice": {
+    "type": "video",
+    "uri": "/reference/asl-words/voice.mp4",
+    "credit": "asl-citizen",
+    "source": "voice/citizen_08340390659087227-VOICE.mp4"
+  },
+  "asl/words/vomit": {
+    "type": "video",
+    "uri": "/reference/asl-words/vomit.mp4",
+    "credit": "asl-citizen",
+    "source": "vomit/citizen_0002600716749214804-VOMIT.mp4"
+  },
+  "asl/words/wait": {
+    "type": "video",
+    "uri": "/reference/asl-words/wait.mp4",
+    "credit": "asl-citizen",
+    "source": "wait/citizen_031074918450269218-WAIT.mp4"
+  },
+  "asl/words/walk": {
+    "type": "video",
+    "uri": "/reference/asl-words/walk.mp4",
+    "credit": "wlasl",
+    "source": "walk/62170.mp4"
+  },
+  "asl/words/want": {
+    "type": "video",
+    "uri": "/reference/asl-words/want.mp4",
+    "credit": "wlasl",
+    "source": "want/62248.mp4"
+  },
+  "asl/words/water": {
+    "type": "video",
+    "uri": "/reference/asl-words/water.mp4",
+    "credit": "asl-citizen",
+    "source": "water/citizen_28568822555970064-WATER.mp4"
+  },
+  "asl/words/we/us": {
+    "type": "video",
+    "uri": "/reference/asl-words/we-us.mp4",
+    "credit": "asl-citizen",
+    "source": "we/citizen_08935802292404782-WE.mp4"
+  },
+  "asl/words/wet": {
+    "type": "video",
+    "uri": "/reference/asl-words/wet.mp4",
+    "credit": "asl-citizen",
+    "source": "wet/citizen_02018717613811094-WET.mp4"
+  },
+  "asl/words/what": {
+    "type": "video",
+    "uri": "/reference/asl-words/what.mp4",
+    "credit": "wlasl",
+    "source": "what/62965.mp4"
+  },
+  "asl/words/where": {
+    "type": "video",
+    "uri": "/reference/asl-words/where.mp4",
+    "credit": "asl-citizen",
+    "source": "where/citizen_03717365663139738-WHERE.mp4"
+  },
+  "asl/words/white": {
+    "type": "video",
+    "uri": "/reference/asl-words/white.mp4",
+    "credit": "asl-citizen",
+    "source": "white/citizen_06851295459869067-WHITE.mp4"
+  },
+  "asl/words/who": {
+    "type": "video",
+    "uri": "/reference/asl-words/who.mp4",
+    "credit": "asl-citizen",
+    "source": "who/citizen_14452193915198386-WHO.mp4"
+  },
+  "asl/words/why": {
+    "type": "video",
+    "uri": "/reference/asl-words/why.mp4",
+    "credit": "asl-citizen",
+    "source": "why/citizen_15735328773357837-WHY.mp4"
+  },
+  "asl/words/wife": {
+    "type": "video",
+    "uri": "/reference/asl-words/wife.mp4",
+    "credit": "asl-citizen",
+    "source": "wife/citizen_11253304596671598-WIFE.mp4"
+  },
+  "asl/words/will": {
+    "type": "video",
+    "uri": "/reference/asl-words/will.mp4",
+    "credit": "asl-citizen",
+    "source": "will/citizen_0076948903337059615-WILL.mp4"
+  },
+  "asl/words/window": {
+    "type": "video",
+    "uri": "/reference/asl-words/window.mp4",
+    "credit": "asl-citizen",
+    "source": "window/citizen_14208664950620942-WINDOW.mp4"
+  },
+  "asl/words/wolf": {
+    "type": "video",
+    "uri": "/reference/asl-words/wolf.mp4",
+    "credit": "asl-citizen",
+    "source": "wolf/citizen_14177105822722047-WOLF.mp4"
+  },
+  "asl/words/woman": {
+    "type": "video",
+    "uri": "/reference/asl-words/woman.mp4",
+    "credit": "wlasl",
+    "source": "woman/63672.mp4"
+  },
+  "asl/words/work": {
+    "type": "video",
+    "uri": "/reference/asl-words/work.mp4",
+    "credit": "asl-citizen",
+    "source": "work/citizen_16430646158155082-WORK.mp4"
+  },
+  "asl/words/write": {
+    "type": "video",
+    "uri": "/reference/asl-words/write.mp4",
+    "credit": "asl-citizen",
+    "source": "write/citizen_0940927928215547-WRITE.mp4"
+  },
+  "asl/words/year": {
+    "type": "video",
+    "uri": "/reference/asl-words/year.mp4",
+    "credit": "asl-citizen",
+    "source": "year/citizen_2027477584552939-YEAR.mp4"
+  },
+  "asl/words/yellow": {
+    "type": "video",
+    "uri": "/reference/asl-words/yellow.mp4",
+    "credit": "asl-citizen",
+    "source": "yellow/citizen_02390770742279491-YELLOW.mp4"
+  },
+  "asl/words/yes": {
+    "type": "video",
+    "uri": "/reference/asl-words/yes.mp4",
+    "credit": "asl-citizen",
+    "source": "yes/citizen_029563612799205163-YES.mp4"
+  },
+  "asl/words/yesterday": {
+    "type": "video",
+    "uri": "/reference/asl-words/yesterday.mp4",
+    "credit": "asl-citizen",
+    "source": "yesterday/citizen_000884691765486556-YESTERDAY.mp4"
+  },
+  "asl/words/yourself": {
+    "type": "video",
+    "uri": "/reference/asl-words/yourself.mp4",
+    "credit": "asl-citizen",
+    "source": "yourself/citizen_029950708361064615-YOURSELF.mp4"
+  },
+  "asl/words/yucky": {
+    "type": "video",
+    "uri": "/reference/asl-words/yucky.mp4",
+    "credit": "asl-citizen",
+    "source": "yucky/citizen_2862824335015077-YUCKY.mp4"
+  },
+  "asl/words/zebra": {
+    "type": "video",
+    "uri": "/reference/asl-words/zebra.mp4",
+    "credit": "asl-citizen",
+    "source": "zebra/citizen_13355902012137277-ZEBRA.mp4"
+  },
+  "asl/words/zipper": {
+    "type": "video",
+    "uri": "/reference/asl-words/zipper.mp4",
+    "credit": "asl-citizen",
+    "source": "zipper/citizen_0980294359113636-ZIPPER.mp4"
+  },
+  "fsl/words/april": {
+    "type": "video",
+    "uri": "/reference/fsl-words/33.mp4",
+    "credit": "fsl-105",
+    "source": "clips/33/15.MOV"
+  },
+  "fsl/words/august": {
+    "type": "video",
+    "uri": "/reference/fsl-words/37.mp4",
+    "credit": "fsl-105",
+    "source": "clips/37/16.MOV"
+  },
+  "fsl/words/auntie": {
+    "type": "video",
+    "uri": "/reference/fsl-words/59.mp4",
+    "credit": "fsl-105",
+    "source": "clips/59/15.MOV"
+  },
+  "fsl/words/beer": {
+    "type": "video",
+    "uri": "/reference/fsl-words/101.mp4",
+    "credit": "fsl-105",
+    "source": "clips/101/15.MOV"
+  },
+  "fsl/words/black": {
+    "type": "video",
+    "uri": "/reference/fsl-words/76.mp4",
+    "credit": "fsl-105",
+    "source": "clips/76/15.MOV"
+  },
+  "fsl/words/blind": {
+    "type": "video",
+    "uri": "/reference/fsl-words/69.mp4",
+    "credit": "fsl-105",
+    "source": "clips/69/15.MOV"
+  },
+  "fsl/words/blue": {
+    "type": "video",
+    "uri": "/reference/fsl-words/72.mp4",
+    "credit": "fsl-105",
+    "source": "clips/72/15.MOV"
+  },
+  "fsl/words/boy": {
+    "type": "video",
+    "uri": "/reference/fsl-words/62.mp4",
+    "credit": "fsl-105",
+    "source": "clips/62/16.MOV"
+  },
+  "fsl/words/bread": {
+    "type": "video",
+    "uri": "/reference/fsl-words/85.mp4",
+    "credit": "fsl-105",
+    "source": "clips/85/15.MOV"
+  },
+  "fsl/words/brown": {
+    "type": "video",
+    "uri": "/reference/fsl-words/75.mp4",
+    "credit": "fsl-105",
+    "source": "clips/75/15.MOV"
+  },
+  "fsl/words/chicken": {
+    "type": "video",
+    "uri": "/reference/fsl-words/89.mp4",
+    "credit": "fsl-105",
+    "source": "clips/89/15.MOV"
+  },
+  "fsl/words/coffee": {
+    "type": "video",
+    "uri": "/reference/fsl-words/99.mp4",
+    "credit": "fsl-105",
+    "source": "clips/99/15.MOV"
+  },
+  "fsl/words/cold": {
+    "type": "video",
+    "uri": "/reference/fsl-words/96.mp4",
+    "credit": "fsl-105",
+    "source": "clips/96/16.MOV"
+  },
+  "fsl/words/correct": {
+    "type": "video",
+    "uri": "/reference/fsl-words/17.mp4",
+    "credit": "fsl-105",
+    "source": "clips/17/16.MOV"
+  },
+  "fsl/words/cousin": {
+    "type": "video",
+    "uri": "/reference/fsl-words/60.mp4",
+    "credit": "fsl-105",
+    "source": "clips/60/15.MOV"
+  },
+  "fsl/words/crab": {
+    "type": "video",
+    "uri": "/reference/fsl-words/94.mp4",
+    "credit": "fsl-105",
+    "source": "clips/94/15.MOV"
+  },
+  "fsl/words/dark": {
+    "type": "video",
+    "uri": "/reference/fsl-words/84.mp4",
+    "credit": "fsl-105",
+    "source": "clips/84/15.MOV"
+  },
+  "fsl/words/daughter": {
+    "type": "video",
+    "uri": "/reference/fsl-words/55.mp4",
+    "credit": "fsl-105",
+    "source": "clips/55/15.MOV"
+  },
+  "fsl/words/deaf": {
+    "type": "video",
+    "uri": "/reference/fsl-words/66.mp4",
+    "credit": "fsl-105",
+    "source": "clips/66/16.MOV"
+  },
+  "fsl/words/deaf blind": {
+    "type": "video",
+    "uri": "/reference/fsl-words/70.mp4",
+    "credit": "fsl-105",
+    "source": "clips/70/15.MOV"
+  },
+  "fsl/words/december": {
+    "type": "video",
+    "uri": "/reference/fsl-words/41.mp4",
+    "credit": "fsl-105",
+    "source": "clips/41/17.MOV"
+  },
+  "fsl/words/don’t know": {
+    "type": "video",
+    "uri": "/reference/fsl-words/13.mp4",
+    "credit": "fsl-105",
+    "source": "clips/13/15.MOV"
+  },
+  "fsl/words/don’t understand": {
+    "type": "video",
+    "uri": "/reference/fsl-words/11.mp4",
+    "credit": "fsl-105",
+    "source": "clips/11/16.MOV"
+  },
+  "fsl/words/egg": {
+    "type": "video",
+    "uri": "/reference/fsl-words/86.mp4",
+    "credit": "fsl-105",
+    "source": "clips/86/15.MOV"
+  },
+  "fsl/words/eight": {
+    "type": "video",
+    "uri": "/reference/fsl-words/27.mp4",
+    "credit": "fsl-105",
+    "source": "clips/27/16.MOV"
+  },
+  "fsl/words/fast": {
+    "type": "video",
+    "uri": "/reference/fsl-words/19.mp4",
+    "credit": "fsl-105",
+    "source": "clips/19/16.MOV"
+  },
+  "fsl/words/father": {
+    "type": "video",
+    "uri": "/reference/fsl-words/52.mp4",
+    "credit": "fsl-105",
+    "source": "clips/52/15.MOV"
+  },
+  "fsl/words/february": {
+    "type": "video",
+    "uri": "/reference/fsl-words/31.mp4",
+    "credit": "fsl-105",
+    "source": "clips/31/14.MOV"
+  },
+  "fsl/words/fish": {
+    "type": "video",
+    "uri": "/reference/fsl-words/87.mp4",
+    "credit": "fsl-105",
+    "source": "clips/87/15.MOV"
+  },
+  "fsl/words/five": {
+    "type": "video",
+    "uri": "/reference/fsl-words/24.mp4",
+    "credit": "fsl-105",
+    "source": "clips/24/15.MOV"
+  },
+  "fsl/words/four": {
+    "type": "video",
+    "uri": "/reference/fsl-words/23.mp4",
+    "credit": "fsl-105",
+    "source": "clips/23/15.MOV"
+  },
+  "fsl/words/friday": {
+    "type": "video",
+    "uri": "/reference/fsl-words/46.mp4",
+    "credit": "fsl-105",
+    "source": "clips/46/15.MOV"
+  },
+  "fsl/words/girl": {
+    "type": "video",
+    "uri": "/reference/fsl-words/63.mp4",
+    "credit": "fsl-105",
+    "source": "clips/63/15.MOV"
+  },
+  "fsl/words/good afternoon": {
+    "type": "video",
+    "uri": "/reference/fsl-words/1.mp4",
+    "credit": "fsl-105",
+    "source": "clips/1/16.MOV"
+  },
+  "fsl/words/good evening": {
+    "type": "video",
+    "uri": "/reference/fsl-words/2.mp4",
+    "credit": "fsl-105",
+    "source": "clips/2/16.MOV"
+  },
+  "fsl/words/good morning": {
+    "type": "video",
+    "uri": "/reference/fsl-words/0.mp4",
+    "credit": "fsl-105",
+    "source": "clips/0/15.MOV"
+  },
+  "fsl/words/grandfather": {
+    "type": "video",
+    "uri": "/reference/fsl-words/56.mp4",
+    "credit": "fsl-105",
+    "source": "clips/56/13.MOV"
+  },
+  "fsl/words/grandmother": {
+    "type": "video",
+    "uri": "/reference/fsl-words/57.mp4",
+    "credit": "fsl-105",
+    "source": "clips/57/15.MOV"
+  },
+  "fsl/words/gray": {
+    "type": "video",
+    "uri": "/reference/fsl-words/80.mp4",
+    "credit": "fsl-105",
+    "source": "clips/80/15.MOV"
+  },
+  "fsl/words/green": {
+    "type": "video",
+    "uri": "/reference/fsl-words/73.mp4",
+    "credit": "fsl-105",
+    "source": "clips/73/15.MOV"
+  },
+  "fsl/words/hard of hearing": {
+    "type": "video",
+    "uri": "/reference/fsl-words/67.mp4",
+    "credit": "fsl-105",
+    "source": "clips/67/15.MOV"
+  },
+  "fsl/words/hello": {
+    "type": "video",
+    "uri": "/reference/fsl-words/3.mp4",
+    "credit": "fsl-105",
+    "source": "clips/3/15.MOV"
+  },
+  "fsl/words/hot": {
+    "type": "video",
+    "uri": "/reference/fsl-words/95.mp4",
+    "credit": "fsl-105",
+    "source": "clips/95/15.MOV"
+  },
+  "fsl/words/how are you": {
+    "type": "video",
+    "uri": "/reference/fsl-words/4.mp4",
+    "credit": "fsl-105",
+    "source": "clips/4/16.MOV"
+  },
+  "fsl/words/im fine": {
+    "type": "video",
+    "uri": "/reference/fsl-words/5.mp4",
+    "credit": "fsl-105",
+    "source": "clips/5/15.MOV"
+  },
+  "fsl/words/january": {
+    "type": "video",
+    "uri": "/reference/fsl-words/30.mp4",
+    "credit": "fsl-105",
+    "source": "clips/30/15.MOV"
+  },
+  "fsl/words/juice": {
+    "type": "video",
+    "uri": "/reference/fsl-words/97.mp4",
+    "credit": "fsl-105",
+    "source": "clips/97/16.MOV"
+  },
+  "fsl/words/july": {
+    "type": "video",
+    "uri": "/reference/fsl-words/36.mp4",
+    "credit": "fsl-105",
+    "source": "clips/36/16.MOV"
+  },
+  "fsl/words/june": {
+    "type": "video",
+    "uri": "/reference/fsl-words/35.mp4",
+    "credit": "fsl-105",
+    "source": "clips/35/15.MOV"
+  },
+  "fsl/words/know": {
+    "type": "video",
+    "uri": "/reference/fsl-words/12.mp4",
+    "credit": "fsl-105",
+    "source": "clips/12/15.MOV"
+  },
+  "fsl/words/light": {
+    "type": "video",
+    "uri": "/reference/fsl-words/83.mp4",
+    "credit": "fsl-105",
+    "source": "clips/83/15.MOV"
+  },
+  "fsl/words/longanisa": {
+    "type": "video",
+    "uri": "/reference/fsl-words/92.mp4",
+    "credit": "fsl-105",
+    "source": "clips/92/15.MOV"
+  },
+  "fsl/words/man": {
+    "type": "video",
+    "uri": "/reference/fsl-words/64.mp4",
+    "credit": "fsl-105",
+    "source": "clips/64/15.MOV"
+  },
+  "fsl/words/march": {
+    "type": "video",
+    "uri": "/reference/fsl-words/32.mp4",
+    "credit": "fsl-105",
+    "source": "clips/32/15.MOV"
+  },
+  "fsl/words/married": {
+    "type": "video",
+    "uri": "/reference/fsl-words/71.mp4",
+    "credit": "fsl-105",
+    "source": "clips/71/15.MOV"
+  },
+  "fsl/words/may": {
+    "type": "video",
+    "uri": "/reference/fsl-words/34.mp4",
+    "credit": "fsl-105",
+    "source": "clips/34/16.MOV"
+  },
+  "fsl/words/meat": {
+    "type": "video",
+    "uri": "/reference/fsl-words/88.mp4",
+    "credit": "fsl-105",
+    "source": "clips/88/15.MOV"
+  },
+  "fsl/words/milk": {
+    "type": "video",
+    "uri": "/reference/fsl-words/98.mp4",
+    "credit": "fsl-105",
+    "source": "clips/98/15.MOV"
+  },
+  "fsl/words/monday": {
+    "type": "video",
+    "uri": "/reference/fsl-words/42.mp4",
+    "credit": "fsl-105",
+    "source": "clips/42/15.MOV"
+  },
+  "fsl/words/mother": {
+    "type": "video",
+    "uri": "/reference/fsl-words/53.mp4",
+    "credit": "fsl-105",
+    "source": "clips/53/15.MOV"
+  },
+  "fsl/words/nice to meet you": {
+    "type": "video",
+    "uri": "/reference/fsl-words/6.mp4",
+    "credit": "fsl-105",
+    "source": "clips/6/17.MOV"
+  },
+  "fsl/words/nine": {
+    "type": "video",
+    "uri": "/reference/fsl-words/28.mp4",
+    "credit": "fsl-105",
+    "source": "clips/28/15.MOV"
+  },
+  "fsl/words/no": {
+    "type": "video",
+    "uri": "/reference/fsl-words/14.mp4",
+    "credit": "fsl-105",
+    "source": "clips/14/16.MOV"
+  },
+  "fsl/words/no sugar": {
+    "type": "video",
+    "uri": "/reference/fsl-words/104.mp4",
+    "credit": "fsl-105",
+    "source": "clips/104/15.MOV"
+  },
+  "fsl/words/november": {
+    "type": "video",
+    "uri": "/reference/fsl-words/40.mp4",
+    "credit": "fsl-105",
+    "source": "clips/40/16.MOV"
+  },
+  "fsl/words/october": {
+    "type": "video",
+    "uri": "/reference/fsl-words/39.mp4",
+    "credit": "fsl-105",
+    "source": "clips/39/15.MOV"
+  },
+  "fsl/words/one": {
+    "type": "video",
+    "uri": "/reference/fsl-words/20.mp4",
+    "credit": "fsl-105",
+    "source": "clips/20/15.MOV"
+  },
+  "fsl/words/orange": {
+    "type": "video",
+    "uri": "/reference/fsl-words/79.mp4",
+    "credit": "fsl-105",
+    "source": "clips/79/15.MOV"
+  },
+  "fsl/words/parents": {
+    "type": "video",
+    "uri": "/reference/fsl-words/61.mp4",
+    "credit": "fsl-105",
+    "source": "clips/61/15.MOV"
+  },
+  "fsl/words/pink": {
+    "type": "video",
+    "uri": "/reference/fsl-words/81.mp4",
+    "credit": "fsl-105",
+    "source": "clips/81/15.MOV"
+  },
+  "fsl/words/red": {
+    "type": "video",
+    "uri": "/reference/fsl-words/74.mp4",
+    "credit": "fsl-105",
+    "source": "clips/74/15.MOV"
+  },
+  "fsl/words/rice": {
+    "type": "video",
+    "uri": "/reference/fsl-words/91.mp4",
+    "credit": "fsl-105",
+    "source": "clips/91/15.MOV"
+  },
+  "fsl/words/saturday": {
+    "type": "video",
+    "uri": "/reference/fsl-words/47.mp4",
+    "credit": "fsl-105",
+    "source": "clips/47/15.MOV"
+  },
+  "fsl/words/see you tomorrow": {
+    "type": "video",
+    "uri": "/reference/fsl-words/9.mp4",
+    "credit": "fsl-105",
+    "source": "clips/9/15.MOV"
+  },
+  "fsl/words/september": {
+    "type": "video",
+    "uri": "/reference/fsl-words/38.mp4",
+    "credit": "fsl-105",
+    "source": "clips/38/15.MOV"
+  },
+  "fsl/words/seven": {
+    "type": "video",
+    "uri": "/reference/fsl-words/26.mp4",
+    "credit": "fsl-105",
+    "source": "clips/26/16.MOV"
+  },
+  "fsl/words/shrimp": {
+    "type": "video",
+    "uri": "/reference/fsl-words/93.mp4",
+    "credit": "fsl-105",
+    "source": "clips/93/15.MOV"
+  },
+  "fsl/words/six": {
+    "type": "video",
+    "uri": "/reference/fsl-words/25.mp4",
+    "credit": "fsl-105",
+    "source": "clips/25/15.MOV"
+  },
+  "fsl/words/slow": {
+    "type": "video",
+    "uri": "/reference/fsl-words/18.mp4",
+    "credit": "fsl-105",
+    "source": "clips/18/15.MOV"
+  },
+  "fsl/words/son": {
+    "type": "video",
+    "uri": "/reference/fsl-words/54.mp4",
+    "credit": "fsl-105",
+    "source": "clips/54/15.MOV"
+  },
+  "fsl/words/spaghetti": {
+    "type": "video",
+    "uri": "/reference/fsl-words/90.mp4",
+    "credit": "fsl-105",
+    "source": "clips/90/15.MOV"
+  },
+  "fsl/words/sugar": {
+    "type": "video",
+    "uri": "/reference/fsl-words/103.mp4",
+    "credit": "fsl-105",
+    "source": "clips/103/16.MOV"
+  },
+  "fsl/words/sunday": {
+    "type": "video",
+    "uri": "/reference/fsl-words/48.mp4",
+    "credit": "fsl-105",
+    "source": "clips/48/15.MOV"
+  },
+  "fsl/words/tea": {
+    "type": "video",
+    "uri": "/reference/fsl-words/100.mp4",
+    "credit": "fsl-105",
+    "source": "clips/100/15.MOV"
+  },
+  "fsl/words/ten": {
+    "type": "video",
+    "uri": "/reference/fsl-words/29.mp4",
+    "credit": "fsl-105",
+    "source": "clips/29/15.MOV"
+  },
+  "fsl/words/thank you": {
+    "type": "video",
+    "uri": "/reference/fsl-words/7.mp4",
+    "credit": "fsl-105",
+    "source": "clips/7/15.MOV"
+  },
+  "fsl/words/three": {
+    "type": "video",
+    "uri": "/reference/fsl-words/22.mp4",
+    "credit": "fsl-105",
+    "source": "clips/22/15.MOV"
+  },
+  "fsl/words/thursday": {
+    "type": "video",
+    "uri": "/reference/fsl-words/45.mp4",
+    "credit": "fsl-105",
+    "source": "clips/45/15.MOV"
+  },
+  "fsl/words/today": {
+    "type": "video",
+    "uri": "/reference/fsl-words/49.mp4",
+    "credit": "fsl-105",
+    "source": "clips/49/15.MOV"
+  },
+  "fsl/words/tomorrow": {
+    "type": "video",
+    "uri": "/reference/fsl-words/50.mp4",
+    "credit": "fsl-105",
+    "source": "clips/50/16.MOV"
+  },
+  "fsl/words/tuesday": {
+    "type": "video",
+    "uri": "/reference/fsl-words/43.mp4",
+    "credit": "fsl-105",
+    "source": "clips/43/15.MOV"
+  },
+  "fsl/words/two": {
+    "type": "video",
+    "uri": "/reference/fsl-words/21.mp4",
+    "credit": "fsl-105",
+    "source": "clips/21/15.MOV"
+  },
+  "fsl/words/uncle": {
+    "type": "video",
+    "uri": "/reference/fsl-words/58.mp4",
+    "credit": "fsl-105",
+    "source": "clips/58/15.MOV"
+  },
+  "fsl/words/understand": {
+    "type": "video",
+    "uri": "/reference/fsl-words/10.mp4",
+    "credit": "fsl-105",
+    "source": "clips/10/15.MOV"
+  },
+  "fsl/words/violet": {
+    "type": "video",
+    "uri": "/reference/fsl-words/82.mp4",
+    "credit": "fsl-105",
+    "source": "clips/82/15.MOV"
+  },
+  "fsl/words/wednesday": {
+    "type": "video",
+    "uri": "/reference/fsl-words/44.mp4",
+    "credit": "fsl-105",
+    "source": "clips/44/15.MOV"
+  },
+  "fsl/words/weelchair person": {
+    "type": "video",
+    "uri": "/reference/fsl-words/68.mp4",
+    "credit": "fsl-105",
+    "source": "clips/68/15.MOV"
+  },
+  "fsl/words/white": {
+    "type": "video",
+    "uri": "/reference/fsl-words/77.mp4",
+    "credit": "fsl-105",
+    "source": "clips/77/15.MOV"
+  },
+  "fsl/words/wine": {
+    "type": "video",
+    "uri": "/reference/fsl-words/102.mp4",
+    "credit": "fsl-105",
+    "source": "clips/102/15.MOV"
+  },
+  "fsl/words/woman": {
+    "type": "video",
+    "uri": "/reference/fsl-words/65.mp4",
+    "credit": "fsl-105",
+    "source": "clips/65/15.MOV"
+  },
+  "fsl/words/wrong": {
+    "type": "video",
+    "uri": "/reference/fsl-words/16.mp4",
+    "credit": "fsl-105",
+    "source": "clips/16/16.MOV"
+  },
+  "fsl/words/yellow": {
+    "type": "video",
+    "uri": "/reference/fsl-words/78.mp4",
+    "credit": "fsl-105",
+    "source": "clips/78/15.MOV"
+  },
+  "fsl/words/yes": {
+    "type": "video",
+    "uri": "/reference/fsl-words/15.mp4",
+    "credit": "fsl-105",
+    "source": "clips/15/15.MOV"
+  },
+  "fsl/words/yesterday": {
+    "type": "video",
+    "uri": "/reference/fsl-words/51.mp4",
+    "credit": "fsl-105",
+    "source": "clips/51/15.MOV"
+  },
+  "fsl/words/youre welcome": {
+    "type": "video",
+    "uri": "/reference/fsl-words/8.mp4",
+    "credit": "fsl-105",
+    "source": "clips/8/15.MOV"
+  }
+}
