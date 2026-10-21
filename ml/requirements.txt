@@ -6,3 +6,4 @@ scikit-learn==1.5.2
 tensorflow==2.21.0
 matplotlib==3.9.2
 jupyter
+pyarrow==18.1.0

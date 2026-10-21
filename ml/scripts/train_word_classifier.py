@@ -52,6 +52,27 @@ Ensembling:
   After training a few, run scripts/test_ensemble.py to see the combined
   accuracy vs. any single model.
 
+Combined dataset (--combined):
+  Trains on consolidate_combined_words.py's output instead - our clips plus
+  the Google Isolated Sign Language Recognition clips, ~344 words. Differences
+  from the default run, all because one source has ~380 clips per word and
+  the other 10-60:
+    - class weights are 1/sqrt(count), not 1/count - full inverse weighting
+      would multiply our rarest words' loss ~40x and destabilise training;
+    - pose visibility is held at zero through augmentation (INPUT_MASK; the
+      new dataset has none - see consolidate_combined_words.py);
+    - half the clips are mirrored left/right (mirror_batch). Each source's
+      signers lean a different way (the new dataset has twice as many
+      left-hand-dominant clips), so without it the model learned the new
+      words in one hand only and read "right-handed webcam signer" as "one
+      of our 133 words": 93% of webcam clips of new words were guessed as
+      an old word, and mirroring those clips doubled how many it recognised;
+    - test accuracy is also reported per source;
+    - models save as asl_combined_seed{N}.keras, leaving the deployed
+      word_sequence_classifier*.keras untouched.
+    python scripts/train_word_classifier.py --combined        (seed 0)
+    python scripts/train_word_classifier.py --combined 1      (seed 1)
+
 Run this with your venv active (after steps 1-3 have produced word_landmarks.npz):
   cd ml
   .\venv\Scripts\Activate.ps1     (Windows)
@@ -95,17 +116,28 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-SEED = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+COMBINED = "--combined" in sys.argv
+# Pick up a run that was stopped part-way from its last checkpoint (see
+# callbacks in main). Same seed and flags as the original run.
+RESUME = "--resume" in sys.argv
+_args = [a for a in sys.argv[1:] if not a.startswith("--")]
+SEED = int(_args[0]) if _args else 0
 tf.random.set_seed(SEED)
 np.random.seed(SEED)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-NPZ_PATH = os.path.join(DATA_DIR, "word_landmarks.npz")
-CLASSES_PATH = os.path.join(DATA_DIR, "word_classes.json")
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-MODEL_SUFFIX = "" if SEED == 0 else f"_seed{SEED}"
-MODEL_PATH = os.path.join(MODEL_DIR, f"word_sequence_classifier{MODEL_SUFFIX}.keras")
-LABELS_PATH = os.path.join(MODEL_DIR, "word_label_classes.json")
+if COMBINED:
+    NPZ_PATH = os.path.join(DATA_DIR, "combined_word_landmarks.npz")
+    CLASSES_PATH = os.path.join(DATA_DIR, "combined_word_classes.json")
+    MODEL_PATH = os.path.join(MODEL_DIR, f"asl_combined_seed{SEED}.keras")
+    LABELS_PATH = os.path.join(MODEL_DIR, "asl_combined_label_classes.json")
+else:
+    NPZ_PATH = os.path.join(DATA_DIR, "word_landmarks.npz")
+    CLASSES_PATH = os.path.join(DATA_DIR, "word_classes.json")
+    MODEL_SUFFIX = "" if SEED == 0 else f"_seed{SEED}"
+    MODEL_PATH = os.path.join(MODEL_DIR, f"word_sequence_classifier{MODEL_SUFFIX}.keras")
+    LABELS_PATH = os.path.join(MODEL_DIR, "word_label_classes.json")
 
 SEQUENCE_LENGTH = 40
 # Read from the data rather than hardcoded: consolidate_word_landmarks.py
@@ -113,7 +145,7 @@ SEQUENCE_LENGTH = 40
 # wrist-relative hand blocks = 384), and a stale constant here would fail
 # confusingly at the first batch instead of clearly at load time.
 FEATURES_PER_FRAME = None  # set in main() from X_train.shape[-1]
-BATCH_SIZE = 32
+BATCH_SIZE = 64 if COMBINED else 32
 EPOCHS = 100
 USE_CLASS_WEIGHTS = True
 
@@ -122,6 +154,18 @@ SPATIAL_NOISE_STD = 0.025    # gaussian jitter added to x,y,z,(visibility)
 SCALE_JITTER = 0.10          # +/- 10% random scale
 TRANSLATE_JITTER = 0.05      # +/- small random shift in x,y
 L2_WEIGHT = 1e-4             # weight decay on GRU/dense layers
+
+# unroll=True exists only for the TF.js graph (see build_model). The fused
+# exporter (export_fused_word_ensemble.py) rebuilds the recurrence by hand
+# from the trained weights, which are identical either way - so on a GPU,
+# train with unroll=False and get TensorFlow's cuDNN GRU kernel, several
+# times faster. GPU training runs under WSL2 (TensorFlow has no native
+# Windows GPU support since 2.11):
+#   wsl -d Ubuntu
+#   cd /mnt/c/Users/USER/Documents/kamustasign/ml
+#   ~/ks-gpu/bin/python scripts/train_word_classifier.py --combined 1
+GPU = bool(tf.config.list_physical_devices("GPU"))
+UNROLL = not GPU
 
 
 def augment_batch(X, training):
@@ -133,7 +177,46 @@ def augment_batch(X, training):
     noise = tf.random.normal(tf.shape(X), stddev=SPATIAL_NOISE_STD)
     scale = 1.0 + tf.random.uniform([B, 1, 1], -SCALE_JITTER, SCALE_JITTER)
     shift = tf.random.uniform([B, 1, 1], -TRANSLATE_JITTER, TRANSLATE_JITTER)
-    return X * scale + shift + noise
+    X = X * scale + shift + noise
+    if COMBINED:
+        X = mirror_batch(X) * INPUT_MASK
+    return X
+
+
+def _mirror_layout():
+    """Column permutation and sign that turn a normalised 384-value frame
+    into the same frame filmed mirrored: x is centred on the shoulders, so it
+    just flips sign; left and right swap (pose landmark pairs, both hand
+    blocks, both wrist-relative blocks); y and z stay."""
+    pose_pairs = [(1, 4), (2, 5), (3, 6), (7, 8), (9, 10), (11, 12), (13, 14), (15, 16), (17, 18),
+                  (19, 20), (21, 22), (23, 24), (25, 26), (27, 28), (29, 30), (31, 32)]
+    landmark = list(range(33))
+    for a, b in pose_pairs:
+        landmark[a], landmark[b] = b, a
+    perm = [landmark[i // 4] * 4 + i % 4 for i in range(132)]
+    sign = [-1.0 if i % 4 == 0 else 1.0 for i in range(132)]
+    hand = 21 * 3
+    for left, right in ((132, 132 + hand), (132 + 2 * hand, 132 + 3 * hand)):
+        perm += list(range(right, right + hand)) + list(range(left, left + hand))
+        sign += [-1.0 if i % 3 == 0 else 1.0 for i in range(2 * hand)]
+    return tf.constant(perm), tf.constant(sign, dtype=tf.float32)
+
+
+MIRROR_PERM, MIRROR_SIGN = _mirror_layout()
+MIRROR_PROB = 0.5
+
+
+def mirror_batch(X):
+    """Mirrors a random MIRROR_PROB of the clips in a (B, 40, 384) batch."""
+    flip = tf.random.uniform([tf.shape(X)[0], 1, 1]) < MIRROR_PROB
+    return tf.where(flip, tf.gather(X, MIRROR_PERM, axis=-1) * MIRROR_SIGN, X)
+
+
+# 0 on the columns consolidate_combined_words.py zeroes (DROP_COLS): the 33
+# pose visibilities (every 4th of the first 132).
+INPUT_MASK = tf.constant(
+    [0.0 if i < 132 and i % 4 == 3 else 1.0 for i in range(384)], dtype=tf.float32
+)
 
 
 def build_model(num_classes):
@@ -149,12 +232,12 @@ def build_model(num_classes):
     # outputs [Identity]" errors) - all three turned out to be different
     # symptoms of the same root cause.
     x = keras.layers.Bidirectional(
-        keras.layers.GRU(128, return_sequences=True, unroll=True,
+        keras.layers.GRU(128, return_sequences=True, unroll=UNROLL,
                           kernel_regularizer=reg, recurrent_regularizer=reg)
     )(x)
     x = keras.layers.Dropout(0.4)(x)
     x = keras.layers.Bidirectional(
-        keras.layers.GRU(64, unroll=True, kernel_regularizer=reg, recurrent_regularizer=reg)
+        keras.layers.GRU(64, unroll=UNROLL, kernel_regularizer=reg, recurrent_regularizer=reg)
     )(x)
     x = keras.layers.Dropout(0.4)(x)
     x = keras.layers.Dense(128, activation="relu", kernel_regularizer=reg)(x)
@@ -163,10 +246,32 @@ def build_model(num_classes):
     return keras.Model(inputs, outputs)
 
 
+def numpy_batches(X, y, batch_size, shuffle):
+    """Batches gathered from the numpy arrays on demand. from_tensor_slices
+    would copy the whole ~3 GB combined dataset into the graph, which doesn't
+    fit beside the arrays themselves in WSL's default memory."""
+    def gen():
+        order = np.random.permutation(len(X)) if shuffle else np.arange(len(X))
+        for i in range(0, len(order), batch_size):
+            j = np.sort(order[i:i + batch_size])
+            yield X[j], y[j]
+    return tf.data.Dataset.from_generator(
+        gen,
+        output_signature=(
+            tf.TensorSpec((None,) + X.shape[1:], tf.as_dtype(X.dtype)),
+            tf.TensorSpec((None,), tf.int32),
+        ),
+    )
+
+
 def compute_class_weights(y, num_classes):
     counts = np.bincount(y, minlength=num_classes).astype("float32")
     counts[counts == 0] = 1  # avoid div by zero for classes with no train examples
-    weights = counts.sum() / (num_classes * counts)
+    if COMBINED:
+        weights = 1.0 / np.sqrt(counts)
+        weights *= len(y) / float((weights[y]).sum())  # mean weight over samples = 1
+    else:
+        weights = counts.sum() / (num_classes * counts)
     return {i: float(w) for i, w in enumerate(weights)}
 
 
@@ -195,6 +300,18 @@ def main():
     global FEATURES_PER_FRAME
     FEATURES_PER_FRAME = int(X_train.shape[-1])
     print(f"Features per frame: {FEATURES_PER_FRAME}")
+    print(f"Device: {'GPU (cuDNN GRU)' if GPU else 'CPU (unrolled GRU)'}")
+
+    # Checkpoints, so a run that is stopped (out of memory, a reboot) keeps
+    # its progress: the best model so far is saved to MODEL_PATH every time
+    # val_loss improves, and the latest one to LAST_PATH every epoch, with
+    # the epoch number beside it for --resume.
+    LAST_PATH = MODEL_PATH.replace(".keras", "_last.keras")
+    STATE_PATH = MODEL_PATH.replace(".keras", "_last.json")
+    initial_epoch = 0
+    if RESUME and os.path.exists(LAST_PATH) and os.path.exists(STATE_PATH):
+        initial_epoch = json.load(open(STATE_PATH))["epoch"]
+        print(f"Resuming from {LAST_PATH} after epoch {initial_epoch}")
 
     model = build_model(num_classes)
     model.compile(
@@ -205,21 +322,42 @@ def main():
             keras.metrics.SparseTopKCategoricalAccuracy(k=5, name="top5_accuracy"),
         ],
     )
+    if initial_epoch:
+        # Weights only, into a freshly built model: the checkpoint may come
+        # from the other device (unrolled CPU GRU vs cuDNN GPU GRU), whose
+        # weights are the same but whose saved layer config is not.
+        model.load_weights(LAST_PATH)
     model.summary()
 
     class_weight = compute_class_weights(y_train, num_classes) if USE_CLASS_WEIGHTS else None
 
-    train_ds = tf.data.Dataset.from_tensor_slices((X_train, y_train))
-    train_ds = train_ds.shuffle(len(X_train)).batch(BATCH_SIZE)
-    train_ds = train_ds.map(lambda x, y: (augment_batch(x, training=True), y),
+    if COMBINED:
+        train_ds = numpy_batches(X_train, y_train, BATCH_SIZE, shuffle=True)
+    else:
+        train_ds = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+        train_ds = train_ds.shuffle(len(X_train)).batch(BATCH_SIZE)
+    train_ds = train_ds.map(lambda x, y: (augment_batch(tf.cast(x, tf.float32), training=True), y),
                              num_parallel_calls=tf.data.AUTOTUNE)
     train_ds = train_ds.prefetch(tf.data.AUTOTUNE)
 
     val_ds = None
     if len(X_val) > 0:
-        val_ds = tf.data.Dataset.from_tensor_slices((X_val, y_val)).batch(BATCH_SIZE)
+        val_ds = (numpy_batches(X_val, y_val, BATCH_SIZE, shuffle=False) if COMBINED
+                  else tf.data.Dataset.from_tensor_slices((X_val, y_val)).batch(BATCH_SIZE))
+        val_ds = val_ds.map(lambda x, y: (tf.cast(x, tf.float32), y))
 
+    os.makedirs(MODEL_DIR, exist_ok=True)
+
+    class SaveLast(keras.callbacks.Callback):
+        def on_epoch_end(self, epoch, logs=None):
+            self.model.save(LAST_PATH)
+            with open(STATE_PATH, "w") as f:
+                json.dump({"epoch": epoch + 1, "logs": {k: float(v) for k, v in (logs or {}).items()}}, f)
+
+    monitor = "val_loss" if val_ds is not None else "loss"
     callbacks = [
+        keras.callbacks.ModelCheckpoint(MODEL_PATH, monitor=monitor, save_best_only=True),
+        SaveLast(),
         keras.callbacks.EarlyStopping(
             monitor="val_loss" if val_ds is not None else "loss",
             patience=12, restore_best_weights=True,
@@ -235,6 +373,7 @@ def main():
         train_ds,
         validation_data=val_ds,
         epochs=EPOCHS,
+        initial_epoch=initial_epoch,
         class_weight=class_weight,
         callbacks=callbacks,
         verbose=2,
@@ -242,15 +381,25 @@ def main():
 
     if len(X_test) > 0:
         print("\nEvaluating on held-out test set...")
+        X_test = X_test.astype("float32")
         results = model.evaluate(X_test, y_test, verbose=0, return_dict=True)
         print(f"Test top-1 accuracy: {results['accuracy']:.4f}")
         print(f"Test top-5 accuracy: {results['top5_accuracy']:.4f}")
         print(f"Test loss: {results['loss']:.4f}")
+        if COMBINED:
+            pred = model.predict(X_test, verbose=0, batch_size=256).argmax(1)
+            src = data["src_test"]
+            for s, name in ((0, "our clips"), (1, "new dataset, unseen signers")):
+                m = src == s
+                if m.any():
+                    print(f"  {name}: top-1 {np.mean(pred[m] == y_test[m]):.4f} on {m.sum()} clips")
     else:
         print("\nNo test examples available (every class had <5 examples) - "
               "skipping held-out evaluation. Rely on validation metrics above.")
 
-    os.makedirs(MODEL_DIR, exist_ok=True)
+    # EarlyStopping restored the best weights; save them over the checkpoint
+    # (identical unless this run resumed, where EarlyStopping only saw the
+    # epochs since resuming).
     model.save(MODEL_PATH)
     with open(LABELS_PATH, "w", encoding="utf-8") as f:
         json.dump(classes, f, indent=2)
