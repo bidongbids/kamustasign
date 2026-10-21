@@ -19,7 +19,7 @@ const presets: Record<ShadowLevel, { offset: number; opacity: number; radius: nu
 };
 
 // Neumorphic double-shadow helpers — the "controls" material in the
-// Graphite Aurora material system (design_handoff_kamustasign_material_pass
+// Graphite Aurora material system (docs/design/design_handoff_kamustasign_material_pass
 // /README.md: "NEUMORPHIC -> controls"). RN 0.81+ / Expo SDK 56 supports
 // `boxShadow` as an array of shadow objects (with `inset`) on web, iOS and
 // Android, so these compose two literal shadow objects — a dark one bottom-
@@ -44,7 +44,7 @@ const insetPresets: Record<NeuSize, { offset: number; blur: number }> = {
   lg: { offset: 5, blur: 12 },
 };
 
-// Light theme geometry (KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §3): the far
+// Light theme geometry (docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §3): the far
 // shadow drops further than it rises (x, y differ), and raised controls get
 // a 1px hairline border so they still separate from the pale ground.
 const LIGHT_FAR = "rgba(102,114,146,";

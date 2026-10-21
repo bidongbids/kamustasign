@@ -1,4 +1,4 @@
--- Video call feature (see KamustaSign_UI_CRUD_Handoff.md Section 5.3) needs
+-- Video call feature (see docs/KamustaSign_UI_CRUD_Handoff.md Section 5.3) needs
 -- a student to look up their own class's teacher (to know who to call - see
 -- src/lib/queries.ts getClassTeacher()). 0002_rls.sql only lets a student
 -- read their own profile row or their own class's row; there was no path to

@@ -1,6 +1,6 @@
 // Standing target-language picker for the translate step: set once, every
 // sign recognized after that goes straight to that language (see
-// FEATURE_REQUEST_translate_tts.md's "confirmed requirement" section) - this
+// docs/FEATURE_REQUEST_translate_tts.md's "confirmed requirement" section) - this
 // is deliberately not a per-recognition control.
 import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";

@@ -1,6 +1,6 @@
 // Owns the shared chrome above both live-translator modes: the logo, the
 // Letters/Words switcher, the standing target-language pill, and the help
-// button — per design_handoff_kamustasign_material_pass/README.md ("Center:
+// button — per docs/design/design_handoff_kamustasign_material_pass/README.md ("Center:
 // the Letters/Words pill switcher — this is the hub's mode control").
 // LiveTranslatorScreen.tsx / WordTranslatorScreen.tsx now only render their
 // two-column body; neither wraps itself in its own GradientBackground or

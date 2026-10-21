@@ -2,7 +2,7 @@
 // The camera panel — a physical device, not a bare <video> element. Shared
 // by LiveTranslatorScreen (Letters) and WordTranslatorScreen (Words) so the
 // housing/shelf/screen construction stays identical between the two modes
-// (see design_handoff_kamustasign_material_pass/README.md, "SKEUOMORPHIC ->
+// (see docs/design/design_handoff_kamustasign_material_pass/README.md, "SKEUOMORPHIC ->
 // hero objects", #1). Callers own the live <video>/<canvas> refs and any
 // overlays drawn on top of the feed (detection box, badges, caption/
 // translation bars) — this component only draws the chrome around them.

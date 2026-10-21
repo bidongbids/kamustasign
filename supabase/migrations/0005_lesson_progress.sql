@@ -1,4 +1,4 @@
--- Classroom as a fixed learning plan (see CLASSROOM_REDESIGN.md). One row per
+-- Classroom as a fixed learning plan (see docs/CLASSROOM_REDESIGN.md). One row per
 -- student per sign they have practised. The curriculum itself is NOT stored
 -- here - it lives in src/lib/curriculum.ts, built from each deployed model's
 -- label_classes.json - so totals like "7 of 26" are counted client-side and

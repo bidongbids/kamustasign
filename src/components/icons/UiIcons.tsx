@@ -1,5 +1,5 @@
 // Small chrome icons for the translator header/controls — glyph placeholders
-// called out in design_handoff_kamustasign_material_pass/README.md ("▾", "?",
+// called out in docs/design/design_handoff_kamustasign_material_pass/README.md ("▾", "?",
 // "⌫" are stand-ins; use react-native-svg icons"). Kept separate from
 // RoleIcons.tsx, which is scoped to the role-select cards.
 import React from "react";

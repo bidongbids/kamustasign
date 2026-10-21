@@ -10,7 +10,7 @@
 // target language (see LanguagePicker.tsx) - set once, applies to every
 // recognition after that, not a per-frame or per-recognition control.
 //
-// Visually this is skeuomorphic hero object #4 (design_handoff_kamustasign_
+// Visually this is skeuomorphic hero object #4 (docs/design/design_handoff_kamustasign_
 // material_pass/README.md): a two-position physical rocker switch with a lit
 // cap, not a plain segmented control — it's the second-largest object in the
 // Letters left column on purpose, because the handedness toggle used to be

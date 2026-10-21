@@ -1,4 +1,4 @@
-// Student dashboard: the classroom's fixed learning plan (CLASSROOM_REDESIGN.md),
+// Student dashboard: the classroom's fixed learning plan (docs/CLASSROOM_REDESIGN.md),
 // in the Graphite Aurora student layout (design system: StudentPlanScreen).
 // ASL/FSL, each split into Letters/Numbers/Words from src/lib/curriculum.ts;
 // a tile per sign shows its stars / learned / resting state, and tapping one

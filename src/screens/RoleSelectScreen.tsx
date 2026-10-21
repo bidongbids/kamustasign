@@ -1,12 +1,12 @@
 // src/screens/RoleSelectScreen.tsx
-// Entry screen. Per design_handoff_kamustasign_material_pass/README.md
+// Entry screen. Per docs/design/design_handoff_kamustasign_material_pass/README.md
 // ("1. Role Select"): the Translator is no longer a 4th peer card — it's
 // demoted to a bordered ghost button below an "OR SKIP SIGN-IN" rule, since
 // skipping sign-in entirely is a categorically different action from
 // choosing a role. Same destination (`onOpenTranslator`), no routing change.
 // Desktop gets a two-pane split (432px brand pane + role cards); tablet is a
 // single scrolling column with the ghost button pinned to the bottom. Phones
-// (<768) get the KAMUSTASIGN_LIGHT_THEME_HANDOFF.md layout (PhoneRoleSelect):
+// (<768) get the docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md layout (PhoneRoleSelect):
 // a "Kamusta!" greeting over a 2x2 grid of role tiles, Translator in the
 // bottom-right cell, in the light or dark theme.
 

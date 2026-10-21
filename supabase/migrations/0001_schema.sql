@@ -1,5 +1,5 @@
 -- KamustaSign core schema, from the manuscript ERD (see Section 5.1 of
--- KamustaSign_UI_CRUD_Handoff.md). Run once against a fresh Supabase project
+-- docs/KamustaSign_UI_CRUD_Handoff.md). Run once against a fresh Supabase project
 -- (paste into the SQL Editor, or `supabase db push` once the CLI is linked).
 
 create type public.user_role as enum ('student', 'teacher', 'admin');

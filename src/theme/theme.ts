@@ -1,7 +1,7 @@
 // src/theme/theme.ts
 // KamustaSign design tokens — "Graphite Aurora" glassmorphism/neumorphism
 // palette (proposed replacement for "Violet Dusk", see
-// design_handoff_kamustasign_material_pass/README.md). Same token NAMES as
+// docs/design/design_handoff_kamustasign_material_pass/README.md). Same token NAMES as
 // every previous revision so none of the files that import `colors` needed
 // to change structurally — only the values (and a handful of new tokens for
 // the neumorphic/skeuomorphic material system) moved. If you're hunting for
@@ -101,7 +101,7 @@ export const darkColors = {
   tipAccent: "#9A8DF8", // = primaryTealLight - tip lightbulb + label
   holdTrack: "rgba(255,255,255,0.08)",
 
-  // Added for the phone light theme (KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §2.1).
+  // Added for the phone light theme (docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §2.1).
   // Where the handoff's guessed key already existed under another name, the
   // existing token is reused (surfaceInset = neuWell, hairline =
   // neuShadowLight, onPrimary = textOnPrimary, onAccent = textOnAccent);

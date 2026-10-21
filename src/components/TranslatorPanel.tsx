@@ -1,7 +1,7 @@
 // src/components/TranslatorPanel.tsx
 // The single glass instrument panel shared by Letters and Words on desktop —
 // design handoff "UI mockups combining design styles"
-// (design_handoff_translator_instrument/README.md, mocks 4a/4b). Replaces
+// (docs/design/design_handoff_translator_instrument/README.md, mocks 4a/4b). Replaces
 // the earlier three-stacked-cards-left-column-plus-fixed-camera layout: one
 // bounded 1600x706 panel, three vertical bays across the top divided by 1px
 // rules, one horizontal control strip along the bottom. Desktop only —

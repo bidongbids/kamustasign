@@ -10,7 +10,7 @@
 // `tint` unifies what used to be two separately-inlined patterns (a sheer
 // tint on the translator/role-select screens, a much stronger "frosted"
 // tint hand-copied into AuthScreenShell/DashboardShell) into one prop, per
-// design_handoff_kamustasign_material_pass/README.md ("Required change").
+// docs/design/design_handoff_kamustasign_material_pass/README.md ("Required change").
 // Frosted is opaque enough for normal dark-on-light text — pair it with
 // `colors.textOnFrosted` / `textOnFrostedMuted`, not `textPrimary`, since
 // `textPrimary` is tuned for the dark ground the sheer variant floats on.
@@ -43,7 +43,7 @@ type Props = {
   dropShadow?: boolean;
 };
 
-// Light theme (phones only, KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §5): there is
+// Light theme (phones only, docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §5): there is
 // no colorful backdrop to blur, so a card off the camera is a plain opaque
 // `surface` card with the light card shadow. Over video it is a dark scrim
 // with a dark blur in both themes' spirit; white text (`onCamera`) goes on it.

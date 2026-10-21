@@ -1,6 +1,6 @@
 // Fires the moment a sign is recognized: translate the English text into the
 // standing target language, then speak it - no separate "Translate" button,
-// no manual trigger (see FEATURE_REQUEST_translate_tts.md). Handles the
+// no manual trigger (see docs/FEATURE_REQUEST_translate_tts.md). Handles the
 // translate call failing or timing out gracefully: falls back to speaking
 // the original English text rather than staying silent, since TTS itself
 // doesn't depend on translation succeeding.

@@ -1,6 +1,6 @@
 // Word Translator ("Words" mode): record a clip -> classify -> ranked top-5
 // word predictions -> auto-translate and speak in the standing target
-// language. Visual pass per design_handoff_kamustasign_material_pass/
+// language. Visual pass per docs/design/design_handoff_kamustasign_material_pass/
 // README.md section 3 ("Word Translator") — the MediaPipe Holistic capture/
 // classification pipeline below is unchanged from the working version, only
 // the chrome around it moved to the material system (glass panels, a
@@ -302,7 +302,7 @@ export default function WordTranslatorScreen({
       // The stream is owned by TranslatorHubScreen (see useSharedCameraStream)
       // and shared across tab switches - it is NOT acquired or released here.
       // Releasing and re-requesting the camera in the same tick used to race
-      // with the OS/driver actually freeing the device (CAMERA_BUG_HANDOFF.md
+      // with the OS/driver actually freeing the device (docs/CAMERA_BUG_HANDOFF.md
       // H1), which is what caused the black panel on the first tab switch.
       trace("awaiting shared camera stream...");
       stream = await getCameraStream();

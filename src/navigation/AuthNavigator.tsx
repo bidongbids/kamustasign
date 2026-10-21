@@ -1,6 +1,6 @@
 // Manual step-switcher for the auth flow (Login / Register / Verify2FA /
 // Setup2FA), matching the same useState-based routing App.tsx already uses
-// elsewhere in this codebase — see KamustaSign_UI_CRUD_Handoff.md Section 4.
+// elsewhere in this codebase — see docs/KamustaSign_UI_CRUD_Handoff.md Section 4.
 // Wiring the installed-but-unused @react-navigation stack is a separate,
 // later step (Section 6, step 3), not folded in here.
 import React, { useState } from "react";

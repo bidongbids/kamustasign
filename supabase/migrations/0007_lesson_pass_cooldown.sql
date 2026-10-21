@@ -1,4 +1,4 @@
--- "Mastered = passed on 3 separate occasions" (CLASSROOM_REDESIGN.md section
+-- "Mastered = passed on 3 separate occasions" (docs/CLASSROOM_REDESIGN.md section
 -- 4) was first enforced as "one pass per practice session". Leaving the
 -- practice screen and reopening it started a new session, so that rule only
 -- added friction - three passes in a minute still counted. Instead, a pass now

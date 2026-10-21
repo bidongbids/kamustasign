@@ -1,4 +1,4 @@
-// Light/dark theme for the phone layout (KAMUSTASIGN_LIGHT_THEME_HANDOFF.md
+// Light/dark theme for the phone layout (docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md
 // §4). The light theme exists only on phones (useResponsive().isMobile):
 // desktop and tablet always get the dark "Graphite Aurora" palette, whatever
 // the saved choice says.

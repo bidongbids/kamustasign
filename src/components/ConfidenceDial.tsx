@@ -1,6 +1,6 @@
 // src/components/ConfidenceDial.tsx
 // The Letters screen's instrument gauge — one of the four skeuomorphic hero
-// objects called out in design_handoff_kamustasign_material_pass/README.md.
+// objects called out in docs/design/design_handoff_kamustasign_material_pass/README.md.
 // An inset neumorphic well holding an SVG conic sweep: `success`-colored arc
 // from a 220° start for `percent` of the circle, remainder a faint ring.
 // There's no RN conic-gradient primitive, so this is drawn as a stroked

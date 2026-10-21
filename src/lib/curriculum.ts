@@ -1,6 +1,6 @@
 // src/lib/curriculum.ts
 // The classroom's fixed learning plan, and the single source of truth for it
-// (see CLASSROOM_REDESIGN.md). Nothing here lives in the database: the sign
+// (see docs/CLASSROOM_REDESIGN.md). Nothing here lives in the database: the sign
 // lists are read from the label_classes.json each deployed model ships with,
 // so the plan can never promise a lesson the app cannot grade, and a model's
 // vocabulary changing never needs a seed migration. lesson_progress only
@@ -72,7 +72,7 @@ const ASL_LETTERS = (letterClasses as string[]).filter((c) => !NON_LESSON_LETTER
 // Placeholders for groups with no model. They are never graded and never
 // counted (see computeOverall); they only let an unavailable tab say what it
 // will contain. Swap ASL numbers to public/number-model/label_classes.json
-// (and flip `available`) once NUMBERS_MODEL_GUIDE.md's model is deployed -
+// (and flip `available`) once docs/NUMBERS_MODEL_GUIDE.md's model is deployed -
 // a static import of a file that doesn't exist yet would break the bundle.
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const LATIN_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -192,7 +192,7 @@ export function groupFraction(language: SignLanguage, group: SignGroup, counts: 
 
 /**
  * The one overall-progress figure, used by the student, teacher and admin
- * views alike. Two deliberate choices (CLASSROOM_REDESIGN.md section 5):
+ * views alike. Two deliberate choices (docs/CLASSROOM_REDESIGN.md section 5):
  *  - Unavailable groups are left out entirely, so mastering every gradable
  *    sign reaches 100%. The denominator grows when a new model ships.
  *  - Each available group weighs the same (mean of group fractions), rather

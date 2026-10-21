@@ -28,7 +28,7 @@ import PracticeCameraOverlay from "../components/learn/PracticeCameraOverlay";
 const COMMIT_THRESHOLD = 60;
 
 // Camera startup tracing, mirroring WordTranslatorScreen's [words-cam] trace
-// (see CAMERA_BUG_HANDOFF.md section 4) - lets you confirm from the console
+// (see docs/CAMERA_BUG_HANDOFF.md section 4) - lets you confirm from the console
 // that Letters gets a live stream back on the second/third mount instead of
 // stalling or getting an already-`ended` track. Set to false once confirmed.
 const TRACE_CAMERA = false;
@@ -237,7 +237,7 @@ export default function LiveTranslatorScreen({
       // The stream is owned by TranslatorHubScreen (see useSharedCameraStream)
       // and shared across tab switches - it is NOT acquired or released here,
       // which is what used to cause the black-panel bug (see
-      // CAMERA_BUG_HANDOFF.md H1: releasing and re-requesting the camera in
+      // docs/CAMERA_BUG_HANDOFF.md H1: releasing and re-requesting the camera in
       // the same tick raced with the OS/driver actually freeing the device).
       trace("awaiting shared camera stream...");
       stream = await getCameraStream();

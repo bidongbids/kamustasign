@@ -2,7 +2,7 @@
 // needed to set up a direct peer-to-peer call, over a Supabase Realtime
 // broadcast channel keyed by class id. No persistent DB table: the channel
 // is ephemeral and only matters while both sides are subscribed (see
-// SESSION_SUMMARY_for_UI_and_VideoChat.md's Section 6.0 "Establish Call").
+// docs/SESSION_SUMMARY_for_UI_and_VideoChat.md's Section 6.0 "Establish Call").
 // Actual call video/audio never touches this channel or Supabase at all -
 // once the peer connection is up, media flows directly between the two
 // devices (Section 7.0 "Stream Video & Translate Overlay (P2P)").

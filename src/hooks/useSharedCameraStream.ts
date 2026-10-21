@@ -9,7 +9,7 @@ import { Platform } from "react-native";
 // actually release the device before it was asked to hand it back out. On
 // Windows that reliably returned a stream whose track was already `ended`
 // (or hung), leaving the camera panel black from the very first switch. Fix
-// (per CAMERA_BUG_HANDOFF.md H1): acquire the camera once, owned by
+// (per docs/CAMERA_BUG_HANDOFF.md H1): acquire the camera once, owned by
 // TranslatorHubScreen which outlives every tab, and hand the same live
 // MediaStream to whichever screen is mounted. Only the hub's own unmount
 // (leaving the Translator entirely) stops the tracks.

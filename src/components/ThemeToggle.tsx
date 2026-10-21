@@ -1,4 +1,4 @@
-// Light/dark switch for phone headers (KAMUSTASIGN_LIGHT_THEME_HANDOFF.md
+// Light/dark switch for phone headers (docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md
 // §4). Renders nothing on desktop/tablet, which are always dark. A 44pt
 // raised button: the icon shows the theme a tap switches TO.
 import React from "react";

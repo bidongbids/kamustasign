@@ -1,4 +1,4 @@
-// Phone role-select tile (KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §5 "RoleCard"):
+// Phone role-select tile (docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §5 "RoleCard"):
 // one cell of the 2x2 grid - a raised slab with the role's icon in a small
 // selected-tint tile, the role name and one short line. Desktop/tablet keep
 // RoleCard's full-width rows.

@@ -1,6 +1,6 @@
 // src/components/RoleCard.tsx
 // Role-select row: sheer glass panel + neumorphic medallion + a Continue
-// action. Per design_handoff_kamustasign_material_pass/README.md ("1. Role
+// action. Per docs/design/design_handoff_kamustasign_material_pass/README.md ("1. Role
 // Select"), there is no icon glyph anymore — the medallion holds a plain
 // glowing accent dot, not an icon. `isPrimary` (the first/Student card by
 // default) carries the accent-tinted border and the one solid, saturated

@@ -4,7 +4,7 @@
 //
 // Groups with no model behind them are shown but disabled, with a line saying
 // so, rather than hidden or rendered as an empty lesson list that looks broken
-// (CLASSROOM_REDESIGN.md section 2).
+// (docs/CLASSROOM_REDESIGN.md section 2).
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import SegmentedToggle from "../../components/SegmentedToggle";

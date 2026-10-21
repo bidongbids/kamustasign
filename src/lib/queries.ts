@@ -98,7 +98,7 @@ export async function getMySubmissions(studentId: string) {
 }
 
 // video_url is a placeholder for now - real recording capture/upload to
-// Supabase Storage is a follow-up (see FEATURE_REQUEST_translate_tts.md-
+// Supabase Storage is a follow-up (see docs/FEATURE_REQUEST_translate_tts.md-
 // style scope note in the dashboard screen itself). This still exercises a
 // real insert against the real submissions table, RLS-scoped to the caller.
 export async function createSubmission(assignmentId: string, studentId: string, note: string) {
