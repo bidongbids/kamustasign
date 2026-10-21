@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "start:prod": "set KAMUSTASIGN_PROD=1&& electron ."
   },
   "devDependencies": {
     "electron": "^33.0.0",
@@ -13,15 +14,23 @@
     "appId": "com.nmsc.kamustasign",
     "productName": "KamustaSign",
     "files": [
-      "main.js",
-      "../dist/**/*"
+      "main.js"
     ],
     "win": {
       "target": "nsis"
     },
     "mac": {
       "target": "dmg"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "../dist",
+        "to": "web",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   },
   "allowScripts": {
     "electron@33.4.11": true
