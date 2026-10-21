@@ -12,6 +12,7 @@ import { colors, fonts, spacing } from "../../theme/theme";
 import { useResponsive } from "../../theme/responsive";
 import CurriculumTabs from "./CurriculumTabs";
 import StudentProgressRow from "./StudentProgressRow";
+import SignReviewRow from "./SignReviewRow";
 import TeacherModules from "./TeacherModules";
 import { InviteStudentsCard, JoinCodeCard } from "./InviteStudents";
 import SegmentedToggle from "../../components/SegmentedToggle";
@@ -35,6 +36,7 @@ import {
   deleteClass,
   removeStudentFromClass,
   getClassProgressSummary,
+  getClassGroupProgress,
   type Profile,
   type ClassRow,
   type StudentProgressSummary,
@@ -47,6 +49,7 @@ import {
   type SignGroup,
   type SignLanguage,
 } from "../../lib/curriculum";
+import { signsToReview, type SignInsight } from "../../lib/classInsights";
 import { useVideoCall } from "../../hooks/useVideoCall";
 import VideoCallScreen from "../videocall/VideoCallScreen";
 import type { CallPeer } from "../../lib/callSignaling";
@@ -73,6 +76,7 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
   const [loading, setLoading] = useState(true);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [notice, setNotice] = useState<NoticeState>(null);
+  const [review, setReview] = useState<SignInsight[] | null>(null);
 
   // Forms / pending actions
   const [newClassName, setNewClassName] = useState("");
@@ -133,6 +137,24 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
   useEffect(() => {
     load();
   }, [load]);
+
+  // "Signs to review" for the group tab on screen; refetched when the class,
+  // tab or roster changes. Only while the Progress section is open.
+  useEffect(() => {
+    if (section !== "progress" || !selectedClassId || !getGroup(language, group).available) {
+      setReview(null);
+      return;
+    }
+    let cancelled = false;
+    getClassGroupProgress(selectedClassId, language, group).then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) setNotice({ kind: "error", message: error.message });
+      setReview(data ? signsToReview(data, getGroup(language, group).signs) : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [section, selectedClassId, language, group, progress]);
 
   const selectClass = (id: string) => {
     if (id === selectedClassId) return;
@@ -448,6 +470,19 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
           ))
         )}
       </DashboardCard>
+      {review && (
+        <DashboardCard title={`${groupDef.label} to review`} style={styles.gapTop}>
+          <Text style={[ds.itemMeta, styles.gapBottom]}>
+            Signs the most students have tried but not learned yet, then the ones they are furthest from passing.
+            Good candidates for a whole-class demo or a module.
+          </Text>
+          {review.length === 0 ? (
+            <Text style={ds.emptyText}>Nobody is stuck on a {groupDef.label.toLowerCase()} sign right now.</Text>
+          ) : (
+            review.map((s, i) => <SignReviewRow key={s.sign} insight={s} first={i === 0} />)
+          )}
+        </DashboardCard>
+      )}
     </View>
   );
 

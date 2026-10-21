@@ -381,7 +381,7 @@ export type StudentProgressSummary = {
 };
 
 export type ProgressEmbed = Pick<LessonProgressRow, "language" | "sign_group" | "sign" | "passes"> &
-  Partial<Pick<LessonProgressRow, "best_confidence">>;
+  Partial<Pick<LessonProgressRow, "best_confidence" | "attempts">>;
 
 function summarizeStudent(row: any): StudentProgressSummary {
   const klass = toOne(row.classes) as { name: string } | null;
@@ -460,13 +460,13 @@ export async function getClassProgressSummary(classId: string) {
   return { data: ((data as any[]) ?? []).map(summarizeStudent), error: null };
 }
 
-// Teacher's module view: every student's rows for one language+group (not
-// just mastered ones), so a module can show per-student progress over its
-// own signs.
+// Teacher's module view and "Signs to review": every student's rows for one
+// language+group (not just mastered ones), so a module can show per-student
+// progress over its own signs.
 export async function getClassGroupProgress(classId: string, language: SignLanguage, group: SignGroup) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, lesson_progress(language, sign_group, sign, passes, best_confidence)")
+    .select("id, lesson_progress(language, sign_group, sign, attempts, passes, best_confidence)")
     .eq("class_id", classId)
     .eq("role", "student")
     .eq("lesson_progress.language", language)
