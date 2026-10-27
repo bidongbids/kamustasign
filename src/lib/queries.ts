@@ -5,10 +5,12 @@
 // supabase-js's own { data, error } return shape, so screens can destructure
 // the same way LoginScreen.tsx already does.
 //
-// Row Level Security (0002_rls.sql) is the real access-control boundary, not
-// these functions - e.g. getSubmissionsForTeacher() has no "where teacher_id
-// = me" filter because the database already refuses to return anyone else's
-// rows to a teacher, regardless of what a client asks for.
+// Row Level Security (0002_rls.sql onward) is the real access-control
+// boundary, not these functions - e.g. getClassProgressSummary() has no
+// "where teacher_id = me" filter because the database already refuses to
+// return anyone else's students to a teacher, regardless of what a client
+// asks for. (The legacy assignments / submissions / scores tables are
+// closed since 0011 and have no functions here.)
 import { supabase } from "./supabase";
 import {
   countMastered,
@@ -46,19 +48,10 @@ export type ClassRow = {
   created_at: string;
 };
 
-export type AssignmentRow = {
-  id: string;
-  teacher_id: string;
-  class_id: string;
-  target_sign: string;
-  due_date: string | null;
-  created_at: string;
-};
-
-// PostgREST embeds a to-one relationship (like scores, which is unique per
-// submission) as either a single object or a one-element array depending on
-// how the schema cache resolved the join direction - this normalizes either
-// shape so screens don't have to guess or crash on the wrong one.
+// PostgREST embeds a to-one relationship (like a student's class) as either
+// a single object or a one-element array depending on how the schema cache
+// resolved the join direction - this normalizes either shape so screens
+// don't have to guess or crash on the wrong one.
 export function toOne<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
@@ -77,14 +70,6 @@ export async function getMyProfile() {
 
 // ---- student ----
 
-export async function getAssignmentsForClass(classId: string) {
-  return supabase
-    .from("assignments")
-    .select("*")
-    .eq("class_id", classId)
-    .order("due_date", { ascending: true });
-}
-
 // Who the student's "Call your teacher" button in the video call feature
 // (Section 5.3) rings. Needs the profiles/0004_rls_call.sql migration
 // applied - without it, the embedded teacher profile comes back null under
@@ -94,30 +79,6 @@ export async function getClassTeacher(classId: string) {
     .from("classes")
     .select("id, name, profiles!classes_teacher_id_fkey(id, full_name)")
     .eq("id", classId)
-    .single();
-}
-
-export async function getMySubmissions(studentId: string) {
-  return supabase
-    .from("submissions")
-    .select("*, assignments(target_sign), scores(is_correct, confidence, predicted_sign)")
-    .eq("student_id", studentId)
-    .order("submitted_at", { ascending: false });
-}
-
-// video_url is a placeholder for now - real recording capture/upload to
-// Supabase Storage is a follow-up (see docs/FEATURE_REQUEST_translate_tts.md-
-// style scope note in the dashboard screen itself). This still exercises a
-// real insert against the real submissions table, RLS-scoped to the caller.
-export async function createSubmission(assignmentId: string, studentId: string, note: string) {
-  return supabase
-    .from("submissions")
-    .insert({
-      assignment_id: assignmentId,
-      student_id: studentId,
-      video_url: `pending-recording:${note || "no note"}`,
-    })
-    .select()
     .single();
 }
 
@@ -289,46 +250,6 @@ export async function setModuleOrder(moduleIds: string[]) {
     if (error) return { error };
   }
   return { error: null };
-}
-
-export async function createAssignment(
-  classId: string,
-  teacherId: string,
-  targetSign: string,
-  dueDate: string | null
-) {
-  return supabase
-    .from("assignments")
-    .insert({ class_id: classId, teacher_id: teacherId, target_sign: targetSign, due_date: dueDate })
-    .select()
-    .single();
-}
-
-export async function deleteAssignment(assignmentId: string) {
-  return supabase.from("assignments").delete().eq("id", assignmentId);
-}
-
-export async function getSubmissionsForTeacher() {
-  return supabase
-    .from("submissions")
-    .select("*, assignments(target_sign), profiles(full_name), scores(is_correct, confidence, predicted_sign)")
-    .order("submitted_at", { ascending: false });
-}
-
-export async function upsertScore(
-  submissionId: string,
-  predictedSign: string,
-  isCorrect: boolean,
-  confidence: number
-) {
-  return supabase
-    .from("scores")
-    .upsert(
-      { submission_id: submissionId, predicted_sign: predictedSign, is_correct: isCorrect, confidence },
-      { onConflict: "submission_id" }
-    )
-    .select()
-    .single();
 }
 
 // ---- admin (account management only) ----

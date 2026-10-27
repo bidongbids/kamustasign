@@ -1,6 +1,6 @@
 {
-  "name": "KamustaSign",
-  "short_name": "KamustaSign",
+  "name": "LCSign",
+  "short_name": "LCSign",
   "description": "Sign-language translator and practice for Liloan Central School.",
   "start_url": "/",
   "scope": "/",

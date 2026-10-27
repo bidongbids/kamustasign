@@ -1,4 +1,4 @@
-# KamustaSign — model evaluation
+# LCSign — model evaluation
 
 All figures are for the models **deployed in `public/`** (as of 2026-10-21),
 produced by the scripts named in each section. Re-run them after any retrain;

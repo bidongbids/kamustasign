@@ -1,8 +1,9 @@
-# KamustaSign
+# LCSign
 
 Sign-language translator and classroom app for Liloan Central School: it reads
 ASL/FSL signs from a webcam, turns them into text and speech, and gives
-students a practice curriculum that teachers can track.
+students a practice curriculum that teachers can track. (The repository and
+the older design docs use the project's working name, KamustaSign.)
 
 Built with Expo (React Native), mainly targeting the web (`expo start --web`),
 with an Electron desktop build. Recognition runs **on the device** (MediaPipe +

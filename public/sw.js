@@ -1,4 +1,4 @@
-// KamustaSign service worker: lets the installed app open and run the
+// LCSign service worker: lets the installed app open and run the
 // translator with no connection after one online visit.
 //
 // - Page loads: network first, falling back to the cached app shell.
