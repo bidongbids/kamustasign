@@ -117,6 +117,7 @@ export function SideDrawer({
   tint = "sheer",
   children,
   footer,
+  bare,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -125,6 +126,8 @@ export function SideDrawer({
   children: React.ReactNode;
   /** Pinned under the scrolling body (a form's Cancel / Save). */
   footer?: React.ReactNode;
+  /** The children fill the panel and do their own scrolling (a form with a pinned footer). */
+  bare?: boolean;
 }) {
   const { width: W } = useWindowDimensions();
   const phone = W < 768;
@@ -137,9 +140,11 @@ export function SideDrawer({
     if (!reduceMotion) Animated.timing(slide, { toValue: 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [visible, reduceMotion, slide]);
 
-  const body = (
+  const body = bare ? (
+    <View style={styles.flex}>{children}</View>
+  ) : (
     <>
-      <ScrollView style={styles.flex} contentContainerStyle={styles.drawerBody} keyboardShouldPersistTaps="handled">
+      <ScrollView style={styles.flex} contentContainerStyle={[styles.drawerBody, phone && styles.drawerBodyPhone]} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>
       {footer ? <View style={[styles.drawerFooter, tint === "frosted" && styles.drawerFooterFrosted]}>{footer}</View> : null}
@@ -227,6 +232,7 @@ const styles = StyleSheet.create({
   drawerRounded: { borderTopLeftRadius: 24, borderBottomLeftRadius: 24, overflow: "hidden" },
   sheerPanel: { backgroundColor: "rgba(48,54,68,0.98)", borderLeftWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
   drawerBody: { padding: 28, paddingBottom: 40 },
+  drawerBodyPhone: { padding: 16, paddingTop: 20 },
   drawerFooter: {
     flexDirection: "row",
     justifyContent: "flex-end",

@@ -7,14 +7,18 @@
 // Words inside a category are listed the way students see them: the ones the
 // model recognises most reliably first (wordPracticeOrder.json), so "the
 // first N of each category" is a sensible starter plan.
-import React, { useEffect, useMemo, useState } from "react";
+//
+// Step 1 of "What they learn" (design T4): the editor beside two cards that
+// say what saving changes (with the +N / -N against the saved plan). Unsaved
+// changes show in a save bar pinned to the bottom of the page (`onSaveBar`,
+// rendered by the dashboard) rather than a button at the end of a long list.
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { DashboardCard, dashboardStyles as ds } from "./DashboardShell";
 import { ActionButton, CheckBox, SearchField, type NoticeState } from "./ManageKit";
 import SegmentedToggle from "../../components/SegmentedToggle";
-import ProgressBar from "../../components/ProgressBar";
-import { ChevronDownIcon, ChevronUpIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii, spacing } from "../../theme/theme";
+import { Bar } from "./TeacherToday";
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon, PlusIcon } from "../../components/icons/UiIcons";
+import { colors, fonts, radii } from "../../theme/theme";
 import { neuInset } from "../../theme/shadows";
 import { saveClassPlan, type ClassRow } from "../../lib/queries";
 import { CURRICULUM, getGroup, planSigns, type ClassPlan, type SignLanguage } from "../../lib/curriculum";
@@ -23,6 +27,7 @@ import { WORD_CATEGORIES, getWordCategory, type WordCategory } from "../../lib/w
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
 const STARTER_PER_CATEGORY = 10;
 const LANGUAGES = CURRICULUM.filter((l) => getGroup(l.language, "words").available).map((l) => l.language);
+const labelOf = (l: SignLanguage) => CURRICULUM.find((x) => x.language === l)!.label;
 
 type Drafts = Record<SignLanguage, Set<string>>;
 
@@ -31,18 +36,26 @@ const draftsFrom = (plan: ClassPlan): Drafts =>
     CURRICULUM.map((l) => [l.language, new Set(planSigns(l.language, "words", plan))])
   ) as Drafts;
 
+export type SaveBarState = { message: string; saving: boolean; onSave: () => void; onDiscard: () => void } | null;
+
 export default function ClassPlanEditor({
   klass,
   plan,
   accentColor,
   setNotice,
   onSaved,
+  onSaveBar,
+  wide,
 }: {
   klass: ClassRow;
   plan: ClassPlan;
   accentColor: string;
   setNotice: (n: NoticeState) => void;
   onSaved: (plan: ClassPlan) => void;
+  /** Unsaved changes are shown by the dashboard's pinned save bar; without it, inline. */
+  onSaveBar?: (bar: SaveBarState) => void;
+  /** Desktop: the side cards sit beside the editor. */
+  wide: boolean;
 }) {
   const [language, setLanguage] = useState<SignLanguage>(LANGUAGES[0] ?? "asl");
   const [drafts, setDrafts] = useState<Drafts>(() => draftsFrom(plan));
@@ -64,6 +77,8 @@ export default function ClassPlanEditor({
     return a.size !== b.size || [...a].some((s) => !b.has(s));
   });
   const dirty = dirtyLanguages.length > 0;
+  const added = [...chosen].filter((s) => !saved.has(s)).length;
+  const removed = [...saved].filter((s) => !chosen.has(s)).length;
 
   const q = search.trim().toLowerCase();
   const categories = WORD_CATEGORIES.map((c) => {
@@ -118,28 +133,41 @@ export default function ClassPlanEditor({
       else delete next[l];
     }
     setSaving(false);
-    setNotice({ kind: "success", message: `Saved the learning plan for ${klass.name}. Students see it the next time their plan loads.` });
+    setNotice({ kind: "success", message: `Saved the learning plan for ${klass.name}. Students see it the next time their dashboard loads.` });
     onSaved(next);
   };
+  const discard = () => setDrafts(draftsFrom(plan));
 
-  const langLabel = CURRICULUM.find((l) => l.language === language)!.label;
+  // The pinned save bar calls whatever save / discard are current.
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  const discardRef = useRef(discard);
+  discardRef.current = discard;
+  const dirtyText = dirtyLanguages.map(labelOf).join(" and ");
+  useEffect(() => {
+    onSaveBar?.(
+      dirty
+        ? {
+            message: `Unsaved changes to the ${dirtyText} plan${dirtyLanguages.length > 1 ? "s" : ""}`,
+            saving,
+            onSave: () => void saveRef.current(),
+            onDiscard: () => discardRef.current(),
+          }
+        : null
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, saving, dirtyText]);
+  useEffect(() => () => onSaveBar?.(null), [onSaveBar]);
 
-  return (
-    <DashboardCard style={styles.card}>
-      <View style={styles.head}>
-        <View style={styles.headText}>
-          <Text style={styles.title}>Learning plan</Text>
-          <Text style={ds.itemMeta}>
-            Pick the word categories and words {klass.name} learns. Inside each category, words are listed the way
-            students see them: the ones the computer checks most reliably first. Letters are always included.
-          </Text>
-        </View>
+  const langLabel = labelOf(language);
+  const share = all.length ? chosen.size / all.length : 0;
+
+  const editor = (
+    <View style={[styles.card, styles.main]}>
+      <View style={styles.topRow}>
         {LANGUAGES.length > 1 ? (
           <SegmentedToggle
-            options={LANGUAGES.map((l) => ({
-              key: l,
-              label: `${CURRICULUM.find((x) => x.language === l)!.label}${dirtyLanguages.includes(l) ? " •" : ""}`,
-            }))}
+            options={LANGUAGES.map((l) => ({ key: l, label: `${labelOf(l)}${dirtyLanguages.includes(l) ? " •" : ""}` }))}
             value={language}
             onChange={(l) => {
               setLanguage(l);
@@ -147,59 +175,50 @@ export default function ClassPlanEditor({
             }}
           />
         ) : null}
-      </View>
-
-      <View style={[styles.summary, neuInset("sm")]}>
-        <View style={styles.flex}>
-          <ProgressBar
-            value={all.length ? chosen.size / all.length : 0}
-            label={`${chosen.size} of ${all.length} ${langLabel} words in the plan`}
-            caption={
-              chosen.size === all.length
-                ? "Every word - nothing is hidden from students."
-                : chosen.size === 0
-                  ? `Students won't see any ${langLabel} words.`
-                  : `${categories.filter((c) => c.signs.some((s) => chosen.has(s))).length} categories with words picked.`
-            }
-          />
+        <View
+          style={[styles.summary, neuInset("sm")]}
+          accessible
+          accessibilityLabel={`${chosen.size} of ${all.length} ${langLabel} words in the plan, ${Math.round(share * 100)}%`}
+        >
+          <Text style={styles.summaryText} numberOfLines={1}>
+            {chosen.size} of {all.length} {langLabel} words in the plan
+          </Text>
+          <View style={styles.summaryBar}>
+            <Bar value={share} height={8} tone="violet" />
+          </View>
+          <Text style={styles.summaryPct}>{Math.round(share * 100)}%</Text>
         </View>
       </View>
 
-      <View style={[styles.toolbar, styles.gapTop]}>
+      <View style={styles.toolRow}>
         <View style={styles.search}>
           <SearchField value={search} onChangeText={setSearch} placeholder={`Search ${langLabel} words`} />
         </View>
         <View style={styles.row8}>
-          <ActionButton label={`Starter: ${STARTER_PER_CATEGORY} per category`} variant="ghost" onPress={starter} />
-          <ActionButton label="Pick all" variant="ghost" onPress={() => setMany(all, true)} disabled={chosen.size === all.length} />
-          <ActionButton label="Clear all" variant="ghost" onPress={() => setMany(all, false)} disabled={chosen.size === 0} />
+          <ActionButton label={`Starter: ${STARTER_PER_CATEGORY} per category`} size="md" onPress={starter} />
+          <ActionButton label="Pick all" size="md" onPress={() => setMany(all, true)} disabled={chosen.size === all.length} />
+          <ActionButton label="Clear all" size="md" onPress={() => setMany(all, false)} disabled={chosen.size === 0} />
         </View>
       </View>
 
-      <View style={styles.gapTop}>
-        {categories.length === 0 ? <Text style={ds.emptyText}>No words match "{search}".</Text> : null}
+      <View>
+        {categories.length === 0 ? <Text style={styles.muted}>No words match "{search}".</Text> : null}
         {categories.map((c, i) => {
           const picked = c.signs.filter((s) => chosen.has(s)).length;
           const state = picked === 0 ? "none" : picked === c.signs.length ? "all" : "some";
           const expanded = open.has(c.key) || q.length > 0;
           return (
-            <View key={c.key} style={[ds.listItem, i === 0 && ds.listItemFirst]}>
+            <View key={c.key} style={[styles.cat, i > 0 && styles.rule]}>
               <View style={styles.catRow}>
                 <Pressable
                   onPress={() => setMany(c.signs, state !== "all")}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: state === "all" ? true : state === "some" ? "mixed" : false }}
                   accessibilityLabel={`${c.label}: ${state === "all" ? "remove" : "add"} all ${c.signs.length} words`}
-                  hitSlop={8}
-                  style={webCursor}
+                  hitSlop={10}
+                  style={[styles.catCheck, webCursor]}
                 >
-                  {state === "some" ? (
-                    <View style={[styles.mixed, { backgroundColor: accentColor, borderColor: accentColor }]}>
-                      <View style={styles.mixedBar} />
-                    </View>
-                  ) : (
-                    <CheckBox checked={state === "all"} accentColor={accentColor} />
-                  )}
+                  <CheckBox checked={state === "all"} indeterminate={state === "some"} accentColor={accentColor} />
                 </Pressable>
                 <Pressable
                   onPress={() => toggleOpen(c.key)}
@@ -208,15 +227,11 @@ export default function ClassPlanEditor({
                   accessibilityState={{ expanded }}
                   accessibilityLabel={`${c.label}, ${picked} of ${c.signs.length} words picked. ${expanded ? "Hide" : "Show"} words`}
                 >
-                  <Text style={ds.itemTitle}>{c.label}</Text>
+                  <Text style={styles.catLabel}>{c.label}</Text>
                   <Text style={styles.catCount}>
                     {picked} of {c.signs.length}
                   </Text>
-                  {expanded ? (
-                    <ChevronUpIcon size={16} color={colors.textSecondary} />
-                  ) : (
-                    <ChevronDownIcon size={16} color={colors.textSecondary} />
-                  )}
+                  {expanded ? <ChevronUpIcon size={16} color={colors.textOnGlass} /> : <ChevronDownIcon size={16} color={colors.textOnGlass} />}
                 </Pressable>
               </View>
               {expanded ? (
@@ -230,18 +245,15 @@ export default function ClassPlanEditor({
                         onPress={() => toggleSign(s)}
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: on }}
-                        accessibilityLabel={s}
-                        style={[
-                          styles.chip,
-                          on ? { backgroundColor: accentColor, borderColor: accentColor } : styles.chipIdle,
-                          changed && styles.chipChanged,
-                          webCursor,
-                        ]}
+                        accessibilityLabel={`${s}${changed ? ", not saved yet" : ""}`}
+                        style={[styles.chip, on ? styles.chipOn : styles.chipOff, changed && styles.chipChanged, webCursor]}
                       >
-                        <Text style={[styles.chipText, { color: on ? colors.textOnPrimary : colors.textSecondary }]}>{s}</Text>
+                        {on ? <CheckIcon size={12} color="#FFFFFF" strokeWidth={3} /> : <PlusIcon size={12} color={colors.textOnGlass} />}
+                        <Text style={[styles.chipText, { color: on ? "#FFFFFF" : colors.textOnGlass }]}>{s}</Text>
                       </Pressable>
                     );
                   })}
+                  <Text style={styles.chipNote}>Listed the way students see them: most reliably checked first.</Text>
                 </View>
               ) : null}
             </View>
@@ -249,50 +261,130 @@ export default function ClassPlanEditor({
         })}
       </View>
 
-      <View style={[styles.footer, styles.gapTop]}>
-        <ActionButton
-          label={dirty ? "Save learning plan" : "Saved"}
-          variant="primary"
-          accentColor={accentColor}
-          onPress={save}
-          loading={saving}
-          disabled={!dirty}
-        />
-        {dirty ? (
-          <>
-            <ActionButton label="Discard changes" variant="ghost" onPress={() => setDrafts(draftsFrom(plan))} disabled={saving} />
-            <Text style={ds.itemMeta}>
-              Unsaved changes in {dirtyLanguages.map((l) => CURRICULUM.find((x) => x.language === l)!.label).join(" and ")}.
-            </Text>
-          </>
-        ) : null}
+      {!onSaveBar && dirty ? (
+        <View style={styles.inlineSave}>
+          <ActionButton label="Save learning plan" variant="primary" accentColor={accentColor} onPress={save} loading={saving} />
+          <ActionButton label="Discard changes" variant="ghost" onPress={discard} disabled={saving} />
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const side = (
+    <View style={[styles.side, wide && styles.sideWide]}>
+      <View style={styles.card}>
+        <Text style={styles.sideTitle}>What changes for students</Text>
+        <Text style={styles.sideBody}>
+          They'll see the new plan the next time their dashboard loads. Their progress on removed words is kept. It just
+          stops counting toward their overall.
+        </Text>
+        <View style={styles.diffRow} accessible accessibilityLabel={`${added} words added and ${removed} removed since the last save, in ${langLabel}`}>
+          <View style={[styles.diff, styles.diffAdd]}>
+            <Text style={[styles.diffText, { color: colors.successText }]}>+{added} words</Text>
+          </View>
+          <View style={[styles.diff, styles.diffRemove]}>
+            <Text style={[styles.diffText, { color: colors.needsPracticeText }]}>−{removed} words</Text>
+          </View>
+        </View>
       </View>
-    </DashboardCard>
+      <View style={styles.card}>
+        <Text style={styles.sideTitle}>Letters and numbers</Text>
+        <Text style={styles.sideBody}>Always the whole group. Only words can be picked.</Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={[styles.layout, wide && styles.layoutWide]}>
+      {editor}
+      {side}
+    </View>
+  );
+}
+
+/** The pinned bar under the page while the plan has unsaved changes. */
+export function SaveBar({ bar }: { bar: NonNullable<SaveBarState> }) {
+  return (
+    <View style={styles.saveBar} accessibilityLiveRegion="polite">
+      <View style={styles.saveIcon}>
+        <Text style={styles.saveIconText}>!</Text>
+      </View>
+      <Text style={styles.saveText} numberOfLines={2}>
+        {bar.message}
+      </Text>
+      <ActionButton label="Discard changes" size="lg" variant="ghost" style={styles.outline} onPress={bar.onDiscard} disabled={bar.saving} />
+      <ActionButton label="Save learning plan" size="lg" variant="primary" onPress={bar.onSave} loading={bar.saving} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, minWidth: 0 },
-  card: { marginTop: spacing.md },
-  head: { flexDirection: "row", alignItems: "flex-start", gap: 16, flexWrap: "wrap" },
-  // Wraps the language toggle underneath on a phone instead of squeezing the text.
-  headText: { flexGrow: 1, flexShrink: 1, flexBasis: 320, minWidth: 0 },
-  title: { fontFamily: fonts.heading, fontSize: 20, lineHeight: 26, color: colors.textPrimary, marginBottom: 4 },
-  summary: { marginTop: spacing.md, padding: 14, borderRadius: radii.md, backgroundColor: colors.neuWell },
-  toolbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" },
-  search: { flexGrow: 1, flexBasis: 240, maxWidth: 420 },
-  row8: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 1 },
-  gapTop: { marginTop: spacing.md },
-  catRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  catMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10, minHeight: 32 },
-  catCount: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textSecondary, textAlign: "right" },
-  mixed: { width: 20, height: 20, borderRadius: 5.6, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  mixedBar: { width: 10, height: 2.6, borderRadius: 2, backgroundColor: colors.textOnPrimary },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: spacing.sm, paddingLeft: 32 },
-  chip: { borderWidth: 1.5, borderRadius: radii.pill, paddingVertical: 5, paddingHorizontal: 12 },
-  chipIdle: { borderColor: colors.border, backgroundColor: colors.neuWell },
-  // Changed since the last save: a dashed ring, so unsaved picks are visible.
+  layout: { gap: 18 },
+  layoutWide: { flexDirection: "row", alignItems: "flex-start" },
+  main: { flex: 1, minWidth: 0 },
+  card: {
+    padding: 20,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  topRow: { flexDirection: "row", alignItems: "center", gap: 14, flexWrap: "wrap" },
+  summary: {
+    flex: 1,
+    minWidth: 280,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    minHeight: 48,
+    paddingHorizontal: 16,
+    borderRadius: radii.pill,
+    backgroundColor: colors.neuWell,
+  },
+  summaryText: { fontFamily: fonts.bodySemiBold, fontSize: 14.5, color: colors.textPrimary },
+  summaryBar: { flex: 1, minWidth: 60 },
+  summaryPct: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
+  toolRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: 16, marginBottom: 6 },
+  search: { flexGrow: 1, flexBasis: 240, maxWidth: 320 },
+  row8: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  muted: { fontFamily: fonts.body, fontSize: 13.5, color: colors.textOnGlass, paddingVertical: 12 },
+  cat: { paddingVertical: 2 },
+  rule: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)" },
+  catRow: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 52 },
+  catCheck: { padding: 8 },
+  catMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52 },
+  catLabel: { fontFamily: fonts.bodySemiBold, fontSize: 15.5, color: colors.textPrimary },
+  catCount: { flex: 1, textAlign: "right", fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.textOnGlass },
+  chips: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, paddingLeft: 42, paddingBottom: 14 },
+  chip: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: 14, borderRadius: radii.pill, borderWidth: 1.5 },
+  chipOn: { backgroundColor: colors.actionPrimaryFill, borderColor: colors.actionPrimaryFill },
+  chipOff: { borderColor: "rgba(255,255,255,0.16)", backgroundColor: "transparent" },
+  // Changed since the last save: a dashed gold ring, so unsaved picks are visible.
   chipChanged: { borderStyle: "dashed", borderColor: colors.accentCoral },
-  chipText: { fontFamily: fonts.bodyMedium, fontSize: 13 },
-  footer: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  chipText: { fontFamily: fonts.bodySemiBold, fontSize: 13.5 },
+  chipNote: { fontFamily: fonts.body, fontSize: 12.5, color: colors.textOnGlass, marginLeft: 6 },
+  inlineSave: { flexDirection: "row", gap: 10, marginTop: 16 },
+  side: { gap: 18 },
+  sideWide: { width: 330 },
+  sideTitle: { fontFamily: fonts.heading, fontSize: 17, color: colors.textPrimary, marginBottom: 8 },
+  sideBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.textOnGlass },
+  diffRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  diff: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: radii.pill, borderWidth: 1 },
+  diffAdd: { borderColor: "rgba(95,208,138,0.4)", backgroundColor: "rgba(63,181,106,0.12)" },
+  diffRemove: { borderColor: "rgba(255,122,133,0.4)", backgroundColor: "rgba(224,82,95,0.1)" },
+  diffText: { fontFamily: fonts.bodySemiBold, fontSize: 12.5 },
+  saveBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(22,25,32,0.97)",
+  },
+  saveIcon: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.8, borderColor: colors.attention, alignItems: "center", justifyContent: "center" },
+  saveIconText: { fontFamily: fonts.bodySemiBold, fontSize: 13, lineHeight: 16, color: colors.attention },
+  saveText: { flex: 1, fontFamily: fonts.bodySemiBold, fontSize: 15, color: colors.textPrimary },
+  outline: { borderWidth: 1.5, borderColor: colors.border },
 });

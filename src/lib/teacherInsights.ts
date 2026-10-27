@@ -60,6 +60,16 @@ export function dueInfo(date: string | null, now = new Date()): { tone: DueTone;
   return { tone: days <= 7 ? "soon" : "later", text: `Due ${day} · ${when}`, days };
 }
 
+/** "Sunday, Nov 1" and "Nov 1" for a due date (Today's rows). */
+export function dayWords(date: string): { long: string; short: string } {
+  const d = parseDay(date);
+  if (!d) return { long: date, short: date };
+  return {
+    long: d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }),
+    short: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+  };
+}
+
 /** A month as weeks for a calendar grid, Sunday first; days outside the month are null. */
 export function monthGrid(year: number, month: number): (number | null)[][] {
   const lead = new Date(year, month, 1).getDay();

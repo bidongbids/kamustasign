@@ -23,6 +23,8 @@ type Props = {
   audience?: "student" | "teacher";
   /** "row": both toggles side by side, left-aligned (student desktop). */
   layout?: "stacked" | "row";
+  /** Teacher: the line naming a group with no model. Off where the tab's "· soon" says enough. */
+  note?: boolean;
 };
 
 /** The group to land on in `language`: `preferred` if gradable, else the first that is. */
@@ -32,7 +34,7 @@ export function availableGroupFor(language: SignLanguage, preferred: SignGroup):
   return groups.find((g) => g.available)?.group ?? preferred;
 }
 
-export default function CurriculumTabs({ language, group, onChange, audience = "teacher", layout = "stacked" }: Props) {
+export default function CurriculumTabs({ language, group, onChange, audience = "teacher", layout = "stacked", note = true }: Props) {
   const student = audience === "student";
   const lang = getLanguage(language);
   const unavailable = lang.groups.filter((g) => !g.available);
@@ -59,7 +61,7 @@ export default function CurriculumTabs({ language, group, onChange, audience = "
         value={group}
         onChange={(next) => onChange(language, next)}
       />
-      {!student && unavailable.map((g) => (
+      {!student && note && unavailable.map((g) => (
         <Text key={g.group} style={styles.note}>
           {lang.label} {g.label}: {g.unavailableNote ?? "Not available yet."}
         </Text>

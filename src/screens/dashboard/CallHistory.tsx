@@ -15,13 +15,25 @@ export function presenceLabel(status: PresenceStatus | undefined): string {
   return status === "busy" ? "On a call" : status === "available" ? "Online" : "Offline";
 }
 
-/** A dot plus the word - status is never colour alone. */
-export function PresenceDot({ status, withLabel = true }: { status: PresenceStatus | undefined; withLabel?: boolean }) {
-  const color = status === "busy" ? colors.accentCoral : status === "available" ? colors.success : colors.adminGray;
+/**
+ * A shape plus the word - status is never colour alone: a filled dot for
+ * Online, a diamond for On a call, an outlined ring for Offline.
+ */
+export function PresenceDot({ status, withLabel = true, size = 9 }: { status: PresenceStatus | undefined; withLabel?: boolean; size?: number }) {
+  const text = status === "busy" ? colors.presenceOnCall : status === "available" ? colors.successText : colors.textOnGlass;
   return (
     <View style={styles.presence} accessibilityLabel={presenceLabel(status)}>
-      <View style={[styles.dot, { backgroundColor: color }, !status && styles.dotOffline]} />
-      {withLabel ? <Text style={[styles.presenceText, status && { color }]}>{presenceLabel(status)}</Text> : null}
+      {status === "busy" ? (
+        <View style={[styles.diamond, { width: size - 1, height: size - 1, backgroundColor: colors.presenceOnCall }]} />
+      ) : (
+        <View
+          style={[
+            { width: size, height: size, borderRadius: size / 2 },
+            status === "available" ? { backgroundColor: colors.presenceOnline } : styles.dotOffline,
+          ]}
+        />
+      )}
+      {withLabel ? <Text style={[styles.presenceText, { color: text }]}>{presenceLabel(status)}</Text> : null}
     </View>
   );
 }
@@ -182,9 +194,9 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   card: { marginTop: spacing.md },
   presence: { flexDirection: "row", alignItems: "center", gap: 6 },
-  dot: { width: 9, height: 9, borderRadius: 5 },
-  dotOffline: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.adminGray },
-  presenceText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.textSecondary },
+  diamond: { transform: [{ rotate: "45deg" }], borderRadius: 1.5 },
+  dotOffline: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.presenceOffline },
+  presenceText: { fontFamily: fonts.bodyMedium, fontSize: 12.5 },
   missed: { marginBottom: spacing.md, borderColor: "rgba(242,178,62,0.45)" },
   missedHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: spacing.sm },
   missedTitle: { fontFamily: fonts.heading, fontSize: 17, color: colors.textPrimary },

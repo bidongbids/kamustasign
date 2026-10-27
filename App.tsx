@@ -191,9 +191,18 @@ function AppContent() {
           title={profile ? "Waiting for approval" : "Can't open your account"}
           message={
             profile
-              ? "Your teacher account has been created. An admin needs to approve it before you can create classes and invite students."
+              ? "An admin at Liloan Central School needs to approve your teacher account. Until then you can't make classes or calls. Once they have, choose Check again."
               : authGate.profileError ?? "Couldn't load your profile."
           }
+          kind={profile ? "pending" : "error"}
+          detail={
+            profile
+              ? `Signed up ${new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${
+                  authGate.session?.user.email ? ` as ${authGate.session.user.email}` : ""
+                }`
+              : undefined
+          }
+          footnote={profile ? "Signed up as a student by mistake? Ask an admin to change your role." : undefined}
           onCheckAgain={authGate.refresh}
           onSignOut={() => authGate.signOut()}
         />

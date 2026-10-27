@@ -55,6 +55,10 @@ const GRADIENT_STOPS: Record<"sheer" | "frosted" | "overVideo", [string, string]
   overVideo: ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.06)"],
 };
 
+// The content view's `{ padding }` is a plain object, which react-native-web
+// renders as an inline style - and inline beats the StyleSheet classes of
+// `contentStyle`. So with padding={0} it isn't set at all, and a
+// contentStyle's own paddings (a pill's 8 / 14, the dashboard header) apply.
 export default function GlassCard({
   children,
   style,
@@ -72,11 +76,11 @@ export default function GlassCard({
       <View style={[styles.outer, { borderRadius: radius, borderColor: "rgba(255,255,255,0.22)" }, style]}>
         <BlurView intensity={intensity ?? 40} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.cameraScrim }]} />
-        <View style={[{ padding }, contentStyle]}>{children}</View>
+        <View style={[padding ? { padding } : null, contentStyle]}>{children}</View>
       </View>
     ) : (
       <View style={[{ borderRadius: radius, backgroundColor: colors.surface }, shadows.shadow("md"), style]}>
-        <View style={[{ padding }, contentStyle]}>{children}</View>
+        <View style={[padding ? { padding } : null, contentStyle]}>{children}</View>
       </View>
     );
     return lightCard;
@@ -95,7 +99,7 @@ export default function GlassCard({
         end={{ x: 0.55, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={[{ padding }, contentStyle]}>{children}</View>
+      <View style={[padding ? { padding } : null, contentStyle]}>{children}</View>
     </View>
   );
 

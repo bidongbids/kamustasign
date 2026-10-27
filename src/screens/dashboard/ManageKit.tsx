@@ -39,6 +39,7 @@ export function ActionButton({
   disabled,
   iconOnly,
   size,
+  onFrosted,
   style,
 }: {
   label: string;
@@ -47,6 +48,8 @@ export function ActionButton({
   variant?: ActionVariant;
   /** 36 / 44 / 52 tall; without it, the compact 38 the admin lists use. */
   size?: "sm" | "md" | "lg";
+  /** On frosted glass (a form drawer or dialog): dark labels for ghost / secondary. */
+  onFrosted?: boolean;
   accentColor?: string;
   loading?: boolean;
   disabled?: boolean;
@@ -61,9 +64,11 @@ export function ActionButton({
       ? colors.textOnPrimary
       : variant === "danger"
         ? colors.needsPractice
-        : variant === "ghost"
-          ? colors.textSecondary
-          : colors.textPrimary;
+        : onFrosted && variant === "ghost"
+          ? colors.textOnFrosted
+          : variant === "ghost"
+            ? colors.textSecondary
+            : colors.textPrimary;
 
   return (
     <Pressable

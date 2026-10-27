@@ -8,7 +8,7 @@
 // column beside the content on desktop (>= 1100), full height, that doesn't
 // scroll with it; `tabs` - a bottom tab bar below that width; `footer` -
 // pinned under the scrolling content (a "Save changes" bar).
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HandLandmarkMark from "../../components/HandLandmarkMark";
@@ -43,6 +43,8 @@ type Props = {
   onTab?: (key: string) => void;
   /** Pinned under the scrolling content. */
   footer?: React.ReactNode;
+  /** Scroll back to the top whenever this changes (a section switch). */
+  scrollKey?: string;
 };
 
 export default function DashboardShell({
@@ -60,8 +62,13 @@ export default function DashboardShell({
   activeTab,
   onTab,
   footer,
+  scrollKey,
 }: Props) {
   const { isDesktop, width } = useResponsive();
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [scrollKey]);
   const insets = useSafeAreaInsets();
   const [accountOpen, setAccountOpen] = useState(false);
   const canOpenAccount = Boolean(profile && onProfileChange);
@@ -77,7 +84,7 @@ export default function DashboardShell({
         radius={0}
         padding={0}
         style={[styles.header, { borderBottomColor: accentColor + "33" }]}
-        contentStyle={styles.headerContent}
+        contentStyle={[styles.headerContent, HEADER_PADDING]}
       >
         <Pressable style={styles.brandRow} onPress={onExitToRoleSelect} hitSlop={8}>
           <HandLandmarkMark size={24} color={accentColor} dotColor={colors.accentCoral} />
@@ -125,6 +132,7 @@ export default function DashboardShell({
         {showRail ? <View style={[styles.rail, { width: railWidth }]}>{rail}</View> : null}
         <View style={styles.flex}>
           <ScrollView
+            ref={scrollRef}
             style={styles.flex}
             contentContainerStyle={[
               styles.content,
@@ -176,6 +184,12 @@ export default function DashboardShell({
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
 const isNarrow = (w: number) => w < 768;
+
+// A plain object on purpose: GlassCard puts its own `{ padding }` on the same
+// view as a plain (inline) style, and on the web inline styles beat
+// StyleSheet classes - so a padding from StyleSheet.create never applied and
+// the header had none. Inline after inline, this one wins.
+const HEADER_PADDING = { paddingLeft: spacing.lg, paddingRight: spacing.lg, paddingTop: 12, paddingBottom: 12 };
 
 // Shared card used by every dashboard section (list container, form panel).
 export function DashboardCard({
@@ -263,11 +277,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    minHeight: 64,
   },
   brandRow: { flexDirection: "row", alignItems: "center" },
-  brandWordmark: { fontFamily: fonts.heading, fontSize: 16, marginLeft: spacing.xs },
+  brandWordmark: { fontFamily: fonts.heading, fontSize: 18, marginLeft: spacing.sm },
   headerRight: { flexDirection: "row", alignItems: "center" },
   identityBtn: {
     flexDirection: "row",
