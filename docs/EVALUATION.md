@@ -135,6 +135,22 @@ model. The call reader uses the same gate for FSL, whose unknown-sign
 behaviour hasn't been measured (FSL-105 has no out-of-vocabulary clips on
 disk).
 
+**Unknown-class retrain (2026-10-22):** a 4-seed ensemble trained with an
+explicit `__unknown__` class (1,956 OOV ASL Citizen clips, `--unknown`) was
+scored on the same 250 + 234 clips (`oov_rejection_unk.json`). A top
+prediction of `__unknown__` counts as rejected.
+
+| Gate | False accept: current → unknown-class | Shown and right: current → unknown-class |
+|---|---|---|
+| 0.40 | 52.8% → 51.6% | 37.2% → 35.9% |
+| 0.60 | 25.6% → 24.0% | 33.3% → 30.3% |
+
+It cuts false captions by only 1–2 points and loses 1–3 points of correct
+ones. At an equal false-accept rate, raising the gate on the current model
+does slightly better, so the app **keeps the current model**. The unknown
+class most likely fails to generalise to unknown signs it never saw in
+training.
+
 ## 5. Speed
 
 The camera status line shows the **measured** rate of new camera frames the
