@@ -3,8 +3,14 @@
 // AuthScreenShell's visual language (same brand mark, same card/shadow
 // system) but laid out for scrollable content lists instead of a centered
 // form.
+//
+// Optional slots (design_handoff_teacher_admin_videocall): `rail` - a
+// column beside the content on desktop (>= 1100), full height, that doesn't
+// scroll with it; `tabs` - a bottom tab bar below that width; `footer` -
+// pinned under the scrolling content (a "Save changes" bar).
 import React, { useState } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HandLandmarkMark from "../../components/HandLandmarkMark";
 import GradientBackground from "../../components/GradientBackground";
 import GlassCard from "../../components/GlassCard";
@@ -12,7 +18,10 @@ import { GearIcon } from "../../components/icons/UiIcons";
 import AccountPanel from "./AccountPanel";
 import type { Profile } from "../../lib/queries";
 import { colors, fonts, spacing, radii } from "../../theme/theme";
+import { neuInset } from "../../theme/shadows";
 import { useResponsive } from "../../theme/responsive";
+
+export type ShellTab = { key: string; label: string; icon: (color: string) => React.ReactNode; badge?: number; badgeLabel?: string };
 
 type Props = {
   accentColor: string;
@@ -26,6 +35,14 @@ type Props = {
   /** The signed-in profile - with it, the name in the header opens the Account panel. */
   profile?: Profile | null;
   onProfileChange?: (p: Profile) => void;
+  /** Desktop only: a column at the left, beside the scrolling content. */
+  rail?: React.ReactNode;
+  /** Below desktop width: a bottom tab bar. */
+  tabs?: ShellTab[];
+  activeTab?: string;
+  onTab?: (key: string) => void;
+  /** Pinned under the scrolling content. */
+  footer?: React.ReactNode;
 };
 
 export default function DashboardShell({
@@ -38,10 +55,20 @@ export default function DashboardShell({
   contentMaxWidth,
   profile,
   onProfileChange,
+  rail,
+  tabs,
+  activeTab,
+  onTab,
+  footer,
 }: Props) {
-  const { isDesktop } = useResponsive();
+  const { isDesktop, width } = useResponsive();
+  const insets = useSafeAreaInsets();
   const [accountOpen, setAccountOpen] = useState(false);
   const canOpenAccount = Boolean(profile && onProfileChange);
+  const showRail = Boolean(rail) && isDesktop;
+  const showTabs = Boolean(tabs?.length) && !isDesktop;
+  // 1100-1399 (a 1366 laptop): a narrower rail, so nothing in the content wraps.
+  const railWidth = width >= 1400 ? 248 : 216;
 
   return (
     <GradientBackground style={styles.root} variant="subtle">
@@ -94,19 +121,61 @@ export default function DashboardShell({
         />
       )}
 
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={[
-          styles.content,
-          isDesktop && styles.contentDesktop,
-          isDesktop && contentMaxWidth ? { maxWidth: contentMaxWidth } : null,
-        ]}
-      >
-        {children}
-      </ScrollView>
+      <View style={styles.body}>
+        {showRail ? <View style={[styles.rail, { width: railWidth }]}>{rail}</View> : null}
+        <View style={styles.flex}>
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={[
+              styles.content,
+              isDesktop && styles.contentDesktop,
+              isDesktop && contentMaxWidth ? { maxWidth: contentMaxWidth } : null,
+              showRail && styles.contentWithRail,
+              rail && !isDesktop && !isNarrow(width) ? styles.contentTablet : null,
+            ]}
+          >
+            {children}
+          </ScrollView>
+          {footer}
+        </View>
+      </View>
+
+      {showTabs ? (
+        <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]} accessibilityRole="tablist">
+          {tabs!.map((t) => {
+            const active = t.key === activeTab;
+            const color = active ? colors.textPrimary : colors.textOnGlass;
+            return (
+              <Pressable
+                key={t.key}
+                onPress={() => onTab?.(t.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={t.badge ? `${t.label}, ${t.badgeLabel ?? `${t.badge} new`}` : t.label}
+                style={[styles.tab, active && [styles.tabActive, neuInset("sm")], webCursor]}
+              >
+                <View>
+                  {t.icon(active ? colors.primaryTealText : color)}
+                  {t.badge ? (
+                    <View style={styles.tabBadge}>
+                      <Text style={styles.tabBadgeText}>{t.badge}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={[styles.tabLabel, { color }]} numberOfLines={1}>
+                  {t.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
     </GradientBackground>
   );
 }
+
+const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
+const isNarrow = (w: number) => w < 768;
 
 // Shared card used by every dashboard section (list container, form panel).
 export function DashboardCard({
@@ -222,6 +291,39 @@ const styles = StyleSheet.create({
   signOutText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textPrimary },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl, maxWidth: 720, width: "100%", alignSelf: "center" },
   contentDesktop: { padding: spacing.xl },
+  contentWithRail: { alignSelf: "stretch", paddingTop: 28 },
+  contentTablet: { maxWidth: 1100, paddingHorizontal: spacing.lg },
+  body: { flex: 1, flexDirection: "row", minHeight: 0 },
+  rail: {
+    borderRightWidth: 1,
+    borderRightColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(16,18,24,0.35)",
+  },
+  tabBar: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingTop: 8,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(20,23,30,0.97)",
+  },
+  tab: { width: 80, minHeight: 50, alignItems: "center", justifyContent: "center", gap: 3, borderRadius: radii.md },
+  tabActive: { backgroundColor: colors.neuWell },
+  tabLabel: { fontFamily: fonts.bodySemiBold, fontSize: 12 },
+  tabBadge: {
+    position: "absolute",
+    top: -6,
+    right: -12,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.attention,
+  },
+  tabBadgeText: { fontFamily: fonts.bodySemiBold, fontSize: 11, color: colors.textOnAccent },
   cardTitle: {
     fontFamily: fonts.heading,
     fontSize: 18,

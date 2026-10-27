@@ -3,7 +3,7 @@
 // "⌫" are stand-ins; use react-native-svg icons"). Kept separate from
 // RoleIcons.tsx, which is scoped to the role-select cards.
 import React from "react";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 export type IconProps = {
   size?: number;
@@ -446,6 +446,78 @@ export function MoreIcon({ size = 18, color = "#000000" }: IconProps) {
       <Circle cx={5} cy={12} r={1.8} fill={color} />
       <Circle cx={12} cy={12} r={1.8} fill={color} />
       <Circle cx={19} cy={12} r={1.8} fill={color} />
+    </Svg>
+  );
+}
+
+// Teacher dashboard (design T1-T11): the rail, Today's rows, the class code.
+export function HomeIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 10.5 12 3l9 7.5M5 9v11h5v-6h4v6h5V9" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// "The class is stuck on ..." - a flag.
+export function FlagIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M5 21V4M5 4h11l-2 4 2 4H5" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// Due dates.
+export function CalendarIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={3.5} y={5} width={17} height={15.5} rx={2.5} stroke={color} strokeWidth={2} />
+      <Path d="M3.5 10h17M8 3v4M16 3v4" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// "Students are waiting for a class" - an inbox tray.
+export function InboxIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3 13.5 5.5 5h13L21 13.5V19a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19v-5.5Zm0 0h5l1.5 2.5h5L16 13.5h5"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export function CopyIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={8.5} y={8.5} width={12} height={12} rx={2.5} stroke={color} strokeWidth={2} />
+      <Path d="M15.5 8.5V6A2.5 2.5 0 0 0 13 3.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5" stroke={color} strokeWidth={2} />
+    </Svg>
+  );
+}
+
+export function PrinterIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M7 8V3.5h10V8M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+      <Rect x={7} y={13.5} width={10} height={7} rx={1} stroke={color} strokeWidth={2} />
+    </Svg>
+  );
+}
+
+// Modules by category / no modules yet - four squares.
+export function GridIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={4} y={4} width={6.5} height={6.5} rx={1.5} stroke={color} strokeWidth={2} />
+      <Rect x={13.5} y={4} width={6.5} height={6.5} rx={1.5} stroke={color} strokeWidth={2} />
+      <Rect x={4} y={13.5} width={6.5} height={6.5} rx={1.5} stroke={color} strokeWidth={2} />
+      <Rect x={13.5} y={13.5} width={6.5} height={6.5} rx={1.5} stroke={color} strokeWidth={2} />
     </Svg>
   );
 }

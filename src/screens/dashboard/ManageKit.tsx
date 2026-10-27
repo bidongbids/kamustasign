@@ -6,11 +6,11 @@
 //
 // Confirmation is inline rather than Alert.alert - react-native-web's Alert
 // is a no-op, and a browser confirm() dialog blocks the page.
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 import { colors, fonts, radii, spacing } from "../../theme/theme";
 import { neuInset, neuRaised } from "../../theme/shadows";
-import { AlertCircleIcon, CheckIcon, CloseIcon, SearchIcon } from "../../components/icons/UiIcons";
+import { AlertCircleIcon, CheckIcon, CloseIcon, RetryIcon, SearchIcon } from "../../components/icons/UiIcons";
 import type { ProfileRole } from "../../lib/queries";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
@@ -18,6 +18,16 @@ const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
 // ── ActionButton ────────────────────────────────────────────────────────
 
 type ActionVariant = "primary" | "secondary" | "danger" | "ghost";
+
+// White on the bright violet (3.95:1) or the bright red (3.8:1) fails AA for
+// a 13-16px label, so filled buttons use one darker step of each
+// (design_handoff_teacher_admin_videocall, "Token additions").
+export function fillFor(accent: string) {
+  if (accent === colors.primaryTeal) return colors.actionPrimaryFill;
+  if (accent === colors.needsPractice) return colors.callDanger;
+  return accent;
+}
+const HEIGHT = { sm: 36, md: 44, lg: 52 } as const;
 
 export function ActionButton({
   label,
@@ -28,12 +38,15 @@ export function ActionButton({
   loading,
   disabled,
   iconOnly,
+  size,
   style,
 }: {
   label: string;
   icon?: (color: string) => React.ReactNode;
   onPress: () => void;
   variant?: ActionVariant;
+  /** 36 / 44 / 52 tall; without it, the compact 38 the admin lists use. */
+  size?: "sm" | "md" | "lg";
   accentColor?: string;
   loading?: boolean;
   disabled?: boolean;
@@ -63,8 +76,10 @@ export function ActionButton({
       accessibilityState={{ disabled: inactive }}
       style={({ pressed }) => [
         styles.btn,
+        size && { minHeight: HEIGHT[size], paddingHorizontal: size === "lg" ? 20 : size === "md" ? 16 : 12 },
         iconOnly && styles.btnIconOnly,
-        variant === "primary" && { backgroundColor: accentColor },
+        iconOnly && size && { width: HEIGHT[size] },
+        variant === "primary" && { backgroundColor: fillFor(accentColor) },
         variant === "secondary" && [styles.btnSecondary, neuRaised("sm")],
         variant === "danger" && styles.btnDanger,
         variant === "ghost" && styles.btnGhost,
@@ -96,7 +111,8 @@ export const ROLE_COLORS: Record<ProfileRole, string> = {
 };
 
 export function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  // "Teresa Gomez (you)" -> "TG", not "T(".
+  const parts = name.replace(/\s*\(you\)\s*$/i, "").trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
@@ -135,20 +151,51 @@ export function StatTile({ label, value, color = colors.textPrimary }: { label: 
 
 // ── Notice ──────────────────────────────────────────────────────────────
 
-export type NoticeState = { kind: "error" | "success"; message: string } | null;
+export type NoticeState = {
+  kind: "error" | "success";
+  message: string;
+  /** A bold first line ("Couldn't load your students"); `message` is then the body. */
+  title?: string;
+  /** Errors: a "Try again" button that runs this. */
+  retry?: () => void;
+} | null;
+
+/** Success notices fade after 6 s; errors stay until dismissed. */
+const SUCCESS_MS = 6000;
 
 export function Notice({ notice, onDismiss }: { notice: NoticeState; onDismiss: () => void }) {
+  useEffect(() => {
+    if (notice?.kind !== "success") return;
+    const id = setTimeout(onDismiss, SUCCESS_MS);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notice]);
   if (!notice) return null;
   const isError = notice.kind === "error";
   const color = isError ? colors.needsPractice : colors.success;
+  const retry = notice.retry;
   return (
     <View
       style={[styles.notice, { borderColor: color + "80", backgroundColor: color + "1A" }]}
       accessibilityRole={isError ? "alert" : undefined}
       accessibilityLiveRegion="polite"
     >
-      {isError ? <AlertCircleIcon size={18} color={color} /> : <CheckIcon size={16} color={color} />}
-      <Text style={styles.noticeText}>{notice.message}</Text>
+      {isError ? <AlertCircleIcon size={18} color={colors.needsPracticeText} /> : <CheckIcon size={16} color={colors.successText} />}
+      <View style={styles.noticeBody}>
+        {notice.title ? <Text style={styles.noticeTitle}>{notice.title}</Text> : null}
+        <Text style={notice.title ? styles.noticeSub : styles.noticeText}>{notice.message}</Text>
+      </View>
+      {isError && retry ? (
+        <ActionButton
+          label="Try again"
+          size="sm"
+          icon={(c) => <RetryIcon size={14} color={c} />}
+          onPress={() => {
+            onDismiss();
+            retry();
+          }}
+        />
+      ) : null}
       <Pressable onPress={onDismiss} hitSlop={10} accessibilityRole="button" accessibilityLabel="Dismiss" style={webCursor}>
         <CloseIcon size={14} color={colors.textSecondary} />
       </Pressable>
@@ -164,16 +211,29 @@ export function ConfirmInline({
   onConfirm,
   onCancel,
   busy,
+  details,
 }: {
   message: string;
   confirmLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
   busy?: boolean;
+  /** What will happen, one sentence each, listed under the message. */
+  details?: string[];
 }) {
   return (
     <View style={styles.confirm}>
       <Text style={styles.confirmText}>{message}</Text>
+      {details?.length ? (
+        <View style={styles.confirmList}>
+          {details.map((d) => (
+            <Text key={d} style={styles.confirmText}>
+              {"•  "}
+              {d}
+            </Text>
+          ))}
+        </View>
+      ) : null}
       <View style={styles.row8}>
         <ActionButton label="Cancel" variant="ghost" onPress={onCancel} disabled={busy} />
         <ActionButton
@@ -327,16 +387,32 @@ export function FieldLabel({ children }: { children: React.ReactNode }) {
 // A whole-row checkbox (the row is the hit target) for picking several
 // items from a list - students to invite, signs for a module.
 
-export function CheckBox({ checked, accentColor = colors.primaryTeal, size = 20 }: { checked: boolean; accentColor?: string; size?: number }) {
+export function CheckBox({
+  checked,
+  accentColor = colors.primaryTeal,
+  size = 20,
+  indeterminate,
+}: {
+  checked: boolean;
+  accentColor?: string;
+  size?: number;
+  /** Some but not all (a category with some words picked): a bar instead of a tick. */
+  indeterminate?: boolean;
+}) {
+  const fill = fillFor(accentColor);
   return (
     <View
       style={[
         styles.checkbox,
         { width: size, height: size, borderRadius: size * 0.28 },
-        checked ? { backgroundColor: accentColor, borderColor: accentColor } : null,
+        checked || indeterminate ? { backgroundColor: fill, borderColor: fill } : null,
       ]}
     >
-      {checked ? <CheckIcon size={size * 0.7} color={colors.textOnPrimary} strokeWidth={3.4} /> : null}
+      {checked ? (
+        <CheckIcon size={size * 0.7} color={colors.textOnPrimary} strokeWidth={3.4} />
+      ) : indeterminate ? (
+        <View style={[styles.checkBar, { width: size * 0.5 }]} />
+      ) : null}
     </View>
   );
 }
@@ -427,7 +503,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: spacing.md,
   },
-  noticeText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textPrimary },
+  noticeText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textPrimary },
+  noticeBody: { flex: 1, minWidth: 0, gap: 2 },
+  noticeTitle: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
+  noticeSub: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.textOnGlass },
 
   confirm: {
     marginTop: spacing.sm,
@@ -439,6 +518,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   confirmText: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.textPrimary },
+  confirmList: { gap: 4 },
 
   pills: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   pill: { borderWidth: 1.5, borderRadius: radii.pill, paddingVertical: 6, paddingHorizontal: 12 },
@@ -490,4 +570,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neuWell,
   },
   checkRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
+  checkBar: { height: 2.6, borderRadius: 2, backgroundColor: colors.textOnPrimary },
 });
