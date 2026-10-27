@@ -3,9 +3,8 @@
 // verdict, no percentages, no clock times. Keys mirror the deck so Filipino /
 // Cebuano tables can be added later without touching the screens.
 import { MASTERY_PASSES } from "./curriculum";
-import { minutesUntil } from "./practiceFlow";
 
-export type FeedbackIcon = "hand" | "handGold" | "star" | "moon" | "question" | "alert";
+export type FeedbackIcon = "hand" | "handGold" | "star" | "question" | "alert";
 
 export type FeedbackModel = {
   icon: FeedbackIcon;
@@ -40,15 +39,13 @@ export function buildFeedback(args: {
   sign: string;
   passes: number;
   holding: boolean;
-  nextPassAt: Date | null;
   saveError: string | null;
   tipIndex: number;
   /** Words practice in hands-free (auto) mode: no Record button to press. */
   handsFree?: boolean;
-  now: number;
   onRetrySave?: () => void;
 }): FeedbackModel {
-  const { state, isLive, sign, passes, holding, nextPassAt, saveError, tipIndex, now } = args;
+  const { state, isLive, sign, passes, holding, saveError, tipIndex } = args;
   const tip = TIPS[tipIndex % TIPS.length];
 
   if (saveError) {
@@ -88,16 +85,7 @@ export function buildFeedback(args: {
         return {
           icon: "star",
           headline: "That one counts!",
-          body: `${passes} of ${MASTERY_PASSES} good tries · ${left} more to learn this sign.`,
-          tone: "success",
-        };
-      }
-      if (nextPassAt) {
-        return {
-          icon: "moon",
-          headline: "Correct! Great signing.",
-          body: "Resting now. Your next good try counts after a short break.",
-          chip: `Ready in ${minutesUntil(nextPassAt, now)} min`,
+          body: `${left} more good ${left === 1 ? "try" : "tries"} to learn this sign.`,
           tone: "success",
         };
       }

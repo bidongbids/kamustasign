@@ -15,7 +15,7 @@ TensorFlow.js); no camera video is sent to any server.
 | **Translator: Fingerspelling** | ASL letters (and digits) from one hand, live, with a hold-to-commit rule. Left-handed signers can mirror the input. |
 | **Translator: Words** | 344 ASL words (combined ASL Citizen / WLASL / MS-ASL / GISLR ensemble) and 105 FSL words (FSL-105). Record a word, or use hands-free mode, which finds each sign by when the hands start and stop moving (`src/ml/signSegmenter.ts`). The result is translated (MyMemory) and spoken (expo-speech). |
 | **Translator: Signer** | Text-to-sign direction: a 3D avatar plays sign recordings (early stage). |
-| **Students** | Curriculum by language and group (letters / numbers / words), "How to make it" reference videos, practice graded by the model, stars and mastery with a cooldown between counted passes, word categories by part of speech. |
+| **Students** | Curriculum by language and group (letters / numbers / words), "How to make it" reference videos, practice graded by the model (one good try learns a sign; stars show how well it was made), word categories by part of speech. |
 | **Teachers** | Multiple classes, inviting students (checklist or join code), custom modules (an ordered set of signs with an optional due date), class progress. |
 | **Admin** | Account management. |
 | **Video call** | Teacher-controlled WebRTC calls with an in-call sign reader that ignores signs outside its vocabulary. |
@@ -36,12 +36,12 @@ npm run web               # http://localhost:8081
 | Variable | Needed for |
 |---|---|
 | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Accounts, classroom, progress, video-call signalling. Without them the translator still works; sign-in is disabled. |
-| `EXPO_PUBLIC_TURN_URLS`, `EXPO_PUBLIC_TURN_USERNAME`, `EXPO_PUBLIC_TURN_CREDENTIAL` | Video calls between **different networks** (school Wi-Fi, mobile data). Without TURN, calls only connect reliably on the same network. Free tier: [metered.ca](https://www.metered.ca/stun-turn). |
+| `EXPO_PUBLIC_TURN_CREDENTIALS_URL`, or `EXPO_PUBLIC_TURN_URLS` + `EXPO_PUBLIC_TURN_USERNAME` + `EXPO_PUBLIC_TURN_CREDENTIAL` | Video calls between **different networks** (school Wi-Fi, mobile data). Without TURN, calls only connect reliably on the same network. Free tier: [metered.ca](https://www.metered.ca/stun-turn). |
 | `EXPO_PUBLIC_MYMEMORY_EMAIL` | Optional: raises the free translation quota. |
 
 ### Database
 
-Run the migrations in `supabase/migrations/` **in order** (`0001` → `0009`)
+Run the migrations in `supabase/migrations/` **in order** (`0001` → `0013`)
 in the Supabase SQL editor (or `supabase db push`). Row Level Security is
 defined there; the anon key is safe to ship because RLS, not the key,
 restricts access. `supabase/tests/rls_test.sql` checks the main access rules

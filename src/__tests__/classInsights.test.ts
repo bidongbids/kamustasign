@@ -13,8 +13,8 @@ const SIGNS = ["A", "B", "C", "D"];
 describe("signsToReview", () => {
   it("ranks by students stuck, then by how far they are from passing", () => {
     const data = new Map<string, SignRow[]>([
-      ["s1", [row("A", 5, 0, 0.6), row("B", 4, 1, 0.3), row("C", 3, MASTERY_PASSES, 0.9)]],
-      ["s2", [row("A", 2, 1, 0.7), row("B", 6, 0, 0.2)]],
+      ["s1", [row("A", 5, 0, 0.6), row("B", 4, 0, 0.3), row("C", 3, MASTERY_PASSES, 0.9)]],
+      ["s2", [row("A", 2, 0, 0.7), row("B", 6, 0, 0.2)]],
       ["s3", [row("C", 1, 0, 0.5)]],
     ]);
     const out = signsToReview(data, SIGNS);

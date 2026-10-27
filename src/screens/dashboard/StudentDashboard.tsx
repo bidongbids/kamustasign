@@ -1,7 +1,7 @@
 // Student dashboard: the classroom's fixed learning plan (docs/CLASSROOM_REDESIGN.md),
 // in the Graphite Aurora student layout (design system: StudentPlanScreen).
 // ASL/FSL, each split into Letters/Numbers/Words from src/lib/curriculum.ts;
-// a tile per sign shows its stars / learned / resting state, and tapping one
+// a tile per sign shows its stars / learned state, and tapping one
 // opens practice (PracticeScreen) with that sign as the target. Progress is
 // read from and written to lesson_progress, scoped by RLS
 // (0006_lesson_progress_rls.sql) - not just by what this screen asks for.
@@ -12,8 +12,11 @@
 // The plan doesn't need a class: a student with no class can still practise,
 // and joins one by typing their teacher's class code. In a class, the
 // teacher's modules (0009_teacher_classroom.sql) appear above the tabs;
-// picking one narrows the grid to its signs. Words can also be narrowed to
-// one part of speech (CategoryFilter, wordCategories.ts).
+// picking one narrows the grid to its signs. Words are shown by part of
+// speech (WordCategoryList), most reliably recognised first, and can be
+// narrowed to one category (CategoryFilter). The teacher's learning plan
+// (class_word_plans, 0012) decides which words appear at all, and every
+// count and bar here is over those words (curriculum.ts planSigns).
 import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import DashboardShell, { DashboardCard, dashboardStyles as ds } from "./DashboardShell";
@@ -24,7 +27,7 @@ import GlassCard from "../../components/GlassCard";
 import ProgressBar from "../../components/ProgressBar";
 import KidButton from "../../components/learn/KidButton";
 import SignTile from "../../components/learn/SignTile";
-import WordPath from "../../components/learn/WordPath";
+import WordCategoryList, { sectionsByCategory } from "../../components/learn/WordCategoryList";
 import { StarRow } from "../../components/learn/Stars";
 import JoinClassCard from "../../components/learn/JoinClassCard";
 import ModuleStrip from "../../components/learn/ModuleStrip";
@@ -35,7 +38,6 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ClockIcon,
-  MoonIcon,
   StarIcon,
 } from "../../components/icons/UiIcons";
 import { colors, fonts, kidTypography, radii, sizes, spacing } from "../../theme/theme";
@@ -45,8 +47,11 @@ import {
   getMyProfile,
   getClassTeacher,
   getAllLessonProgress,
+  getClassPlan,
   getLessonProgress,
-  getMasteredCounts,
+  getMissedCalls,
+  markMissedCallsSeen,
+  type MissedCallRow,
   getModulesForClass,
   moduleSigns,
   toOne,
@@ -57,11 +62,14 @@ import {
 import {
   CURRICULUM,
   computeOverall,
+  countMastered,
   getGroup,
   getLanguage,
   groupFraction,
   groupKey,
   isMastered,
+  planSigns,
+  type ClassPlan,
   type MasteredCounts,
   type SignGroup,
   type SignLanguage,
@@ -71,6 +79,7 @@ import { nextPracticeSign, starsFor } from "../../lib/practiceFlow";
 import { starReference } from "../../lib/starReference";
 import { useVideoCall } from "../../hooks/useVideoCall";
 import VideoCallScreen from "../videocall/VideoCallScreen";
+import { MissedCallsCard, PresenceDot } from "./CallHistory";
 import type { CallPeer } from "../../lib/callSignaling";
 
 type Props = {
@@ -86,6 +95,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
   const [profile, setProfile] = useState<Profile | null>(null);
   const [teacher, setTeacher] = useState<CallPeer | null>(null);
   const [mastered, setMastered] = useState<MasteredCounts>({});
+  const [plan, setPlan] = useState<ClassPlan>({});
   const [language, setLanguage] = useState<SignLanguage>("asl");
   const [group, setGroup] = useState<SignGroup>("letters");
   const [rows, setRows] = useState<Map<string, LessonProgressRow>>(new Map());
@@ -101,18 +111,29 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
   // across groups, unlike `rows` (the selected group only).
   const [allRows, setAllRows] = useState<Map<string, { passes: number }>>(new Map());
   const [joinedNote, setJoinedNote] = useState<string | null>(null);
+  const [missedCalls, setMissedCalls] = useState<MissedCallRow[]>([]);
   // Letter/number grid: tiles grow to fill the card in balanced full rows
   // (26 letters -> 2 rows of 13 on a wide screen) instead of a ragged wrap.
   const [gridWidth, setGridWidth] = useState(0);
-  // Resting stars clear themselves as their cooldown ends.
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
 
   const self: CallPeer | null = profile ? { id: profile.id, name: profile.full_name } : null;
   const call = useVideoCall(profile?.class_id ?? null, self);
+
+  // Missed calls: on load, and again whenever a call (or an unanswered
+  // ring) is over, since the teacher may have just left one.
+  const profileId = profile?.id ?? null;
+  const loadMissed = useCallback(async () => {
+    if (!profileId) return;
+    const { data } = await getMissedCalls(profileId);
+    setMissedCalls(data);
+  }, [profileId]);
+  useEffect(() => {
+    if (call.callState === "idle") void loadMissed();
+  }, [call.callState, loadMissed]);
+  const dismissMissed = (ids: string[]) => {
+    setMissedCalls((prev) => prev.filter((c) => !ids.includes(c.id)));
+    void markMissedCallsSeen(ids);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -126,14 +147,16 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
     const meProfile = me as Profile;
     setProfile(meProfile);
 
-    const [counts, klass, mods, all] = await Promise.all([
-      getMasteredCounts(meProfile.id),
+    const [klass, mods, all, planRes] = await Promise.all([
       meProfile.class_id ? getClassTeacher(meProfile.class_id) : Promise.resolve({ data: null }),
       meProfile.class_id ? getModulesForClass(meProfile.class_id) : Promise.resolve({ data: [] as ModuleRow[], error: null }),
       getAllLessonProgress(meProfile.id),
+      meProfile.class_id ? getClassPlan(meProfile.class_id) : Promise.resolve({ data: {} as ClassPlan, error: null }),
     ]);
-    if (counts.error) setError(counts.error.message);
-    else setMastered(counts.data ?? {});
+    const classPlan = planRes.data;
+    setPlan(classPlan);
+    if (all.error) setError(all.error.message);
+    else setMastered(countMastered(((all.data as any[]) ?? []) as LessonProgressRow[], classPlan));
     const teacherProfile = toOne((klass.data as any)?.profiles ?? null);
     setTeacher(teacherProfile ? { id: teacherProfile.id, name: teacherProfile.full_name } : null);
     // A missing modules table (0009 not run yet) just means no modules.
@@ -151,13 +174,15 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
   }, [load]);
 
   const groupDef = getGroup(language, group);
+  // The group's signs under the teacher's plan (every sign without one).
+  const groupSigns = planSigns(language, group, plan);
   const activeModule = modules.find((m) => m.id === activeModuleId) ?? null;
   // The signs on screen: the picked module's (teacher's order), else the
   // group's, narrowed to the chosen category for Words.
   const showCategories = !activeModule && group === "words";
   const signs = activeModule
     ? moduleSigns(activeModule)
-    : filterByCategory(language, groupDef.signs, showCategories ? category : null);
+    : filterByCategory(language, groupSigns, showCategories ? category : null);
 
   const selectModule = (id: string | null) => {
     setActiveModuleId(id);
@@ -202,25 +227,8 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
     setAllRows((prev) => new Map(prev).set(`${row.language}:${row.sign_group}:${row.sign}`, { passes: row.passes }));
   }, []);
 
-  if (call.callState !== "idle") {
-    return (
-      <VideoCallScreen
-        callState={call.callState}
-        incomingCallFrom={call.incomingCallFrom}
-        peer={call.peer}
-        localStream={call.localStream}
-        remoteStream={call.remoteStream}
-        error={call.error}
-        acceptCall={call.acceptCall}
-        declineCall={call.declineCall}
-        hangUp={call.hangUp}
-        role="student"
-        remoteSettings={call.remoteSettings}
-        sendSettings={call.sendSettings}
-        requestSettings={call.requestSettings}
-        accentColor={accentColor}
-      />
-    );
+  if (call.callState !== "idle" && self && profile?.class_id) {
+    return <VideoCallScreen role="student" call={call} self={self} classId={profile.class_id} accentColor={accentColor} />;
   }
 
   if (practising && profile) {
@@ -245,7 +253,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
     (sum, l) => sum + l.groups.filter((g) => g.available).reduce((s, g) => s + (mastered[groupKey(l.language, g.group)] ?? 0), 0),
     0
   );
-  const nextUp = groupDef.available && !groupLoading ? nextPracticeSign(signs, rows, null, now) : null;
+  const nextUp = groupDef.available && !groupLoading ? nextPracticeSign(signs, rows, null) : null;
   const masteredInModule = activeModule ? signs.filter((s) => (rows.get(s)?.passes ?? 0) >= MASTERY_PASSES).length : 0;
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
   const lang = getLanguage(language);
@@ -269,7 +277,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
     >
       <Text style={styles.hello}>Hi{firstName ? `, ${firstName}` : ""}!</Text>
       <ProgressBar
-        value={computeOverall(mastered)}
+        value={computeOverall(mastered, plan)}
         label={`${totalLearned} sign${totalLearned === 1 ? "" : "s"} learned`}
         caption="All your groups together."
         readout="count"
@@ -357,8 +365,8 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
           />
         ) : (
           <ProgressBar
-            value={groupFraction(language, group, mastered)}
-            label={`${masteredHere} of ${groupDef.signs.length} ${GROUP_PLURAL[group]} learned`}
+            value={groupFraction(language, group, mastered, plan)}
+            label={`${masteredHere} of ${groupSigns.length} ${GROUP_PLURAL[group]} learned`}
             readout="count"
             size="kid"
           />
@@ -372,15 +380,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
                 <CheckIcon size={11} color={colors.textOnFrosted} strokeWidth={3.6} />
               </View>
             }
-            label="Learned (3 good tries)"
-          />
-          <LegendItem
-            icon={
-              <View style={[styles.legendBadge, styles.legendMoon]}>
-                <MoonIcon size={11} color={colors.starResting} />
-              </View>
-            }
-            label="Resting"
+            label="Learned (1 good try)"
           />
         </View>
 
@@ -390,32 +390,39 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
               <View key={i} style={[styles.skeletonTile, neuInset("sm")]} />
             ))}
           </View>
+        ) : group === "words" && signs.length === 0 ? (
+          <Text style={[styles.msgBody, styles.pathWrap]}>
+            Your teacher hasn't added any {lang.label} words to your plan yet.
+          </Text>
         ) : group === "words" ? (
           <View style={styles.pathWrap}>
             {showCategories ? (
               <View style={styles.categoryWrap}>
                 <CategoryFilter
-                  options={categoriesIn(language, groupDef.signs).map((c) => ({
+                  options={categoriesIn(language, groupSigns).map((c) => ({
                     ...c,
-                    learned: groupDef.signs.filter(
+                    learned: groupSigns.filter(
                       (sg) => getWordCategory(language, sg) === c.key && isMastered(rows.get(sg))
                     ).length,
                   }))}
                   value={category}
                   onChange={setCategory}
-                  total={groupDef.signs.length}
+                  total={groupSigns.length}
                   accentColor={accentColor}
                 />
               </View>
             ) : null}
-            <WordPath
+            <WordCategoryList
               key={`${language}:${group}:${activeModuleId ?? "all"}:${category ?? "all"}`}
-              signs={signs}
+              sections={
+                activeModule
+                  ? [{ key: activeModule.id, title: activeModule.title, signs }]
+                  : sectionsByCategory(language, signs)
+              }
               language={language}
               group={group}
               rows={rows}
               nextSign={nextUp}
-              now={now}
               onPressSign={setPractising}
               columns={isDesktop ? 2 : 1}
             />
@@ -430,7 +437,6 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
                 group={group}
                 row={rows.get(sign)}
                 isNext={sign === nextUp}
-                now={now}
                 size={tileSize}
                 onPress={() => setPractising(sign)}
               />
@@ -473,9 +479,16 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
             <View style={styles.callCol}>
               <View>
                 <Text style={styles.msgTitle}>{teacher.name}</Text>
-                <Text style={styles.msgBody}>Your teacher</Text>
+                <View style={styles.teacherStatus}>
+                  <Text style={styles.msgBody}>Your teacher ·</Text>
+                  <PresenceDot status={call.presence[teacher.id]} />
+                </View>
               </View>
-              <AuthButton label="Call" accentColor={accentColor} onPress={() => call.startCall(teacher)} />
+              <AuthButton
+                label={call.presence[teacher.id] === "busy" ? "Call (they're on a call)" : "Call"}
+                accentColor={accentColor}
+                onPress={() => call.startCall(teacher)}
+              />
             </View>
           ) : (
             <Text style={styles.msgBody}>Your class doesn't have a teacher yet.</Text>
@@ -515,6 +528,14 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
           </View>
         </GlassCard>
       ) : null}
+
+      <MissedCallsCard
+        calls={missedCalls}
+        nameOf={(id) => (teacher && id === teacher.id ? teacher.name : null)}
+        onCallBack={() => teacher && call.startCall(teacher)}
+        onDismiss={dismissMissed}
+        accentColor={accentColor}
+      />
 
       {joinedNote ? (
         <GlassCard radius={radii.lg} padding={14} style={styles.errorCard} contentStyle={styles.msgRow}>
@@ -610,7 +631,6 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.textSecondary },
   legendBadge: { width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  legendMoon: { backgroundColor: colors.neuWell, borderWidth: 1.5, borderColor: colors.starResting },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 14, paddingTop: 8 },
   pathWrap: { marginTop: 14 },
   categoryWrap: { marginBottom: 12 },
@@ -642,6 +662,7 @@ const styles = StyleSheet.create({
   msgBody: { ...kidTypography.kidBody, color: colors.textSecondary },
   msgAction: { alignSelf: "flex-start", marginTop: 12 },
   callCol: { gap: 12 },
+  teacherStatus: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   skeletonBar: { height: 16, borderRadius: 999, backgroundColor: colors.neuWell },
   skeletonRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 14 },
   skeletonTile: { width: sizes.tileGlyph, height: sizes.tileGlyph, borderRadius: radii.md, backgroundColor: colors.neuWell },

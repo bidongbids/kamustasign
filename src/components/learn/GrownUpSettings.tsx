@@ -12,19 +12,16 @@ import { MASTERY_PASSES, PROGRESS_RULES_TEXT } from "../../lib/curriculum";
 type Props = {
   best: number;
   passes: number;
-  nextPassAt: Date | null;
   saveErrorDetail: string | null;
   instrumentView: boolean;
   onToggleInstrumentView: () => void;
   compact?: boolean;
 };
 
-const clock = (d: Date) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 export default function GrownUpSettings({
   best,
   passes,
-  nextPassAt,
   saveErrorDetail,
   instrumentView,
   onToggleInstrumentView,
@@ -54,10 +51,7 @@ export default function GrownUpSettings({
               </View>
             </Row>
             <Row label="Best this session" value={`${Math.round(best * 100)}% · pass needs 80%`} />
-            <Row
-              label="Counted passes"
-              value={`${Math.min(passes, MASTERY_PASSES)} of ${MASTERY_PASSES}${nextPassAt ? ` · next counts after ${clock(nextPassAt)}` : ""}`}
-            />
+            <Row label="Learned" value={passes >= MASTERY_PASSES ? "Yes" : "Not yet - one pass learns it"} />
             <Row label="Rules" value={PROGRESS_RULES_TEXT} />
             {saveErrorDetail ? <Row label="Last error" value={saveErrorDetail} /> : null}
             <Row label="Instrument view">

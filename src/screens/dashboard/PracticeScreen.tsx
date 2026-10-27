@@ -15,9 +15,8 @@
 //    is recorded as one plain attempt when the student leaves or moves to
 //    another sign (only if a hand was ever seen).
 //  - Words: every classified clip is an attempt.
-// Every pass is sent as a pass. Whether it COUNTS toward mastery is decided
-// in SQL by the cooldown (PASS_COOLDOWN_MINUTES, 0007 migration), and the
-// row that comes back tells this screen which it was.
+// Every pass is sent as a pass and counts (0012 dropped the pass cooldown);
+// the row that comes back tells this screen whether it just learned the sign.
 import React, { useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -41,7 +40,7 @@ import { useSharedCameraStream } from "../../hooks/useSharedCameraStream";
 import { useSharedLandmarkers } from "../../hooks/useSharedLandmarkers";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
 import { recordAttempt, type LessonProgressRow } from "../../lib/queries";
-import { MASTERY_PASSES, getGroup, getLanguage, nextCountedPassAt, type SignGroup, type SignLanguage } from "../../lib/curriculum";
+import { MASTERY_PASSES, getGroup, getLanguage, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { nextPracticeSign } from "../../lib/practiceFlow";
 import { accuracyStars, starReference } from "../../lib/starReference";
 import { getMotionHint, getSignMedia } from "../../lib/referenceMedia";
@@ -90,7 +89,6 @@ export default function PracticeScreen({
   const initialRow = rows.get(sign);
   const [feedback, setFeedback] = useState<PracticeFeedbackState>({ kind: "waiting" });
   const [passes, setPasses] = useState(initialRow?.passes ?? 0);
-  const [lastPassedAt, setLastPassedAt] = useState<string | null>(initialRow?.last_passed_at ?? null);
   // Stored best (all sessions) - with this session's `best`, drives the stars.
   const [storedBest, setStoredBest] = useState(Number(initialRow?.best_confidence ?? 0));
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -117,12 +115,6 @@ export default function PracticeScreen({
   const [showReference, setShowReference] = useState(false);
   const [cameraKey, setCameraKey] = useState(0);
   const [best, setBest] = useState(0);
-  // Re-render periodically so the resting star / "Ready in N min" stay current.
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
 
   // Session bookkeeping lives in refs: the translator callbacks fire from
   // async frame/classification code, and the unmount cleanup needs the
@@ -143,7 +135,6 @@ export default function PracticeScreen({
     passesRef.current = row?.passes ?? 0;
     lastKindRef.current = "waiting";
     setPasses(row?.passes ?? 0);
-    setLastPassedAt(row?.last_passed_at ?? null);
     setStoredBest(Number(row?.best_confidence ?? 0));
     setFeedback({ kind: "waiting" });
     setSaveError(null);
@@ -157,12 +148,9 @@ export default function PracticeScreen({
   const isLive = group !== "words";
   const languageLabel = getLanguage(language).label;
   const groupLabel = getGroup(language, group).label;
-  const nextPassAt = nextCountedPassAt(lastPassedAt, now);
-  const mastered = passes >= MASTERY_PASSES;
-  const resting = !mastered && nextPassAt !== null;
   // Rises live as soon as this session beats the stored best.
   const stars = accuracyStars(Math.max(storedBest, best), starReference(language, group, sign));
-  const nextSign = nextPracticeSign(signs, rows, sign, now);
+  const nextSign = nextPracticeSign(signs, rows, sign);
 
   /** Feedback setter that also rotates the tip on each new "not yet" moment. */
   function setFeedbackState(next: PracticeFeedbackState) {
@@ -190,7 +178,6 @@ export default function PracticeScreen({
       const prev = passesRef.current;
       passesRef.current = row.passes;
       setPasses(row.passes);
-      setLastPassedAt(row.last_passed_at);
       setStoredBest(Number(row.best_confidence ?? 0));
       return {
         counted: row.passes > prev,
@@ -300,10 +287,8 @@ export default function PracticeScreen({
     sign,
     passes,
     holding: isLive && hold > 0 && hold < 1,
-    nextPassAt,
     saveError,
     tipIndex,
-    now,
     onRetrySave: retrySave,
     handsFree: !isLive && captureMode === "auto",
   });
@@ -338,7 +323,7 @@ export default function PracticeScreen({
       onNext={() => nextSign && goToSign(nextSign)}
       onRepeat={practiseAgain}
       onBack={handleBack}
-      compact
+      compact={!isDesktop}
     />
   ) : null;
   // Desktop words: feedback sits beside the record button, inside the
@@ -406,7 +391,6 @@ export default function PracticeScreen({
             compact={!isDesktop}
             best={best}
             passes={passes}
-            nextPassAt={nextPassAt}
             saveErrorDetail={saveError}
             instrumentView={instrumentView}
             onToggleInstrumentView={() => setInstrumentView((v) => !v)}
@@ -432,7 +416,7 @@ export default function PracticeScreen({
                     {isLive ? (isDesktop ? "Make the sign for " : "Sign ") : "Sign "}
                     <Text style={{ color: colors.accentCoral }}>{isLive ? sign : `“${sign}”`}</Text>
                   </Text>
-                  <StarMeter stars={stars} passes={passes} resting={resting} size={isDesktop ? 30 : 26} reduceMotion={reduceMotion} />
+                  <StarMeter stars={stars} passes={passes} size={isDesktop ? 30 : 26} reduceMotion={reduceMotion} />
                 </View>
               </View>
               {!isLive && (
@@ -461,7 +445,6 @@ export default function PracticeScreen({
                 </View>
               )}
             </GlassCard>
-            {isDesktop && nextActions}
             {(isDesktop || showReference) && (
               <SignReference
                 sign={sign}
@@ -494,6 +477,15 @@ export default function PracticeScreen({
             }
           >
             {translator}
+            {/* Desktop: "what next" floats over the camera instead of joining
+                the left column, so "How to make it" keeps its size. */}
+            {isDesktop && nextActions ? (
+              <View style={[styles.nextFloat, { bottom: isLive ? 24 : BOTTOM_H + 40 }]} pointerEvents="box-none">
+                <GlassCard overVideo radius={radii.lg} padding={14} dropShadow>
+                  {nextActions}
+                </GlassCard>
+              </View>
+            ) : null}
           </View>
           {!instrumentView && isDesktop && isLive && <View style={{ minHeight: BOTTOM_H }}>{feedbackCard}</View>}
           {!instrumentView && !isDesktop && (
@@ -568,6 +560,7 @@ const styles = StyleSheet.create({
   rightDesktopFull: { flex: 1, minWidth: 0, gap: 16 },
   rightMobile: { gap: 12 },
   cameraDesktop: { flex: 1, minHeight: 360, minWidth: 0 },
+  nextFloat: { position: "absolute", left: 24, right: 24, alignItems: "center", zIndex: 20 },
   targetRow: { flexDirection: "row", alignItems: "center", gap: 18 },
   targetInfo: { flex: 1, minWidth: 0, gap: 12 },
   instruction: { ...kidTypography.kidBody, color: colors.textPrimary },

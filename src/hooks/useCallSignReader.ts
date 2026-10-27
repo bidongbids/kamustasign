@@ -9,6 +9,10 @@
 //    tab's auto mode) + the ASL or FSL word ensemble; each confident sign
 //    adds a word.
 //
+// `onReading` sees every reading, not just the ones that become text: each
+// classified frame (letters) or clip (words), and a lost hand - the in-call
+// practice check (VideoCallScreen) grades the student's sign from these.
+//
 // Each feed builds its OWN landmarker (not useSharedLandmarkers, which keeps
 // exactly one alive for the translator tabs) because a call can read two
 // feeds at once. They're closed when the feed stops being read.
@@ -30,8 +34,15 @@ import { SignSegmenter } from "../ml/signSegmenter";
 import { mirrorFlatLandmarks } from "../components/HandednessPicker";
 import { loadTasksVision, getVisionFileset } from "../lib/mediapipeVision";
 import { UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
+import { createFrameGate } from "./useFpsMeter";
 
 export type CallModel = { kind: "letters" } | { kind: "words"; language: SignLanguage };
+
+/** One reading. `confidence` is 0-1; a words `label` is null for the unknown-sign class. */
+export type SignReading =
+  | { kind: "frame"; label: string; confidence: number; at: number }
+  | { kind: "clip"; label: string | null; confidence: number; at: number }
+  | { kind: "no-hand"; at: number };
 
 export type ReaderPhase = "off" | "loading" | "error" | "no-hand" | "unsure" | "holding" | "added" | "reading" | "checking";
 
@@ -47,7 +58,7 @@ export function useCallSignReader(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   active: boolean,
   model: CallModel,
-  options: { mirrorLandmarks?: boolean } = {}
+  options: { mirrorLandmarks?: boolean; onReading?: (r: SignReading) => void } = {}
 ) {
   const [phase, setPhase] = useState<ReaderPhase>("off");
   const [guess, setGuess] = useState<{ label: string; confidence: number }>({ label: "", confidence: 0 });
@@ -56,6 +67,8 @@ export function useCallSignReader(
   const [lastAdded, setLastAdded] = useState<{ token: string; at: number } | null>(null);
   const mirrorRef = useRef(!!options.mirrorLandmarks);
   mirrorRef.current = !!options.mirrorLandmarks;
+  const onReadingRef = useRef(options.onReading);
+  onReadingRef.current = options.onReading;
   const lastCommittedRef = useRef("");
 
   const modelKey = model.kind === "words" ? `words:${model.language}` : model.kind;
@@ -68,6 +81,9 @@ export function useCallSignReader(
     let stopped = false;
     let landmarker: any = null;
     let raf: number | null = null;
+    // Skip loop turns where the feed has no new frame: requestAnimationFrame
+    // runs faster than a webcam, and a call can be reading two feeds at once.
+    const freshFrame = createFrameGate();
     setPhase("loading");
     setGuess({ label: "", confidence: 0 });
     setHold(0);
@@ -100,7 +116,7 @@ export function useCallSignReader(
       const loop = () => {
         if (stopped) return;
         const video = videoRef.current;
-        if (video && video.readyState >= 2 && !busy) {
+        if (video && video.readyState >= 2 && !busy && freshFrame(video)) {
           const now = performance.now();
           const result = lm.detectForVideo(video, now);
           if (result.landmarks?.length) {
@@ -118,6 +134,7 @@ export function useCallSignReader(
               const label = classes[i] ?? "?";
               const pct = arr[i] * 100;
               setGuess({ label, confidence: pct });
+              onReadingRef.current?.({ kind: "frame", label, confidence: arr[i], at: now });
               if (pct >= COMMIT_PCT && label !== "-" && label !== "nothing") {
                 if (label !== holdLabel) {
                   holdLabel = label;
@@ -147,6 +164,7 @@ export function useCallSignReader(
           } else {
             holdLabel = null;
             lastCommittedRef.current = "";
+            onReadingRef.current?.({ kind: "no-hand", at: now });
             setHold(0);
             setGuess((g) => (g.label ? { label: "", confidence: 0 } : g));
             setPhase("no-hand");
@@ -189,6 +207,12 @@ export function useCallSignReader(
           if (stopped) return;
           const i = probs.indexOf(Math.max(...probs));
           const pct = probs[i] * 100;
+          onReadingRef.current?.({
+            kind: "clip",
+            label: classes[i] === UNKNOWN_SIGN_LABEL ? null : classes[i] ?? null,
+            confidence: probs[i],
+            at: performance.now(),
+          });
           if (pct >= WORD_MIN_PCT && classes[i] !== UNKNOWN_SIGN_LABEL) {
             setGuess({ label: classes[i] ?? "?", confidence: pct });
             add(classes[i] ?? "?", true);
@@ -205,7 +229,7 @@ export function useCallSignReader(
       const loop = () => {
         if (stopped) return;
         const video = videoRef.current;
-        if (video && video.readyState >= 2) {
+        if (video && video.readyState >= 2 && freshFrame(video)) {
           const now = performance.now();
           const result = lm.detectForVideo(video, now);
           const ev = seg.push(landmarksToVector(result), now);

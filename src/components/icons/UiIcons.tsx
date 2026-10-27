@@ -243,7 +243,55 @@ export function EyeIcon({ size = 24, color = "#000000" }: IconProps) {
   );
 }
 
+/** Full screen: four corner brackets pointing out. */
+export function ExpandIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 // ── Class / account management (teacher + admin dashboards) ─────────────
+
+/** Learning plan: an open book. */
+export function BookIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5zM12 6.5v13"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Modules: stacked layers. */
+export function LayersIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3.5l9 4.5-9 4.5-9-4.5 9-4.5z" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+      <Path d="M3 12.5l9 4.5 9-4.5M3 16.5l9 4.5 9-4.5" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+/** Progress: a rising bar chart. */
+export function ChartIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 20h16M7 16v-4M12 16V8M17 16V5" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  );
+}
 
 export function PlusIcon({ size = 16, color = "#000000" }: IconProps) {
   return (

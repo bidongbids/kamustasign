@@ -15,50 +15,64 @@
 // (CallSettings in ../../lib/callSignaling.ts). The student sees those
 // settings but can't change them; mic, camera, captions and speech language
 // stay each person's own.
+//
+// Practice in the call: the teacher picks a sign (letters, or the class
+// plan's words) and asks the student for it. The student's own device
+// checks it with the classroom's pass rule (callPractice.ts), records the
+// attempt in lesson_progress like the practice screen does, and sends the
+// result back so the teacher sees it at once.
+//
+// After a call that connected, "Call ended" shows its notes - how long it
+// was, the signs practised and what each side signed - to download, and on
+// the teacher's side to save to the class's call notes (0013).
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import Svg, { Circle, Rect } from "react-native-svg";
 import GradientBackground from "../../components/GradientBackground";
 import GlassCard from "../../components/GlassCard";
 import SegmentedToggle from "../../components/SegmentedToggle";
 import LanguagePicker, { useSelectedLanguage } from "../../components/LanguagePicker";
 import { useHandedness } from "../../components/HandednessPicker";
 import KidButton from "../../components/learn/KidButton";
+import SignReference from "../../components/learn/SignReference";
 import {
+  ArrowRightIcon,
   BackspaceIcon,
   CaptionsIcon,
+  CheckIcon,
   ChevronDownIcon,
+  CloseIcon,
   EyeIcon,
+  HandIcon,
   MicIcon,
   PhoneIcon,
   PhoneOffIcon,
+  SearchIcon,
   SpeakerIcon,
   VideoIcon,
 } from "../../components/icons/UiIcons";
 import { colors, fonts, radii, spacing, typography } from "../../theme/theme";
 import { neuInset, neuRaised } from "../../theme/shadows";
 import { useResponsive } from "../../theme/responsive";
-import { isVideoCallSupported, type CallState } from "../../hooks/useVideoCall";
-import { useCallSignReader, type CallModel, type ReaderPhase } from "../../hooks/useCallSignReader";
+import { isVideoCallSupported, type CallQuality, type VideoCall } from "../../hooks/useVideoCall";
+import { useCallSignReader, type CallModel, type ReaderPhase, type SignReading } from "../../hooks/useCallSignReader";
 import { useTranslateAndSpeak } from "../../hooks/useTranslateAndSpeak";
 import { findLanguage } from "../../lib/languages";
-import type { CallModelKey, CallPeer, CallSettings } from "../../lib/callSignaling";
+import { CallPracticeGrader, callModelScope, practiceSignsFor, summarizePractice } from "../../lib/callPractice";
+import { getMotionHint, getSignMedia } from "../../lib/referenceMedia";
+import { recordAttempt, saveCallNotes, type CallPracticeEntry } from "../../lib/queries";
+import type { ClassPlan } from "../../lib/curriculum";
+import type { CallModelKey, CallPeer, CallSettings, PracticeResult } from "../../lib/callSignaling";
 
 type Props = {
   role: "teacher" | "student";
-  /** Student side: the teacher's settings as last received. */
-  remoteSettings: CallSettings | null;
-  sendSettings: (settings: CallSettings) => void;
-  requestSettings: () => void;
-  callState: CallState;
-  incomingCallFrom: CallPeer | null;
-  peer: CallPeer | null;
-  localStream: MediaStream | null;
-  remoteStream: MediaStream | null;
-  error: string | null;
-  acceptCall: () => void;
-  declineCall: () => void;
-  hangUp: () => void;
+  /** Everything useVideoCall returns. */
+  call: VideoCall;
+  /** This side of the call, and the class it's in (for attempts and notes). */
+  self: CallPeer;
+  classId: string;
+  /** Teacher side: the class learning plan, which words can be practised. */
+  plan?: ClassPlan | null;
   accentColor: string;
 };
 
@@ -102,21 +116,24 @@ const initials = (name?: string | null) =>
     .map((w) => w[0]?.toUpperCase())
     .join("") || "?";
 
-export default function VideoCallScreen({
-  role,
-  remoteSettings,
-  sendSettings,
-  requestSettings,
-  callState,
-  incomingCallFrom,
-  peer,
-  localStream,
-  remoteStream,
-  error,
-  acceptCall,
-  declineCall,
-  hangUp,
-}: Props) {
+export default function VideoCallScreen({ role, call, self, classId, plan, accentColor }: Props) {
+  const {
+    remoteSettings,
+    sendSettings,
+    requestSettings,
+    callState,
+    incomingCallFrom,
+    peer,
+    localStream,
+    remoteStream,
+    error,
+    acceptCall,
+    declineCall,
+    hangUp,
+    quality,
+    connectedAt,
+    endedAt,
+  } = call;
   const { isDesktop } = useResponsive();
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -127,9 +144,17 @@ export default function VideoCallScreen({
   const [teacherModel, setTeacherModel] = useState<CallModelKey>("asl-letters");
   const [teacherReadFrom, setTeacherReadFrom] = useState<ReadFrom>("both");
   const [teacherBig, setTeacherBig] = useState<CallSettings["big"]>(null);
+  const [teacherPractice, setTeacherPractice] = useState<CallSettings["practice"]>(null);
   const modelKey = isTeacher ? teacherModel : remoteSettings?.model ?? "asl-letters";
   const readFrom = isTeacher ? teacherReadFrom : fromRead(remoteSettings?.read ?? "both", role);
   const sharedBig = isTeacher ? teacherBig : remoteSettings?.big ?? null;
+  const practice = isTeacher ? teacherPractice : remoteSettings?.practice ?? null;
+  // Which model each practice request was made with, for the notes.
+  const practiceModelsRef = useRef(new Map<number, CallModelKey>());
+  if (practice && !practiceModelsRef.current.has(practice.id)) practiceModelsRef.current.set(practice.id, modelKey);
+  // Student side: this call's practice attempts (the teacher gets them as call.practiceResults).
+  const [ownResults, setOwnResults] = useState<PracticeResult[]>([]);
+  const practiceResults = isTeacher ? call.practiceResults : ownResults;
   // Student side: the id of a teacher "Show big" this student closed, and a
   // "Show big" of their own (which only opens on their own screen).
   const [dismissedBigId, setDismissedBigId] = useState<number | null>(null);
@@ -138,7 +163,6 @@ export default function VideoCallScreen({
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [autoSpeak, setAutoSpeak] = useState(false);
-  const [connectedAt, setConnectedAt] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const [speechLang, setSpeechLang] = useSelectedLanguage();
   const [handedness] = useHandedness();
@@ -167,8 +191,8 @@ export default function VideoCallScreen({
   // teacher's first send went out before this side was listening.
   useEffect(() => {
     if (!isTeacher || !inCall) return;
-    sendSettings({ model: teacherModel, read: toRead(teacherReadFrom, role), big: teacherBig });
-  }, [isTeacher, inCall, teacherModel, teacherReadFrom, teacherBig, role, sendSettings]);
+    sendSettings({ model: teacherModel, read: toRead(teacherReadFrom, role), big: teacherBig, practice: teacherPractice });
+  }, [isTeacher, inCall, teacherModel, teacherReadFrom, teacherBig, teacherPractice, role, sendSettings]);
   useEffect(() => {
     if (!isTeacher && inCall) requestSettings();
   }, [isTeacher, inCall, requestSettings]);
@@ -179,20 +203,49 @@ export default function VideoCallScreen({
   }, [sharedBigId]);
 
   useEffect(() => {
-    if (connected && connectedAt === null) setConnectedAt(Date.now());
-    if (!connected) setConnectedAt(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected]);
-  useEffect(() => {
     if (!connected) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [connected]);
 
+  // ---- practice ----
+  const practiceScope = callModelScope(modelKey);
+  // Student side: grade the local feed against the requested sign. A new
+  // request (new id) starts a fresh grader.
+  const graderRef = useRef<{ id: number; grader: CallPracticeGrader } | null>(null);
+  useEffect(() => {
+    graderRef.current = !isTeacher && practice ? { id: practice.id, grader: new CallPracticeGrader(practice.sign, practiceScope.group) } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTeacher, practice?.id, practice?.sign, practiceScope.group]);
+
+  const onLocalReading = (r: SignReading) => {
+    const current = graderRef.current;
+    if (isTeacher || !current || !practice) return;
+    const attempt = current.grader.push(r);
+    if (!attempt) return;
+    const result: PracticeResult = { practiceId: current.id, sign: current.grader.sign, ...attempt };
+    setOwnResults((prev) => [...prev, result].slice(-200));
+    call.sendPracticeResult(result);
+    // Counts like the practice screen: every word clip, and a letter's
+    // pass or finished try. Best-effort - the call never waits on it.
+    void recordAttempt(self.id, practiceScope.language, practiceScope.group, current.grader.sign, attempt.passed, attempt.confidence);
+  };
+
+  // Teacher: asking for a sign also makes sure the student's signs are read.
+  const askFor = (sign: string | null) => {
+    setTeacherPractice(sign ? { sign, id: Date.now() } : null);
+    if (sign && teacherReadFrom === "me") setTeacherReadFrom("both");
+  };
+  // A different model means a different set of signs: drop the request.
+  useEffect(() => {
+    if (isTeacher) setTeacherPractice(null);
+  }, [isTeacher, teacherModel]);
+
   const model = MODELS[modelKey];
   const remote = useCallSignReader(remoteVideoRef, connected && captionsOn && readFrom !== "me", model);
   const local = useCallSignReader(localVideoRef, connected && captionsOn && readFrom !== "them" && camOn, model, {
     mirrorLandmarks: handedness === "left",
+    onReading: onLocalReading,
   });
   const remoteSpeech = useTranslateAndSpeak(speechLang);
   const localSpeech = useTranslateAndSpeak(speechLang);
@@ -265,11 +318,47 @@ export default function VideoCallScreen({
     );
   }
   if (callState === "ended") {
+    // Notes only for a call that actually connected.
+    const notes =
+      connectedAt !== null
+        ? {
+            startedAt: connectedAt,
+            seconds: Math.max(0, Math.round(((endedAt ?? Date.now()) - connectedAt) / 1000)),
+            mine: local.text.trim(),
+            theirs: remote.text.trim(),
+            practice: summarizePractice(practiceResults, (r) => practiceModelsRef.current.get(r.practiceId) ?? modelKey),
+          }
+        : null;
     return (
       <GradientBackground variant="subtle" style={styles.center}>
-        <StateCard avatar={initials(peerName)} title="Call ended" subtitle={error ?? `Your call with ${peerName} has ended.`}>
-          <KidButton variant="primary" label="Back" onPress={hangUp} />
-        </StateCard>
+        <ScrollView contentContainerStyle={styles.endedScroll}>
+          <StateCard avatar={initials(peerName)} title="Call ended" subtitle={error ?? `Your call with ${peerName} has ended.`}>
+            {notes ? (
+              <CallNotes
+                notes={notes}
+                isTeacher={isTeacher}
+                peerName={peerName}
+                selfName={self.name}
+                onSave={
+                  isTeacher && peer
+                    ? () =>
+                        saveCallNotes({
+                          class_id: classId,
+                          teacher_id: self.id,
+                          student_id: peer.id,
+                          started_at: new Date(notes.startedAt).toISOString(),
+                          duration_seconds: notes.seconds,
+                          teacher_text: notes.mine,
+                          student_text: notes.theirs,
+                          practice: notes.practice,
+                        })
+                    : undefined
+                }
+              />
+            ) : null}
+            <KidButton variant="primary" label="Back" onPress={hangUp} />
+          </StateCard>
+        </ScrollView>
       </GradientBackground>
     );
   }
@@ -391,6 +480,32 @@ export default function VideoCallScreen({
     />
   );
 
+  const resultsForCurrent = practice ? practiceResults.filter((r) => r.practiceId === practice.id) : [];
+  const practiceCard = isTeacher ? (
+    <TeacherPracticePanel
+      signs={practiceSignsFor(modelKey, plan)}
+      wordLike={model.kind === "words"}
+      practice={practice}
+      results={resultsForCurrent}
+      peerName={peerName}
+      reading={readFrom !== "me" && captionsOn}
+      onAsk={askFor}
+      accentColor={accentColor}
+      compact={!isDesktop}
+    />
+  ) : practice ? (
+    <StudentPracticeCard
+      sign={practice.sign}
+      language={practiceScope.language}
+      group={practiceScope.group}
+      results={resultsForCurrent}
+      checking={connected && captionsOn && camOn && readFrom !== "them"}
+      cameraOff={!camOn}
+      captionsOff={!captionsOn}
+      compact={!isDesktop}
+    />
+  ) : null;
+
   const controls = (
     <View style={[styles.controls, !isDesktop && styles.controlsMobile]}>
       <ControlButton label={micOn ? "Mute" : "Unmute"} on={micOn} onPress={() => setMicOn((v) => !v)} icon={<MicIcon size={22} color={micOn ? colors.textPrimary : colors.needsPractice} off={!micOn} />} />
@@ -455,6 +570,7 @@ export default function VideoCallScreen({
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: connected ? colors.success : colors.accentCoral }]} />
             <Text style={styles.statusText}>{connected ? `Connected · ${clock}` : "Connecting…"}</Text>
+            {connected && quality ? <QualityBadge quality={quality} /> : null}
           </View>
         </View>
       </View>
@@ -478,10 +594,11 @@ export default function VideoCallScreen({
         <>
           <View style={styles.main}>
             <View style={styles.stageWrap}>{stage}</View>
-            <View style={styles.side}>
+            <ScrollView style={styles.side} contentContainerStyle={styles.sideContent}>
+              {practiceCard}
               {remoteCard}
               {localCard}
-            </View>
+            </ScrollView>
           </View>
           {controls}
         </>
@@ -491,6 +608,7 @@ export default function VideoCallScreen({
             {modelPicker}
           </ScrollView>
           {stage}
+          {practiceCard}
           {remoteCard}
           {localCard}
           {controls}
@@ -652,6 +770,340 @@ function CaptionCard({
       )}
       {speech.error ? <Text style={styles.speechError}>{speech.error}</Text> : null}
     </GlassCard>
+  );
+}
+
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+/** "best 88%", or nothing when the target sign was never seen. */
+const bestPart = (p: CallPracticeEntry) => (p.confidence > 0 ? `, best ${pct(p.confidence)}` : "");
+
+/** How the latest try at the requested sign went, in words. */
+function practiceStatus(results: PracticeResult[]): { text: string; tone: "neutral" | "success" | "gold" } {
+  const passed = results.find((r) => r.passed);
+  if (passed) return { text: `Got it! ${pct(passed.confidence)} sure.`, tone: "success" };
+  const last = results[results.length - 1];
+  if (!last) return { text: "Waiting for a try…", tone: "neutral" };
+  const tries = `${results.length} ${results.length === 1 ? "try" : "tries"}`;
+  if (last.seen && last.seen !== last.sign) return { text: `Not yet - the computer saw “${last.seen}”. ${tries}.`, tone: "gold" };
+  return { text: `Close - ${pct(last.confidence)} sure, needs 80%. ${tries}.`, tone: "gold" };
+}
+
+function TeacherPracticePanel({
+  signs,
+  wordLike,
+  practice,
+  results,
+  peerName,
+  reading,
+  onAsk,
+  accentColor,
+  compact,
+}: {
+  signs: string[];
+  wordLike: boolean;
+  practice: CallSettings["practice"];
+  results: PracticeResult[];
+  peerName: string;
+  /** The student's signs are being read (else results can't arrive). */
+  reading: boolean;
+  onAsk: (sign: string | null) => void;
+  accentColor: string;
+  compact?: boolean;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const q = search.trim().toLowerCase();
+  const shown = (q ? signs.filter((s) => s.toLowerCase().includes(q)) : signs).slice(0, wordLike ? 24 : 26);
+
+  if (practice) {
+    const status = practiceStatus(results);
+    const next = signs[(signs.indexOf(practice.sign) + 1) % Math.max(1, signs.length)];
+    return (
+      <GlassCard radius={radii.lg} padding={compact ? 14 : 18} contentStyle={styles.cardContent}>
+        <View style={styles.cardHead}>
+          <Text style={styles.cardTitle}>Practice</Text>
+          <KidButton small variant="ghost" label="Stop" onPress={() => onAsk(null)} iconLeft={<CloseIcon size={14} color={colors.textSecondary} />} />
+        </View>
+        <Text style={styles.practiceAsk}>
+          Asked {peerName} to sign <Text style={{ color: colors.accentCoral }}>“{practice.sign}”</Text>
+        </Text>
+        <View style={[styles.practiceStatus, neuInset("sm")]} accessibilityLiveRegion="polite">
+          {status.tone === "success" ? <CheckIcon size={18} color={colors.success} /> : <HandIcon size={18} color={toneColor(status.tone)} />}
+          <Text style={[styles.practiceStatusText, { color: status.tone === "neutral" ? colors.textSecondary : toneColor(status.tone) }]}>
+            {status.text}
+          </Text>
+        </View>
+        {!reading ? <Text style={styles.pausedText}>Their signs aren't being read - choose “Them” or “Both”, with captions on.</Text> : null}
+        <View style={styles.cardActions}>
+          {next && next !== practice.sign ? (
+            <KidButton
+              small
+              variant="primary"
+              label={`Next: ${next}`}
+              onPress={() => onAsk(next)}
+              iconRight={<ArrowRightIcon size={16} color={colors.textOnAccent} />}
+              style={styles.flex}
+            />
+          ) : null}
+          <KidButton small label="Ask again" onPress={() => onAsk(practice.sign)} />
+        </View>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard radius={radii.lg} padding={compact ? 14 : 18} contentStyle={styles.cardContent}>
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        style={styles.cardHead}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+      >
+        <Text style={styles.cardTitle}>Practice a sign</Text>
+        <ChevronDownIcon size={16} color={colors.textSecondary} />
+      </Pressable>
+      {open ? (
+        <>
+          <Text style={styles.pausedText}>
+            Tap a sign to ask {peerName} for it. Their device checks it and counts it toward their learning plan.
+          </Text>
+          {wordLike ? (
+            <View style={[styles.searchRow, neuInset("sm")]}>
+              <SearchIcon size={16} color={colors.textSecondary} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search the plan's words"
+                placeholderTextColor={colors.textTertiary}
+                style={styles.searchInput}
+                accessibilityLabel="Search signs to practise"
+              />
+            </View>
+          ) : null}
+          <View style={styles.practiceChips}>
+            {shown.map((s) => (
+              <Pressable
+                key={s}
+                onPress={() => onAsk(s)}
+                accessibilityRole="button"
+                accessibilityLabel={`Ask ${peerName} to sign ${s}`}
+                style={({ pressed }) => [styles.practiceChip, neuRaised("sm"), pressed && { borderColor: accentColor }]}
+              >
+                <Text style={styles.practiceChipText}>{s}</Text>
+              </Pressable>
+            ))}
+            {shown.length === 0 ? <Text style={styles.pausedText}>No signs match.</Text> : null}
+          </View>
+        </>
+      ) : null}
+    </GlassCard>
+  );
+}
+
+function StudentPracticeCard({
+  sign,
+  language,
+  group,
+  results,
+  checking,
+  cameraOff,
+  captionsOff,
+  compact,
+}: {
+  sign: string;
+  language: ReturnType<typeof callModelScope>["language"];
+  group: ReturnType<typeof callModelScope>["group"];
+  results: PracticeResult[];
+  checking: boolean;
+  cameraOff: boolean;
+  captionsOff: boolean;
+  compact?: boolean;
+}) {
+  const [showHow, setShowHow] = useState(false);
+  const status = practiceStatus(results);
+  const media = getSignMedia(language, group, sign);
+  return (
+    <GlassCard radius={radii.lg} padding={compact ? 14 : 18} contentStyle={styles.cardContent} style={{ borderColor: "rgba(242,178,62,0.45)" }}>
+      <Text style={styles.cardTitle}>Your teacher asks you to sign</Text>
+      <Text style={styles.practiceSign} accessibilityRole="header">
+        {sign}
+      </Text>
+      <View style={[styles.practiceStatus, neuInset("sm")]} accessibilityLiveRegion="polite">
+        {status.tone === "success" ? <CheckIcon size={18} color={colors.success} /> : <HandIcon size={18} color={toneColor(status.tone)} />}
+        <Text style={[styles.practiceStatusText, { color: status.tone === "neutral" ? colors.textSecondary : toneColor(status.tone) }]}>
+          {status.tone === "success"
+            ? "Great signing! That counts."
+            : results.length === 0
+              ? checking
+                ? "Sign it when you're ready."
+                : cameraOff
+                  ? "Turn your camera on so the computer can see your sign."
+                  : captionsOff
+                    ? "Turn captions on so the computer can check your sign."
+                    : "Waiting for your teacher…"
+              : status.text}
+        </Text>
+      </View>
+      {media ? (
+        <KidButton small label={showHow ? "Hide how to make it" : "Show me how"} onPress={() => setShowHow((v) => !v)} iconLeft={<EyeIcon size={18} color={colors.textPrimary} />} />
+      ) : null}
+      {showHow ? <SignReference sign={sign} media={media} motionHint={getMotionHint(language, group, sign)} /> : null}
+    </GlassCard>
+  );
+}
+
+/** Signal bars + words: never colour alone. */
+function QualityBadge({ quality }: { quality: CallQuality }) {
+  const bars = quality.level === "good" ? 3 : quality.level === "fair" ? 2 : 1;
+  const color = quality.level === "good" ? colors.success : quality.level === "fair" ? colors.accentCoral : colors.needsPractice;
+  const label =
+    quality.level === "good" ? "Good connection" : quality.level === "fair" ? "OK connection" : "Weak connection";
+  const detail = [
+    quality.rttMs !== null ? `${quality.rttMs} ms` : null,
+    quality.lossPct > 0 ? `${quality.lossPct}% lost` : null,
+    quality.relayed ? "via relay" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <View
+      style={styles.quality}
+      accessibilityLabel={`${label}${quality.reduced ? ", your video is lowered to keep the call going" : ""}. ${detail}`}
+    >
+      <Svg width={14} height={12} viewBox="0 0 14 12">
+        {[0, 1, 2].map((i) => (
+          <Rect key={i} x={i * 5} y={8 - i * 4} width={3.5} height={4 + i * 4} rx={1} fill={i < bars ? color : colors.holdTrack} />
+        ))}
+      </Svg>
+      <Text style={[styles.statusText, { color }]}>
+        {label}
+        {quality.reduced ? " · video lowered" : ""}
+      </Text>
+    </View>
+  );
+}
+
+type NotesData = {
+  startedAt: number;
+  seconds: number;
+  mine: string;
+  theirs: string;
+  practice: CallPracticeEntry[];
+};
+
+export function notesText(n: NotesData, selfName: string, peerName: string, isTeacher: boolean): string {
+  const length = `${Math.floor(n.seconds / 60)}:${String(n.seconds % 60).padStart(2, "0")}`;
+  const lines = [
+    "LCSign call notes",
+    `With: ${peerName}`,
+    `Started: ${new Date(n.startedAt).toLocaleString()}`,
+    `Length: ${length}`,
+    "",
+  ];
+  if (n.practice.length) {
+    lines.push("Practised:");
+    for (const p of n.practice) {
+      lines.push(
+        `  - ${p.sign} (${p.language.toUpperCase()} ${p.group === "words" ? "word" : "letter"}): ${p.passed ? "passed" : "not yet"}${bestPart(p)}, ${p.tries} ${p.tries === 1 ? "try" : "tries"}`
+      );
+    }
+    lines.push("");
+  }
+  const teacherText = isTeacher ? n.mine : n.theirs;
+  const studentText = isTeacher ? n.theirs : n.mine;
+  lines.push(`${isTeacher ? selfName : peerName} (teacher) signed: ${teacherText || "-"}`);
+  lines.push(`${isTeacher ? peerName : selfName} (student) signed: ${studentText || "-"}`);
+  return lines.join("\n");
+}
+
+function CallNotes({
+  notes,
+  isTeacher,
+  peerName,
+  selfName,
+  onSave,
+}: {
+  notes: NotesData;
+  isTeacher: boolean;
+  peerName: string;
+  selfName: string;
+  onSave?: () => Promise<{ error: { message: string } | null }>;
+}) {
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const length = `${Math.floor(notes.seconds / 60)}:${String(notes.seconds % 60).padStart(2, "0")}`;
+  const hasContent = notes.mine || notes.theirs || notes.practice.length > 0;
+
+  const download = () => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const blob = new Blob([notesText(notes, selfName, peerName, isTeacher)], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `call-notes-${peerName.replace(/[^\w-]+/g, "-").toLowerCase()}-${new Date(notes.startedAt).toISOString().slice(0, 10)}.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const save = async () => {
+    if (!onSave || saveState !== "idle") return;
+    setSaveState("saving");
+    setSaveError(null);
+    const { error } = await onSave();
+    if (error) {
+      setSaveError(error.message);
+      setSaveState("idle");
+    } else setSaveState("saved");
+  };
+
+  return (
+    <View style={[styles.notes, neuInset("sm")]}>
+      <Text style={styles.notesHead}>Call notes · {length}</Text>
+      {notes.practice.length ? (
+        <View style={styles.notesBlock}>
+          {notes.practice.map((p, i) => (
+            <View key={`${p.sign}-${i}`} style={styles.notesRow}>
+              {p.passed ? <CheckIcon size={14} color={colors.success} /> : <HandIcon size={14} color={colors.accentCoral} />}
+              <Text style={styles.notesText}>
+                {p.sign}: {p.passed ? "passed" : "not yet"}
+                {bestPart(p)} ({p.tries} {p.tries === 1 ? "try" : "tries"})
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {notes.theirs ? (
+        <Text style={styles.notesText}>
+          <Text style={styles.notesLabel}>{peerName}: </Text>
+          {notes.theirs}
+        </Text>
+      ) : null}
+      {notes.mine ? (
+        <Text style={styles.notesText}>
+          <Text style={styles.notesLabel}>You: </Text>
+          {notes.mine}
+        </Text>
+      ) : null}
+      {!hasContent ? <Text style={styles.notesText}>Nothing was signed or practised in this call.</Text> : null}
+      {hasContent ? (
+        <View style={styles.cardActions}>
+          {Platform.OS === "web" ? <KidButton small label="Download notes" onPress={download} style={styles.flex} /> : null}
+          {onSave ? (
+            <KidButton
+              small
+              variant={saveState === "saved" ? "ghost" : "raised"}
+              label={saveState === "saved" ? "Saved" : saveState === "saving" ? "Saving…" : "Save notes"}
+              accessibilityLabel={saveState === "saved" ? "Saved to class notes" : "Save to class notes"}
+              onPress={save}
+              disabled={saveState !== "idle"}
+              iconLeft={saveState === "saved" ? <CheckIcon size={14} color={colors.success} /> : undefined}
+              style={styles.flex}
+            />
+          ) : null}
+        </View>
+      ) : null}
+      {saveError ? <Text style={styles.speechError}>{saveError}</Text> : null}
+    </View>
   );
 }
 
@@ -822,7 +1274,46 @@ const styles = StyleSheet.create({
   pipLabelText: { fontFamily: fonts.bodySemiBold, fontSize: 12, color: "#FFFFFF" },
 
   // side cards
-  side: { width: 400, gap: 16 },
+  side: { width: 400, flexGrow: 0 },
+  sideContent: { gap: 16, flexGrow: 1, paddingBottom: 4 },
+
+  // practice
+  practiceAsk: { fontFamily: fonts.bodySemiBold, fontSize: 17, lineHeight: 24, color: colors.textPrimary },
+  practiceSign: { fontFamily: fonts.heading, fontSize: 44, lineHeight: 50, color: colors.accentCoral },
+  practiceStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: radii.md,
+    backgroundColor: colors.neuWell,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  practiceStatusText: { flex: 1, fontFamily: fonts.bodySemiBold, fontSize: 15, lineHeight: 21 },
+  practiceChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  practiceChip: {
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: colors.neuBase,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  practiceChipText: { fontFamily: fonts.bodySemiBold, fontSize: 15, color: colors.textPrimary },
+  searchRow: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 999, backgroundColor: colors.neuWell, paddingHorizontal: 14, minHeight: 42 },
+  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 14, color: colors.textPrimary, minHeight: 40 } as any,
+  quality: { flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 8 },
+
+  // notes (call ended)
+  endedScroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", paddingVertical: spacing.lg },
+  notes: { alignSelf: "stretch", borderRadius: radii.md, backgroundColor: colors.neuWell, padding: 14, gap: 8, marginBottom: 20 },
+  notesHead: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
+  notesBlock: { gap: 4 },
+  notesRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  notesText: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.textPrimary, flexShrink: 1 },
+  notesLabel: { fontFamily: fonts.bodySemiBold, color: colors.textSecondary },
   cardContent: { flex: 1, gap: 12 },
   cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   cardTitle: { ...typography.h3, fontSize: 18, color: colors.textPrimary, flexShrink: 1 },

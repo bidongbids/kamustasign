@@ -1,6 +1,6 @@
 // P9: keep going without the dashboard. Shown under the feedback after a
 // pass. The next sign is the first one after this, in curriculum order, that
-// isn't learned and isn't resting (practiceFlow.nextPracticeSign).
+// isn't learned (practiceFlow.nextPracticeSign).
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import KidButton from "./KidButton";

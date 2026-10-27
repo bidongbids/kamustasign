@@ -12,6 +12,8 @@ import {
   computeOverall,
   getLanguage,
   groupKey,
+  planSigns,
+  type ClassPlan,
   type MasteredCounts,
   type SignGroup,
   type SignLanguage,
@@ -21,13 +23,15 @@ import { colors, fonts } from "../../theme/theme";
 type Props = {
   name: string;
   mastered: MasteredCounts;
+  /** The class's learning plan; totals count only its words. */
+  plan?: ClassPlan | null;
   language: SignLanguage;
   /** Emphasised in the counts line (the group tab the viewer picked). */
   highlightGroup?: SignGroup;
   first?: boolean;
 };
 
-export default function StudentProgressRow({ name, mastered, language, highlightGroup, first }: Props) {
+export default function StudentProgressRow({ name, mastered, plan, language, highlightGroup, first }: Props) {
   const lang = getLanguage(language);
   return (
     <View style={[ds.listItem, first && ds.listItemFirst, styles.row]}>
@@ -35,7 +39,7 @@ export default function StudentProgressRow({ name, mastered, language, highlight
         {name || "(no name)"}
       </Text>
       <View style={styles.detail}>
-        <ProgressBar compact value={computeOverall(mastered)} label={`${name} overall progress`} />
+        <ProgressBar compact value={computeOverall(mastered, plan)} label={`${name} overall progress`} />
         <Text style={ds.itemMeta}>
           {lang.label}
           {"  "}
@@ -43,7 +47,9 @@ export default function StudentProgressRow({ name, mastered, language, highlight
             <Text key={g.group} style={g.group === highlightGroup ? styles.highlight : undefined}>
               {i > 0 ? " · " : ""}
               {g.label[0]}{" "}
-              {g.available ? `${mastered[groupKey(language, g.group)] ?? 0}/${g.signs.length}` : "soon"}
+              {g.available
+                ? `${mastered[groupKey(language, g.group)] ?? 0}/${planSigns(language, g.group, plan).length}`
+                : "soon"}
             </Text>
           ))}
         </Text>

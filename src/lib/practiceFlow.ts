@@ -2,8 +2,8 @@
 // over the lesson_progress columns that already exist - nothing here adds a
 // rule. Mastery, the pass threshold and the cooldown still come from
 // curriculum.ts; this only decides how they are SHOWN (tile state, the
-// "Next" sign, resting, stages). Stars are accuracy (starReference.ts).
-import { isMastered, nextCountedPassAt } from "./curriculum";
+// "Next" sign). Stars are accuracy (starReference.ts).
+import { isMastered } from "./curriculum";
 import { accuracyStars } from "./starReference";
 
 export type ProgressLike = {
@@ -26,29 +26,16 @@ export function starsFor(row: ProgressLike | null | undefined, reference: number
   return accuracyStars(row?.best_confidence, reference);
 }
 
-/** "Resting": a pass now would not count towards learning (cooldown). Never for a learned sign. */
-export function isResting(row: ProgressLike | null | undefined, now = Date.now()): boolean {
-  if (!row || isMastered(row)) return false;
-  return nextCountedPassAt(row.last_passed_at, now) !== null;
-}
-
-/** Whole minutes until `at`, rounded up (children see minutes, never a clock time). */
-export function minutesUntil(at: Date, now = Date.now()): number {
-  return Math.max(1, Math.ceil((at.getTime() - now) / 60_000));
-}
-
 /**
  * The sign to practise next, in curriculum order: the first sign after
- * `after` (wrapping once, never `after` itself) that is not learned and not
- * resting; failing that, the first one that is not learned. Null when every
- * other sign is learned. With `after` null it scans from the start and may
+ * `after` (wrapping once, never `after` itself) that is not learned. Null
+ * when every other sign is learned. With `after` null it scans from the start and may
  * return any sign - this is the dashboard's "Next up".
  */
 export function nextPracticeSign(
   signs: string[],
   rows: Map<string, ProgressLike>,
-  after: string | null,
-  now = Date.now()
+  after: string | null
 ): string | null {
   if (signs.length === 0) return null;
   const start = after === null ? 0 : signs.indexOf(after) + 1;
@@ -57,8 +44,7 @@ export function nextPracticeSign(
     const sign = signs[(start + i) % signs.length];
     if (sign !== after) ordered.push(sign);
   }
-  const open = ordered.filter((s) => !isMastered(rows.get(s)));
-  return open.find((s) => !isResting(rows.get(s), now)) ?? open[0] ?? null;
+  return ordered.find((s) => !isMastered(rows.get(s))) ?? null;
 }
 
 export function chunk<T>(items: T[], size: number): T[][] {

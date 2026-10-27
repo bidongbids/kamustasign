@@ -118,7 +118,7 @@ export default function MasteryCelebration({ sign, stars, nextSign, groupLabel, 
               <StarRow filled={stars} size={40} gap={12} animateIndex={Math.max(0, Math.ceil(stars) - 1)} scale={starScale as any} />
             </View>
             <Text style={[kidTypography.kidBody, styles.body]}>
-              {stars >= STAR_COUNT ? "3 good tries - and all 3 stars!" : "3 good tries! Keep practising to fill your stars."}
+              {stars >= STAR_COUNT ? "All 3 stars - perfect signing!" : "Keep practising to fill your stars."}
             </Text>
             <View style={styles.buttons}>
               {nextSign ? (

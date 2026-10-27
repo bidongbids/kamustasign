@@ -2,7 +2,7 @@
 // attempt is to what the model gives a correctly made sign, 0-3 in quarter
 // steps. Each star fills left to right: an outline in starEmpty with the
 // filled star clipped to its fraction on top. Learning a sign is separate
-// (counted passes); the moon badge, not the stars, shows the pass cooldown.
+// (one pass learns it).
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { StarIcon } from "../icons/UiIcons";
@@ -55,7 +55,6 @@ export function StarRow({
 export function StarMeter({
   stars,
   passes,
-  resting,
   size = sizes.starLg,
   reduceMotion,
   showCaption = true,
@@ -64,7 +63,6 @@ export function StarMeter({
   stars: number;
   /** Counted passes - learning the sign, shown in the caption. */
   passes: number;
-  resting: boolean;
   size?: number;
   reduceMotion?: boolean;
   showCaption?: boolean;
@@ -79,15 +77,7 @@ export function StarMeter({
     prev.current = stars;
   }, [stars, reduceMotion, scale]);
 
-  const good = Math.min(passes, MASTERY_PASSES);
-  const caption =
-    good >= MASTERY_PASSES
-      ? "You learned it!"
-      : resting
-        ? `${good} of ${MASTERY_PASSES} good tries · resting`
-        : good === 0
-          ? `${MASTERY_PASSES} good tries to learn it`
-          : `${good} of ${MASTERY_PASSES} good tries`;
+  const caption = passes >= MASTERY_PASSES ? "You learned it!" : "One good try to learn it";
 
   return (
     <View

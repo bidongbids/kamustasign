@@ -4,10 +4,6 @@
 // the existing translator screens' web-only precedent (native support is a
 // separate, larger lift - see docs/KamustaSign_UI_CRUD_Handoff.md Section 5.3).
 //
-// STUN-only (Google's public stun.l.google.com:19302), no TURN server - fine
-// for most same-network/open-NAT demo conditions, but calls between peers
-// behind restrictive/symmetric NATs may fail to connect without a TURN relay.
-//
 // Flow: the caller opens its camera, then rings. The callee opens its camera
 // when it accepts, then sends "accept". The caller answers that with the SDP
 // offer, the callee replies with the answer, and ICE candidates trickle both
@@ -17,8 +13,19 @@
 //
 // Any failure, a hangup, a decline or a timeout ends in "ended" (never
 // straight to "idle"), so the dashboard keeps showing the call screen with
-// the reason until the user taps Back. Whenever this side gives up, it also
-// tells the other side, so nobody is left on "Connecting…".
+// the reason - and, after a real call, its notes - until the user taps
+// Back. Whenever this side gives up, it also tells the other side, so nobody
+// is left on "Connecting…".
+//
+// Around the call itself:
+//  - presence: this side shows "available" or "busy" (in a call) on its call
+//    topics, and `presence` says who else is online;
+//  - missed calls: a ring nobody answered is written to missed_calls (0013)
+//    for the person who was called;
+//  - connection quality: getStats() every few seconds; on a weak link the
+//    video we send is lowered (bitrate + resolution) until it recovers;
+//  - practice: the student's results for a sign the teacher asked for come
+//    back as "practice-result" signals (`practiceResults`, teacher side).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import {
@@ -29,7 +36,11 @@ import {
   type CallSettings,
   type CallSignal,
   type CallSignalBody,
+  type PracticeResult,
+  type PresenceMap,
 } from "../lib/callSignaling";
+import { recordMissedCall } from "../lib/queries";
+import { CAMERA_VIDEO } from "./useSharedCameraStream";
 
 export type CallState =
   | "idle"
@@ -39,38 +50,66 @@ export type CallState =
   | "connected"
   | "ended";
 
+// ---- ICE servers ----
 // STUN alone only works when both peers can reach each other directly; on
 // school Wi-Fi / mobile data (symmetric NAT, blocked UDP) calls need a TURN
-// relay. Set EXPO_PUBLIC_TURN_URLS (comma-separated, e.g.
-// "turn:global.relay.metered.ca:80,turns:global.relay.metered.ca:443?transport=tcp")
-// plus EXPO_PUBLIC_TURN_USERNAME / EXPO_PUBLIC_TURN_CREDENTIAL in .env.
+// relay. Two ways to configure one in .env:
+//  - EXPO_PUBLIC_TURN_CREDENTIALS_URL: an endpoint that returns short-lived
+//    credentials as RTCIceServer JSON - an array, or { iceServers: [...] }
+//    (e.g. Metered's https://<app>.metered.live/api/v1/turn/credentials?apiKey=...).
+//    Fetched when a call starts, cached for a while.
+//  - EXPO_PUBLIC_TURN_URLS (comma-separated, e.g.
+//    "turn:global.relay.metered.ca:80,turns:global.relay.metered.ca:443?transport=tcp")
+//    plus EXPO_PUBLIC_TURN_USERNAME / EXPO_PUBLIC_TURN_CREDENTIAL: fixed
+//    credentials.
 // Expo only inlines EXPO_PUBLIC_* when read as a literal property access.
 const TURN_URLS = (process.env.EXPO_PUBLIC_TURN_URLS ?? "")
   .split(",")
   .map((u: string) => u.trim())
   .filter(Boolean);
+const TURN_CREDENTIALS_URL = (process.env.EXPO_PUBLIC_TURN_CREDENTIALS_URL ?? "").trim();
 
-export const hasTurnRelay = TURN_URLS.length > 0;
+export const hasTurnRelay = TURN_URLS.length > 0 || TURN_CREDENTIALS_URL.length > 0;
 
-const ICE_SERVERS: RTCConfiguration = {
-  iceServers: [
-    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
-    ...(hasTurnRelay
-      ? [
-          {
-            urls: TURN_URLS,
-            username: process.env.EXPO_PUBLIC_TURN_USERNAME ?? "",
-            credential: process.env.EXPO_PUBLIC_TURN_CREDENTIAL ?? "",
-          },
-        ]
-      : []),
-  ],
-};
+const STUN: RTCIceServer = { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] };
+const STATIC_TURN: RTCIceServer[] = TURN_URLS.length
+  ? [
+      {
+        urls: TURN_URLS,
+        username: process.env.EXPO_PUBLIC_TURN_USERNAME ?? "",
+        credential: process.env.EXPO_PUBLIC_TURN_CREDENTIAL ?? "",
+      },
+    ]
+  : [];
+const TURN_CACHE_MS = 30 * 60_000;
+let turnCache: { at: number; servers: RTCIceServer[] } | null = null;
+
+/** Fetched TURN credentials (cached); [] when none are configured or the fetch fails. */
+async function fetchedTurn(): Promise<RTCIceServer[]> {
+  if (!TURN_CREDENTIALS_URL) return [];
+  if (turnCache && Date.now() - turnCache.at < TURN_CACHE_MS) return turnCache.servers;
+  try {
+    const res = await fetch(TURN_CREDENTIALS_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = await res.json();
+    const servers = (Array.isArray(body) ? body : body?.iceServers ?? []) as RTCIceServer[];
+    turnCache = { at: Date.now(), servers };
+    return servers;
+  } catch (err) {
+    // A failed fetch still leaves STUN (and any fixed TURN): same-network calls work.
+    console.warn("[videocall] Couldn't fetch TURN credentials:", err);
+    return [];
+  }
+}
+
+async function iceConfig(): Promise<RTCConfiguration> {
+  return { iceServers: [STUN, ...STATIC_TURN, ...(await fetchedTurn())] };
+}
 
 if (!hasTurnRelay) {
   console.info(
-    "[videocall] No TURN relay configured (EXPO_PUBLIC_TURN_URLS) - calls across " +
-      "different networks may fail to connect."
+    "[videocall] No TURN relay configured (EXPO_PUBLIC_TURN_CREDENTIALS_URL or EXPO_PUBLIC_TURN_URLS) - " +
+      "calls across different networks may fail to connect."
   );
 }
 
@@ -79,6 +118,36 @@ const CONNECT_TIMEOUT_MS = 30_000;
 // "disconnected" is often a blip (Wi-Fi hiccup) that recovers on its own;
 // only give up if it lasts this long. "failed" ends the call immediately.
 const DISCONNECT_GRACE_MS = 10_000;
+// A ring the caller cancels after this long still counts as a missed call.
+const MISSED_AFTER_MS = 15_000;
+
+// ---- connection quality ----
+const STATS_EVERY_MS = 2_000;
+// Lowered video: what we send while the link is weak.
+const LOW_BITRATE = 300_000;
+const LOW_SCALE = 2;
+
+export type QualityLevel = "good" | "fair" | "poor";
+export type CallQuality = {
+  level: QualityLevel;
+  /** Round trip in ms, when known. */
+  rttMs: number | null;
+  /** Packet loss in the last interval, either direction, worst of the two (%). */
+  lossPct: number;
+  /** Frames per second of the video we receive, when known. */
+  fps: number | null;
+  /** Media goes through a TURN relay. */
+  relayed: boolean;
+  /** Our outgoing video is lowered because of a weak link. */
+  reduced: boolean;
+};
+
+/** Grades one stats sample. Pure, for tests. */
+export function gradeQuality(rttMs: number | null, lossPct: number): QualityLevel {
+  if (lossPct >= 8 || (rttMs !== null && rttMs >= 600)) return "poor";
+  if (lossPct >= 3 || (rttMs !== null && rttMs >= 300)) return "fair";
+  return "good";
+}
 
 export const isVideoCallSupported =
   Platform.OS === "web" && typeof window !== "undefined" && typeof window.RTCPeerConnection !== "undefined";
@@ -99,7 +168,9 @@ function mediaErrorMessage(err: any): string {
   }
 }
 
-export function useVideoCall(classId: string | null, self: CallPeer | null) {
+// `studentIds` is null on the student side; on the teacher side it is the
+// class roster - the students this teacher can ring or be rung by.
+export function useVideoCall(classId: string | null, self: CallPeer | null, studentIds: string[] | null = null) {
   const [callState, setCallStateRaw] = useState<CallState>("idle");
   const [peer, setPeer] = useState<CallPeer | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -107,6 +178,16 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
   const [error, setError] = useState<string | null>(null);
   // The teacher's call settings as last received (student side only).
   const [remoteSettings, setRemoteSettings] = useState<CallSettings | null>(null);
+  const [presence, setPresence] = useState<PresenceMap>({});
+  const [quality, setQuality] = useState<CallQuality | null>(null);
+  // When the current (or just-ended) call connected and ended - for the
+  // call timer and the notes. Reset when the next call starts.
+  const [connectedAt, setConnectedAt] = useState<number | null>(null);
+  const [endedAt, setEndedAt] = useState<number | null>(null);
+  // Teacher side: every practice result the student sent during this call.
+  const [practiceResults, setPracticeResults] = useState<PracticeResult[]>([]);
+  // Bumped whenever this side writes a missed call, so a dashboard can refresh.
+  const [missedCallWrites, setMissedCallWrites] = useState(0);
   // The settings this side last sent (teacher side only), re-sent when the
   // student asks - e.g. it joined after the first send went out.
   const sentSettingsRef = useRef<CallSettings | null>(null);
@@ -117,7 +198,13 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
   const callStateRef = useRef<CallState>("idle");
   const selfRef = useRef(self);
   selfRef.current = self;
+  const classIdRef = useRef(classId);
+  classIdRef.current = classId;
   const channelRef = useRef<CallChannel | null>(null);
+  const isTeacher = studentIds !== null;
+  const studentIdsRef = useRef(studentIds);
+  studentIdsRef.current = studentIds;
+  const studentKey = studentIds ? [...studentIds].sort().join(",") : "";
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const peerRef = useRef<CallPeer | null>(null);
   const callIdRef = useRef<string | null>(null);
@@ -125,10 +212,18 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
   const localStreamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const graceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Outgoing ring: when it started (missed-call rule).
+  const ringStartedRef = useRef<number | null>(null);
+  // ICE config fetched for this call (TURN credentials can take a moment).
+  const iceRef = useRef<Promise<RTCConfiguration> | null>(null);
 
   const setCallState = useCallback((next: CallState) => {
     callStateRef.current = next;
     setCallStateRaw(next);
+    if (next === "connected") setConnectedAt((at) => at ?? Date.now());
+    if (next === "ended") setEndedAt(Date.now());
+    // Presence: "busy" from the first ring to the end of the call.
+    channelRef.current?.setStatus(next === "idle" || next === "ended" ? "available" : "busy");
   }, []);
 
   const clearTimers = useCallback(() => {
@@ -136,6 +231,14 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
     if (graceRef.current) clearTimeout(graceRef.current);
     timerRef.current = null;
     graceRef.current = null;
+  }, []);
+
+  // A fresh call: forget the last one's timings and results.
+  const resetCallRecord = useCallback(() => {
+    setConnectedAt(null);
+    setEndedAt(null);
+    setPracticeResults([]);
+    setQuality(null);
   }, []);
 
   // Releases the camera and the peer connection. Bumping callIdRef to null
@@ -156,6 +259,8 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
     peerRef.current = null;
     callIdRef.current = null;
     sentSettingsRef.current = null;
+    ringStartedRef.current = null;
+    iceRef.current = null;
     setLocalStream(null);
     setRemoteStream(null);
     setRemoteSettings(null);
@@ -167,6 +272,18 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
     const callId = callIdRef.current;
     if (!me || !to || !callId || !channelRef.current) return;
     channelRef.current.send({ ...signal, from: me, to: to.id, callId } as CallSignal);
+  }, []);
+
+  // An outgoing ring nobody answered: tell the person called, via their
+  // dashboard. Best-effort - a missing table (0013 not applied) is ignored.
+  const noteMissedCall = useCallback(() => {
+    const to = peerRef.current;
+    const klass = classIdRef.current;
+    const me = selfRef.current;
+    if (!to || !klass || !me) return;
+    void recordMissedCall(klass, me.id, to.id).then(({ error: err }) => {
+      if (!err) setMissedCallWrites((n) => n + 1);
+    });
   }, []);
 
   // End the call from this side with a reason shown on the "Call ended"
@@ -182,9 +299,12 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
   );
 
   const startTimer = useCallback(
-    (ms: number, message: string) => {
+    (ms: number, message: string, onExpire?: () => void) => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => fail(message), ms);
+      timerRef.current = setTimeout(() => {
+        onExpire?.();
+        fail(message);
+      }, ms);
     },
     [fail]
   );
@@ -192,7 +312,7 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
   // Opens camera + mic for the call identified by callId. Returns null if the
   // call was abandoned while the browser was still opening the camera.
   const acquireLocalMedia = useCallback(async (callId: string) => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: CAMERA_VIDEO, audio: true });
     if (callIdRef.current !== callId) {
       stream.getTracks().forEach((t) => t.stop());
       return null;
@@ -206,46 +326,51 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
   // earlier narrowing of pcRef.current across the awaits in handleSignal.
   const isCurrentPc = (pc: RTCPeerConnection) => pcRef.current === pc;
 
-  const createPeerConnection = useCallback(() => {
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-    const stream = localStreamRef.current;
-    stream?.getTracks().forEach((track) => pc.addTrack(track, stream));
+  const createPeerConnection = useCallback(
+    (config: RTCConfiguration) => {
+      const pc = new RTCPeerConnection(config);
+      const stream = localStreamRef.current;
+      stream?.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate) send({ kind: "ice-candidate", candidate: event.candidate.toJSON() });
-    };
-    pc.ontrack = (event) => {
-      setRemoteStream(event.streams[0] ?? new MediaStream([event.track]));
-    };
-    pc.onconnectionstatechange = () => {
-      if (!isCurrentPc(pc)) return;
-      switch (pc.connectionState) {
-        case "connected":
-          clearTimers();
-          setCallState("connected");
-          break;
-        case "disconnected":
-          if (!graceRef.current) {
-            graceRef.current = setTimeout(() => fail("The connection was lost."), DISCONNECT_GRACE_MS);
-          }
-          break;
-        case "failed":
-          fail(
-            callStateRef.current === "connected"
-              ? "The connection was lost."
-              : "Couldn't connect the call. Your networks may be blocking it - try again, or from the same Wi-Fi."
-          );
-          break;
-      }
-      if (pc.connectionState !== "disconnected" && graceRef.current) {
-        clearTimeout(graceRef.current);
-        graceRef.current = null;
-      }
-    };
+      pc.onicecandidate = (event) => {
+        if (event.candidate) send({ kind: "ice-candidate", candidate: event.candidate.toJSON() });
+      };
+      pc.ontrack = (event) => {
+        setRemoteStream(event.streams[0] ?? new MediaStream([event.track]));
+      };
+      pc.onconnectionstatechange = () => {
+        if (!isCurrentPc(pc)) return;
+        switch (pc.connectionState) {
+          case "connected":
+            clearTimers();
+            setCallState("connected");
+            break;
+          case "disconnected":
+            if (!graceRef.current) {
+              graceRef.current = setTimeout(() => fail("The connection was lost."), DISCONNECT_GRACE_MS);
+            }
+            break;
+          case "failed":
+            fail(
+              callStateRef.current === "connected"
+                ? "The connection was lost."
+                : hasTurnRelay
+                  ? "Couldn't connect the call. Try again."
+                  : "Couldn't connect the call. Your networks may be blocking it - try again from the same Wi-Fi, or ask your admin to set up a TURN relay."
+            );
+            break;
+        }
+        if (pc.connectionState !== "disconnected" && graceRef.current) {
+          clearTimeout(graceRef.current);
+          graceRef.current = null;
+        }
+      };
 
-    pcRef.current = pc;
-    return pc;
-  }, [send, clearTimers, setCallState, fail]);
+      pcRef.current = pc;
+      return pc;
+    },
+    [send, clearTimers, setCallState, fail]
+  );
 
   const flushPendingIce = useCallback(async (pc: RTCPeerConnection) => {
     const pending = pendingIceRef.current;
@@ -268,8 +393,10 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
           return;
         }
         teardownCall();
+        resetCallRecord();
         peerRef.current = signal.from;
         callIdRef.current = signal.callId;
+        iceRef.current = iceConfig();
         setPeer(signal.from);
         setError(null);
         setCallState("ringing-incoming");
@@ -298,7 +425,8 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
       if (signal.kind === "hangup") {
         teardownCall();
         if (state === "ringing-incoming") {
-          // The caller cancelled before we picked up - nothing to report.
+          // The caller cancelled before we picked up - their side records a
+          // missed call if it rang long enough; nothing to show here now.
           setCallState("idle");
           return;
         }
@@ -310,10 +438,14 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
       if (signal.kind === "accept") {
         // We're the caller (camera already open): we make the offer.
         if (state !== "ringing-outgoing") return;
+        ringStartedRef.current = null;
         try {
           setCallState("connecting");
           startTimer(CONNECT_TIMEOUT_MS, "Couldn't connect the call. Try again.");
-          const pc = createPeerConnection();
+          const callId = callIdRef.current;
+          const config = await (iceRef.current ?? iceConfig());
+          if (callIdRef.current !== callId) return;
+          const pc = createPeerConnection(config);
           const offer = await pc.createOffer();
           if (!isCurrentPc(pc)) return;
           await pc.setLocalDescription(offer);
@@ -328,7 +460,10 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
         // We're the callee (camera opened in acceptCall): we answer.
         if (state !== "connecting" || pcRef.current) return;
         try {
-          const pc = createPeerConnection();
+          const callId = callIdRef.current;
+          const config = await (iceRef.current ?? iceConfig());
+          if (callIdRef.current !== callId || pcRef.current) return;
+          const pc = createPeerConnection(config);
           await pc.setRemoteDescription(signal.sdp);
           await flushPendingIce(pc);
           const answer = await pc.createAnswer();
@@ -363,6 +498,12 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
         return;
       }
 
+      if (signal.kind === "practice-result") {
+        if (!isTeacher) return;
+        setPracticeResults((prev) => [...prev, signal.result].slice(-200));
+        return;
+      }
+
       if (signal.kind === "ice-candidate") {
         const pc = pcRef.current;
         if (!pc || !pc.remoteDescription) {
@@ -372,7 +513,7 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
         await pc.addIceCandidate(signal.candidate).catch(() => {});
       }
     },
-    [teardownCall, setCallState, fail, startTimer, createPeerConnection, send, flushPendingIce]
+    [teardownCall, resetCallRecord, setCallState, fail, startTimer, createPeerConnection, send, flushPendingIce, isTeacher]
   );
 
   const handleSignalRef = useRef(handleSignal);
@@ -380,10 +521,17 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
 
   useEffect(() => {
     if (!classId || !self?.id || !isVideoCallSupported) return;
-    const channel = openCallChannel(classId, self.id, (signal) => {
-      void handleSignalRef.current(signal);
-    });
+    const channel = openCallChannel(
+      classId,
+      self.id,
+      isTeacher ? "teacher" : "student",
+      (signal) => {
+        void handleSignalRef.current(signal);
+      },
+      setPresence
+    );
     channelRef.current = channel;
+    channel.setStudents(studentIdsRef.current ?? []);
     return () => {
       // Leaving the class channel (sign-out, class switch, unmount) ends any
       // call in progress - say so first, so the other side isn't left waiting.
@@ -393,19 +541,119 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
       if (channelRef.current === channel) channelRef.current = null;
       teardownCall();
       setPeer(null);
+      setPresence({});
       setCallState("idle");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classId, self?.id]);
+  }, [classId, self?.id, isTeacher]);
+
+  // Roster changes join/leave just the affected students' topics, without
+  // dropping a call in progress with someone else.
+  useEffect(() => {
+    channelRef.current?.setStudents(studentIdsRef.current ?? []);
+  }, [studentKey]);
+
+  // ---- connection quality, while connected ----
+  useEffect(() => {
+    if (callState !== "connected") return;
+    let prevIn = { lost: 0, recv: 0 };
+    let poorStreak = 0;
+    let goodStreak = 0;
+    let reduced = false;
+    let cancelled = false;
+
+    const setSenderLowered = async (pc: RTCPeerConnection, low: boolean) => {
+      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+      if (!sender) return;
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+      for (const enc of params.encodings) {
+        if (low) {
+          enc.maxBitrate = LOW_BITRATE;
+          enc.scaleResolutionDownBy = LOW_SCALE;
+        } else {
+          delete enc.maxBitrate;
+          enc.scaleResolutionDownBy = 1;
+        }
+      }
+      await sender.setParameters(params).catch(() => {});
+    };
+
+    const sample = async () => {
+      const pc = pcRef.current;
+      if (!pc || cancelled) return;
+      const stats = await pc.getStats().catch(() => null);
+      if (!stats || cancelled) return;
+      let rttMs: number | null = null;
+      let localCandidateId: string | null = null;
+      let inLost = 0;
+      let inRecv = 0;
+      let fps: number | null = null;
+      // Loss the other side reports on the video WE send (RTCP), 0-1.
+      let outLossFraction = 0;
+      stats.forEach((r: any) => {
+        if (r.type === "candidate-pair" && r.state === "succeeded" && (r.nominated || r.selected)) {
+          if (typeof r.currentRoundTripTime === "number") rttMs = Math.round(r.currentRoundTripTime * 1000);
+          localCandidateId = r.localCandidateId ?? null;
+        } else if (r.type === "inbound-rtp" && r.kind === "video") {
+          inLost = r.packetsLost ?? 0;
+          inRecv = r.packetsReceived ?? 0;
+          if (typeof r.framesPerSecond === "number") fps = Math.round(r.framesPerSecond);
+        } else if (r.type === "remote-inbound-rtp" && r.kind === "video") {
+          if (typeof r.fractionLost === "number") outLossFraction = r.fractionLost;
+          if (rttMs === null && typeof r.roundTripTime === "number") rttMs = Math.round(r.roundTripTime * 1000);
+        }
+      });
+      const relayed = localCandidateId ? (stats.get(localCandidateId) as any)?.candidateType === "relay" : false;
+      const dLost = Math.max(0, inLost - prevIn.lost);
+      const dRecv = Math.max(0, inRecv - prevIn.recv);
+      prevIn = { lost: inLost, recv: inRecv };
+      const inLossPct = dLost + dRecv > 0 ? (dLost / (dLost + dRecv)) * 100 : 0;
+      const outLossPct = outLossFraction * 100;
+      const lossPct = Math.round(Math.max(inLossPct, outLossPct) * 10) / 10;
+
+      // Lower what WE send when the other side reports loss on it, or the
+      // round trip is long; restore after a run of good samples.
+      const sendLevel = gradeQuality(rttMs, outLossPct);
+      if (sendLevel === "poor") {
+        poorStreak += 1;
+        goodStreak = 0;
+      } else if (sendLevel === "good") {
+        goodStreak += 1;
+        poorStreak = 0;
+      } else {
+        poorStreak = 0;
+        goodStreak = 0;
+      }
+      if (!reduced && poorStreak >= 2) {
+        reduced = true;
+        await setSenderLowered(pc, true);
+      } else if (reduced && goodStreak >= 4) {
+        reduced = false;
+        await setSenderLowered(pc, false);
+      }
+      if (cancelled) return;
+      setQuality({ level: gradeQuality(rttMs, lossPct), rttMs, lossPct, fps, relayed, reduced });
+    };
+
+    const id = setInterval(() => void sample(), STATS_EVERY_MS);
+    void sample();
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [callState]);
 
   const startCall = useCallback(
     async (to: CallPeer) => {
       const state = callStateRef.current;
       if (!selfRef.current || (state !== "idle" && state !== "ended")) return;
       teardownCall();
+      resetCallRecord();
       const callId = newCallId();
       peerRef.current = to;
       callIdRef.current = callId;
+      iceRef.current = iceConfig();
       setPeer(to);
       setError(null);
       setCallState("ringing-outgoing");
@@ -416,9 +664,10 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
         return;
       }
       send({ kind: "ring" });
-      startTimer(RING_TIMEOUT_MS, `${to.name} didn't answer.`);
+      ringStartedRef.current = Date.now();
+      startTimer(RING_TIMEOUT_MS, `${to.name} didn't answer. They'll see that you called.`, noteMissedCall);
     },
-    [teardownCall, setCallState, acquireLocalMedia, fail, send, startTimer]
+    [teardownCall, resetCallRecord, setCallState, acquireLocalMedia, fail, send, startTimer, noteMissedCall]
   );
 
   const acceptCall = useCallback(async () => {
@@ -445,15 +694,23 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
     setCallState("idle");
   }, [send, teardownCall, setCallState]);
 
-  // Leave / Cancel / Back. From "ended" this just returns to the dashboard.
+  // Leave / Cancel / Back. Leaving a call that connected shows the "Call
+  // ended" screen (with its notes); from "ended" this returns to the dashboard.
   const hangUp = useCallback(() => {
     const state = callStateRef.current;
+    if (state === "ringing-outgoing" && ringStartedRef.current && Date.now() - ringStartedRef.current >= MISSED_AFTER_MS) {
+      noteMissedCall();
+    }
     if (state !== "idle" && state !== "ended") send({ kind: "hangup" });
     teardownCall();
-    setPeer(null);
     setError(null);
+    if (state === "connected") {
+      setCallState("ended");
+      return;
+    }
+    setPeer(null);
     setCallState("idle");
-  }, [send, teardownCall, setCallState]);
+  }, [send, teardownCall, setCallState, noteMissedCall]);
 
   // Teacher side: push the call settings to the student.
   const sendSettings = useCallback(
@@ -467,6 +724,9 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
   // Student side: ask for the teacher's current settings.
   const requestSettings = useCallback(() => send({ kind: "settings-request" }), [send]);
 
+  // Student side: report one attempt at the sign the teacher asked for.
+  const sendPracticeResult = useCallback((result: PracticeResult) => send({ kind: "practice-result", result }), [send]);
+
   return {
     callState,
     incomingCallFrom: callState === "ringing-incoming" ? peer : null,
@@ -477,9 +737,18 @@ export function useVideoCall(classId: string | null, self: CallPeer | null) {
     remoteSettings,
     sendSettings,
     requestSettings,
+    sendPracticeResult,
+    practiceResults,
+    presence,
+    quality,
+    connectedAt,
+    endedAt,
+    missedCallWrites,
     startCall,
     acceptCall,
     declineCall,
     hangUp,
   };
 }
+
+export type VideoCall = ReturnType<typeof useVideoCall>;

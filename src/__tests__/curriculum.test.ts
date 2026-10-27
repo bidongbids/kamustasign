@@ -3,20 +3,18 @@
 import {
   CURRICULUM,
   MASTERY_PASSES,
-  PASS_COOLDOWN_MINUTES,
   computeOverall,
   countMastered,
   getGroup,
   groupFraction,
   groupKey,
   isMastered,
-  nextCountedPassAt,
+  planSigns,
   formatPercent,
   UNKNOWN_SIGN_LABEL,
 } from "../lib/curriculum";
 import { WORD_CATEGORIES, categoriesIn, evenChunks, filterByCategory, getWordCategory } from "../lib/wordCategories";
-
-const NOW = Date.parse("2026-10-21T12:00:00Z");
+import { sectionsByCategory } from "../components/learn/WordCategoryList";
 
 describe("curriculum data", () => {
   it("drops the fingerspelling UI classes from ASL letters", () => {
@@ -56,7 +54,7 @@ describe("mastery", () => {
   it("countMastered ignores signs no longer in the curriculum", () => {
     const counts = countMastered([
       { language: "asl", sign_group: "letters", sign: "A", passes: MASTERY_PASSES },
-      { language: "asl", sign_group: "letters", sign: "B", passes: 1 },
+      { language: "asl", sign_group: "letters", sign: "B", passes: 0 },
       { language: "asl", sign_group: "letters", sign: "not-a-sign", passes: MASTERY_PASSES },
       { language: "asl", sign_group: "letters", sign: "del", passes: MASTERY_PASSES },
     ]);
@@ -84,19 +82,6 @@ describe("mastery", () => {
   });
 });
 
-describe("pass cooldown", () => {
-  it("returns null when a pass would count now", () => {
-    expect(nextCountedPassAt(null, NOW)).toBeNull();
-    const longAgo = new Date(NOW - (PASS_COOLDOWN_MINUTES + 1) * 60_000).toISOString();
-    expect(nextCountedPassAt(longAgo, NOW)).toBeNull();
-  });
-
-  it("returns when the cooldown ends", () => {
-    const last = new Date(NOW - 60_000).toISOString();
-    const at = nextCountedPassAt(last, NOW)!;
-    expect(at.getTime()).toBe(NOW - 60_000 + PASS_COOLDOWN_MINUTES * 60_000);
-  });
-});
 
 describe("formatPercent", () => {
   it("rounds to a whole percent", () => {
@@ -138,5 +123,49 @@ describe("word categories", () => {
     expect(evenChunks(items, 10).map((c) => c.length)).toEqual([8, 8, 7]);
     expect(evenChunks([], 10)).toEqual([]);
     expect(evenChunks([1, 2, 3], 10)).toEqual([[1, 2, 3]]);
+  });
+});
+
+describe("class learning plan", () => {
+  const words = getGroup("asl", "words").signs;
+  const picked = [words[5], words[0], words[2]];
+
+  it("planSigns keeps curriculum order and drops words the model doesn't have", () => {
+    expect(planSigns("asl", "words", null)).toBe(words);
+    expect(planSigns("asl", "words", { asl: [...picked, "not-a-model-word"] })).toEqual([words[0], words[2], words[5]]);
+    // Only words are planned; letters are always the whole group.
+    expect(planSigns("asl", "letters", { asl: [] })).toEqual(getGroup("asl", "letters").signs);
+  });
+
+  it("counts and fractions only cover planned words", () => {
+    const plan = { asl: picked };
+    const rows = [words[0], words[1]].map((sign) => ({ language: "asl", sign_group: "words", sign, passes: 1 }));
+    const counts = countMastered(rows, plan);
+    expect(counts[groupKey("asl", "words")]).toBe(1); // words[1] isn't in the plan
+    expect(groupFraction("asl", "words", counts, plan)).toBeCloseTo(1 / 3, 10);
+  });
+
+  it("computeOverall leaves out a group the plan empties", () => {
+    const counts: Record<string, number> = {};
+    for (const l of CURRICULUM) for (const g of l.groups) counts[groupKey(l.language, g.group)] = g.signs.length;
+    expect(computeOverall(counts, { fsl: [] })).toBeCloseTo(1, 10);
+    const withoutFsl = computeOverall({ [groupKey("asl", "letters")]: getGroup("asl", "letters").signs.length }, { fsl: [] });
+    expect(withoutFsl).toBeCloseTo(1 / 2, 10); // ASL letters done, ASL words not; FSL words not counted
+  });
+});
+
+describe("sectionsByCategory", () => {
+  it("groups by category in display order, most reliable word first inside each", () => {
+    const words = getGroup("asl", "words").signs;
+    const sections = sectionsByCategory("asl", words);
+    const order = WORD_CATEGORIES.map((c) => c.key);
+    expect(sections.map((s) => order.indexOf(s.key as any))).toEqual(
+      [...sections.map((s) => order.indexOf(s.key as any))].sort((a, b) => a - b)
+    );
+    expect(sections.reduce((n, s) => n + s.signs.length, 0)).toBe(words.length);
+    for (const s of sections) {
+      const ranks = s.signs.map((w) => words.indexOf(w));
+      expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+    }
   });
 });

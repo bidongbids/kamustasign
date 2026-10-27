@@ -11,7 +11,6 @@ import {
   HandIcon,
   HelpCircleIcon,
   LightbulbIcon,
-  MoonIcon,
   StarIcon,
 } from "../icons/UiIcons";
 import { colors, kidTypography, radii } from "../../theme/theme";
@@ -37,8 +36,6 @@ export default function PracticeFeedback({ model, compact, fill, dense }: Props)
         return <HandIcon size={iconSize} color={colors.accentCoral} />;
       case "star":
         return <StarIcon size={iconSize} color={colors.starFilled} />;
-      case "moon":
-        return <MoonIcon size={iconSize} color={colors.starResting} />;
       case "question":
         return <HelpCircleIcon size={iconSize} color={colors.textSecondary} />;
       case "alert":

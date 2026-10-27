@@ -1,17 +1,17 @@
 // One sign in the learning plan - a raised neumorphic slab (tiles are
 // controls). State is shape, not just colour: no stars (not started), stars
-// filled by accuracy (tried - see starReference.ts), moon (resting: the next
-// good try won't count yet), check + ring (learned), "Next" chip (next up).
+// filled by accuracy (tried - see starReference.ts), check + ring (learned),
+// "Next" chip (next up).
 // All from lesson_progress.
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { StarRow } from "./Stars";
-import { CheckIcon, MoonIcon } from "../icons/UiIcons";
+import { CheckIcon } from "../icons/UiIcons";
 import { colors, fonts, kidTypography, radii, sizes } from "../../theme/theme";
 import { neuRaised } from "../../theme/shadows";
-import { MASTERY_PASSES, type SignGroup, type SignLanguage } from "../../lib/curriculum";
+import { type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { starReference, starsText } from "../../lib/starReference";
-import { isResting, starsFor, tileStatus, type ProgressLike } from "../../lib/practiceFlow";
+import { starsFor, tileStatus, type ProgressLike } from "../../lib/practiceFlow";
 
 type Props = {
   sign: string;
@@ -20,20 +20,18 @@ type Props = {
   word?: boolean;
   row: ProgressLike | undefined;
   isNext?: boolean;
-  now: number;
   onPress: () => void;
   /** Letter/number tile edge in px (default sizes.tileGlyph, never smaller). */
   size?: number;
-  /** Word tiles: fixed width so a stage reads as an even grid. */
+  /** Word tiles: fixed width so a category reads as an even grid. */
   width?: number;
 };
 
-export default function SignTile({ sign, language, group, word, row, isNext, now, onPress, size, width }: Props) {
+export default function SignTile({ sign, language, group, word, row, isNext, onPress, size, width }: Props) {
   const edge = Math.max(sizes.tileGlyph, size ?? sizes.tileGlyph);
   const glyphScale = edge / sizes.tileGlyph;
   const status = tileStatus(row);
   const stars = starsFor(row, starReference(language, group, sign));
-  const resting = isResting(row, now);
   const learned = status === "learned";
 
   const stateWords =
@@ -41,9 +39,7 @@ export default function SignTile({ sign, language, group, word, row, isNext, now
       ? "not started"
       : learned
         ? `learned, ${starsText(stars)}`
-        : `${starsText(stars)}, ${Math.min(row?.passes ?? 0, MASTERY_PASSES)} of ${MASTERY_PASSES} good tries${
-            resting ? ", resting" : ""
-          }`;
+        : `${starsText(stars)}, not learned yet`;
 
   return (
     <Pressable
@@ -84,10 +80,6 @@ export default function SignTile({ sign, language, group, word, row, isNext, now
       {learned ? (
         <View style={[styles.badge, styles.badgeCheck]}>
           <CheckIcon size={13} color={colors.textOnFrosted} strokeWidth={3.6} />
-        </View>
-      ) : resting ? (
-        <View style={[styles.badge, styles.badgeMoon]}>
-          <MoonIcon size={13} color={colors.starResting} />
         </View>
       ) : null}
     </Pressable>
@@ -142,7 +134,6 @@ const styles = StyleSheet.create({
     borderColor: colors.neuBase,
   },
   badgeCheck: { backgroundColor: colors.success },
-  badgeMoon: { backgroundColor: colors.neuWell, borderColor: colors.starResting, borderWidth: 1.5 },
   nextChip: {
     position: "absolute",
     top: -10,

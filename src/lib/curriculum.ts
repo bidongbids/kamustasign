@@ -38,15 +38,11 @@ export type LanguageDefinition = {
 
 /** A practice attempt passes when the target is recognised at this confidence (0-1). */
 export const PASS_CONFIDENCE = 0.8;
-/** Counted passes before a sign counts as mastered. */
-export const MASTERY_PASSES = 3;
 /**
- * A pass only counts if the last counted pass for that sign was at least this
- * long ago, so "3 passes" means 3 separate occasions, not 3 tries in a row.
- * Enforced in SQL (record_lesson_attempt, 0007_lesson_pass_cooldown.sql) -
- * keep in sync; the client only uses it to say when the next pass will count.
+ * Counted passes before a sign counts as mastered. One: the first pass learns
+ * the sign, and the stars (starReference.ts) show how well it was made.
  */
-export const PASS_COOLDOWN_MINUTES = 10;
+export const MASTERY_PASSES = 1;
 /**
  * Letters/Numbers classify every frame (~30 fps), so one frame of agreement is
  * nearly free. The target must stay recognised at PASS_CONFIDENCE this long.
@@ -57,7 +53,7 @@ export const PROGRESS_RULES_TEXT =
   `Attempted: practised at least once. ` +
   `Passed: recognised as the target sign at ${Math.round(PASS_CONFIDENCE * 100)}% confidence or more ` +
   `(letters and numbers must hold it for ${LIVE_PASS_HOLD_MS / 1000}s). ` +
-  `Mastered: ${MASTERY_PASSES} passes, each at least ${PASS_COOLDOWN_MINUTES} minutes after the last. ` +
+  `Mastered: passed once. ` +
   `Stars: the best attempt compared with what the model gives a correctly made sign of that kind ` +
   `(3 stars = as good as a typical correct attempt), in quarter steps; they don't decide mastery.`;
 
@@ -153,6 +149,27 @@ export function getGroup(language: SignLanguage, group: SignGroup): GroupDefinit
   return getLanguage(language).groups.find((g) => g.group === group)!;
 }
 
+// ---- class learning plan ----
+
+/**
+ * A teacher's learning plan for one class (class_word_plans, 0012): the
+ * words each language's Words group teaches. A language with no entry
+ * teaches every word; letters and numbers are always the whole group.
+ */
+export type ClassPlan = Partial<Record<SignLanguage, string[]>>;
+
+/**
+ * The signs a group teaches under `plan`, in curriculum order (most reliable
+ * first). Words the model no longer has are dropped, like moduleSigns().
+ */
+export function planSigns(language: SignLanguage, group: SignGroup, plan?: ClassPlan | null): string[] {
+  const all = getGroup(language, group).signs;
+  const chosen = group === "words" ? plan?.[language] : undefined;
+  if (!chosen) return all;
+  const keep = new Set(chosen);
+  return all.filter((s) => keep.has(s));
+}
+
 // ---- progress maths ----
 
 export type GroupKey = `${SignLanguage}:${SignGroup}`;
@@ -176,14 +193,14 @@ export function isMastered(row: { passes: number } | null | undefined): boolean 
 
 /**
  * Mastered signs per language+group. Only counts signs that are still in the
- * curriculum, so a row left over from a renamed or dropped model class can't
- * push a group past 100%.
+ * curriculum (and in the class plan, if there is one), so a row left over
+ * from a renamed or dropped model class can't push a group past 100%.
  */
-export function countMastered(rows: ProgressRowLike[]): MasteredCounts {
+export function countMastered(rows: ProgressRowLike[], plan?: ClassPlan | null): MasteredCounts {
   const counts: MasteredCounts = {};
   for (const lang of CURRICULUM) {
     for (const g of lang.groups) {
-      const signs = new Set(g.signs);
+      const signs = new Set(planSigns(lang.language, g.group, plan));
       const n = rows.filter(
         (r) =>
           r.language === lang.language && r.sign_group === g.group && signs.has(r.sign) && isMastered(r)
@@ -194,8 +211,13 @@ export function countMastered(rows: ProgressRowLike[]): MasteredCounts {
   return counts;
 }
 
-export function groupFraction(language: SignLanguage, group: SignGroup, counts: MasteredCounts): number {
-  const total = getGroup(language, group).signs.length;
+export function groupFraction(
+  language: SignLanguage,
+  group: SignGroup,
+  counts: MasteredCounts,
+  plan?: ClassPlan | null
+): number {
+  const total = planSigns(language, group, plan).length;
   if (total === 0) return 0;
   return Math.min(1, (counts[groupKey(language, group)] ?? 0) / total);
 }
@@ -204,27 +226,23 @@ export function groupFraction(language: SignLanguage, group: SignGroup, counts: 
  * The one overall-progress figure, used by the student, teacher and admin
  * views alike. Two deliberate choices (docs/CLASSROOM_REDESIGN.md section 5):
  *  - Unavailable groups are left out entirely, so mastering every gradable
- *    sign reaches 100%. The denominator grows when a new model ships.
+ *    sign reaches 100%. The denominator grows when a new model ships. So is
+ *    a group the class plan leaves empty (a class that only learns ASL).
  *  - Each available group weighs the same (mean of group fractions), rather
  *    than pooling sign counts - pooled, 344 ASL words would drown out the
  *    26 letters and the bar would really be "percent of words".
  */
-export function computeOverall(counts: MasteredCounts): number {
+export function computeOverall(counts: MasteredCounts, plan?: ClassPlan | null): number {
   const fractions: number[] = [];
   for (const lang of CURRICULUM) {
     for (const g of lang.groups) {
-      if (g.available) fractions.push(groupFraction(lang.language, g.group, counts));
+      if (g.available && planSigns(lang.language, g.group, plan).length > 0) {
+        fractions.push(groupFraction(lang.language, g.group, counts, plan));
+      }
     }
   }
   if (fractions.length === 0) return 0;
   return fractions.reduce((a, b) => a + b, 0) / fractions.length;
-}
-
-/** When the next pass for a sign will count, or null if one would count now. */
-export function nextCountedPassAt(lastPassedAt: string | null | undefined, now = Date.now()): Date | null {
-  if (!lastPassedAt) return null;
-  const at = new Date(lastPassedAt).getTime() + PASS_COOLDOWN_MINUTES * 60_000;
-  return at > now ? new Date(at) : null;
 }
 
 export function formatPercent(fraction: number): string {

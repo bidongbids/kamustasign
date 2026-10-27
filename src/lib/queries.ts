@@ -14,6 +14,7 @@ import {
   countMastered,
   getGroup,
   MASTERY_PASSES,
+  type ClassPlan,
   type MasteredCounts,
   type SignGroup,
   type SignLanguage,
@@ -259,6 +260,28 @@ export async function deleteModule(moduleId: string) {
   return supabase.from("modules").delete().eq("id", moduleId);
 }
 
+// ---- class learning plans (0012_class_plan_no_cooldown.sql) ----
+// One row per class + language. No row = every word (curriculum planSigns).
+
+/** The class's plan. A missing table (0012 not applied yet) reads as "no plan". */
+export async function getClassPlan(classId: string): Promise<{ data: ClassPlan; error: { message: string } | null }> {
+  const { data, error } = await supabase.from("class_word_plans").select("language, signs").eq("class_id", classId);
+  if (error) return { data: {}, error: error.code === "42P01" || error.code === "PGRST205" ? null : error };
+  const plan: ClassPlan = {};
+  for (const r of (data as { language: SignLanguage; signs: string[] }[] | null) ?? []) plan[r.language] = r.signs;
+  return { data: plan, error: null };
+}
+
+/** Sets one language's planned words; null removes the plan (every word again). */
+export async function saveClassPlan(classId: string, language: SignLanguage, signs: string[] | null) {
+  if (signs === null) {
+    return supabase.from("class_word_plans").delete().eq("class_id", classId).eq("language", language);
+  }
+  return supabase
+    .from("class_word_plans")
+    .upsert({ class_id: classId, language, signs, updated_at: new Date().toISOString() }, { onConflict: "class_id,language" });
+}
+
 /** Saves a new module order: each id's position becomes its index. */
 export async function setModuleOrder(moduleIds: string[]) {
   for (let i = 0; i < moduleIds.length; i++) {
@@ -391,6 +414,8 @@ export type StudentProgressSummary = {
   class_id: string | null;
   className: string | null;
   mastered: MasteredCounts;
+  /** The mastered rows behind `mastered`, to recount under a class plan (countMastered). */
+  masteredRows: ProgressEmbed[];
 };
 
 export type ProgressEmbed = Pick<LessonProgressRow, "language" | "sign_group" | "sign" | "passes"> &
@@ -398,12 +423,14 @@ export type ProgressEmbed = Pick<LessonProgressRow, "language" | "sign_group" | 
 
 function summarizeStudent(row: any): StudentProgressSummary {
   const klass = toOne(row.classes) as { name: string } | null;
+  const masteredRows = (row.lesson_progress as ProgressEmbed[] | null) ?? [];
   return {
     id: row.id,
     full_name: row.full_name,
     class_id: row.class_id ?? null,
     className: klass?.name ?? null,
-    mastered: countMastered((row.lesson_progress as ProgressEmbed[] | null) ?? []),
+    mastered: countMastered(masteredRows),
+    masteredRows,
   };
 }
 
@@ -488,4 +515,87 @@ export async function getClassGroupProgress(classId: string, language: SignLangu
   const byStudent = new Map<string, ProgressEmbed[]>();
   for (const row of (data as any[]) ?? []) byStudent.set(row.id, row.lesson_progress ?? []);
   return { data: byStudent, error: null };
+}
+
+// ---- missed calls and call notes (0013_video_call_extras.sql) ----
+// Both tables may not exist yet (0013 not applied): reads then come back
+// empty, and writes fail quietly where the caller treats them as best-effort.
+
+const missingTable = (error: { code?: string } | null) => !!error && (error.code === "42P01" || error.code === "PGRST205");
+
+export type MissedCallRow = { id: string; class_id: string; caller_id: string; created_at: string };
+
+/** The caller records a ring nobody answered (useVideoCall). */
+export async function recordMissedCall(classId: string, callerId: string, calleeId: string) {
+  return supabase.from("missed_calls").insert({ class_id: classId, caller_id: callerId, callee_id: calleeId });
+}
+
+/** Unseen missed calls for this user, newest first. */
+export async function getMissedCalls(calleeId: string): Promise<{ data: MissedCallRow[]; error: { message: string } | null }> {
+  const { data, error } = await supabase
+    .from("missed_calls")
+    .select("id, class_id, caller_id, created_at")
+    .eq("callee_id", calleeId)
+    .is("seen_at", null)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) return { data: [], error: missingTable(error) ? null : error };
+  return { data: (data as MissedCallRow[]) ?? [], error: null };
+}
+
+export async function markMissedCallsSeen(ids: string[]) {
+  if (ids.length === 0) return { error: null };
+  return supabase.from("missed_calls").update({ seen_at: new Date().toISOString() }).in("id", ids);
+}
+
+export type CallPracticeEntry = {
+  sign: string;
+  language: SignLanguage;
+  group: SignGroup;
+  passed: boolean;
+  /** Best confidence over the tries (0-1). */
+  confidence: number;
+  tries: number;
+};
+
+export type CallNoteRow = {
+  id: string;
+  class_id: string;
+  teacher_id: string;
+  student_id: string;
+  started_at: string;
+  duration_seconds: number;
+  teacher_text: string;
+  student_text: string;
+  practice: CallPracticeEntry[];
+  created_at: string;
+};
+
+export type CallNoteDraft = Omit<CallNoteRow, "id" | "created_at">;
+
+export async function saveCallNotes(draft: CallNoteDraft) {
+  const { error } = await supabase.from("call_notes").insert({
+    ...draft,
+    teacher_text: draft.teacher_text.slice(0, 5000),
+    student_text: draft.student_text.slice(0, 5000),
+    practice: draft.practice.slice(0, 200),
+  });
+  if (missingTable(error)) return { error: { message: "Saving call notes needs the 0013 database update. Ask your admin to apply it." } };
+  return { error };
+}
+
+/** A class's saved call notes, newest first. */
+export async function getCallNotes(classId: string): Promise<{ data: CallNoteRow[]; error: { message: string } | null }> {
+  const { data, error } = await supabase
+    .from("call_notes")
+    .select("*")
+    .eq("class_id", classId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) return { data: [], error: missingTable(error) ? null : error };
+  return { data: (data as CallNoteRow[]) ?? [], error: null };
+}
+
+export async function deleteCallNote(id: string) {
+  return supabase.from("call_notes").delete().eq("id", id);
 }
