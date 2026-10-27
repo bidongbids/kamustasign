@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import GlassCard from "../../components/GlassCard";
-import { CloseIcon, MoreIcon } from "../../components/icons/UiIcons";
+import { CheckIcon, ChevronDownIcon, CloseIcon, MoreIcon } from "../../components/icons/UiIcons";
 import { colors, fonts, radii } from "../../theme/theme";
 import { neuRaised } from "../../theme/shadows";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
@@ -102,6 +102,71 @@ export function RowMenu({ items, label, size = 38, tone = "raised" }: { items: M
             {plain.length && danger.length ? <View style={styles.divider} /> : null}
             {danger.map(row)}
           </View>
+        ) : null}
+      </Modal>
+    </>
+  );
+}
+
+// ── SelectPill ──────────────────────────────────────────────────────────
+// "Class: All ⌄" - a raised pill that opens a list anchored under it.
+
+export function SelectPill<K extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: K;
+  options: { key: K; label: string }[];
+  onChange: (key: K) => void;
+}) {
+  const ref = useRef<View>(null);
+  const { width: W } = useWindowDimensions();
+  const [anchor, setAnchor] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const current = options.find((o) => o.key === value)?.label ?? "";
+  const close = () => setAnchor(null);
+  const left = anchor ? Math.max(8, Math.min(W - MENU_W - 8, anchor.x)) : 0;
+  return (
+    <>
+      <Pressable
+        ref={ref}
+        onPress={() => ref.current?.measureInWindow((x, y, w, h) => setAnchor({ x, y, w, h }))}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${current}. Change`}
+        style={({ hovered }: any) => [styles.select, neuRaised("sm"), hovered && styles.itemHover, webCursor]}
+      >
+        <Text style={styles.selectText} numberOfLines={1}>
+          {label}: {current}
+        </Text>
+        <ChevronDownIcon size={14} color={colors.textOnGlass} />
+      </Pressable>
+      <Modal visible={!!anchor} transparent animationType="none" onRequestClose={close}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close list" />
+        {anchor ? (
+          <ScrollView style={[styles.menu, neuRaised("md"), { top: anchor.y + anchor.h + 6, left, maxHeight: 360 }]} accessibilityRole="menu">
+            {options.map((o) => {
+              const on = o.key === value;
+              return (
+                <Pressable
+                  key={o.key}
+                  onPress={() => {
+                    close();
+                    onChange(o.key);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: on }}
+                  style={({ hovered }: any) => [styles.item, hovered && styles.itemHover, webCursor]}
+                >
+                  <Text style={[styles.itemText, { color: colors.textPrimary }, on && styles.itemTextOn]} numberOfLines={1}>
+                    {o.label}
+                  </Text>
+                  {on ? <CheckIcon size={15} color={colors.primaryTealText} /> : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         ) : null}
       </Modal>
     </>
@@ -225,6 +290,9 @@ const styles = StyleSheet.create({
   item: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44, paddingHorizontal: 16 },
   itemHover: { backgroundColor: "rgba(255,255,255,0.06)" },
   itemText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14 },
+  itemTextOn: { fontFamily: fonts.bodySemiBold },
+  select: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44, paddingHorizontal: 16, borderRadius: radii.pill, backgroundColor: colors.neuBase },
+  selectText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary, maxWidth: 220 },
   itemDetail: { fontFamily: fonts.body, fontSize: 12.5, color: colors.textOnGlass },
   divider: { height: 1, marginVertical: 4, marginHorizontal: 12, backgroundColor: "rgba(255,255,255,0.1)" },
   scrim: { backgroundColor: colors.overlay },

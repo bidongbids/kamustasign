@@ -61,7 +61,9 @@ export function ActionButton({
   const inactive = Boolean(disabled || loading);
   const fg =
     variant === "primary"
-      ? colors.textOnPrimary
+      ? accentColor === colors.adminGray
+        ? colors.neuShadowDark // white on admin grey is 3.6:1; this dark label is 5:1
+        : colors.textOnPrimary
       : variant === "danger"
         ? colors.needsPractice
         : onFrosted && variant === "ghost"

@@ -521,3 +521,12 @@ export function GridIcon({ size = 18, color = "#000000" }: IconProps) {
     </Svg>
   );
 }
+
+// A locked choice (admin: "You can't change your own role").
+export function ShieldIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3Z" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+    </Svg>
+  );
+}
