@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { Text, Platform } from "react-native";
+import React, { useRef, useState } from "react";
+import { Text, Platform, TextInput } from "react-native";
 import AuthTextField from "../../components/auth/AuthTextField";
 import AuthButton from "../../components/auth/AuthButton";
 import AuthScreenShell from "./AuthScreenShell";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
+import { friendlyAuthError } from "../../lib/authForms";
 import { authStyles as s } from "./authStyles";
 
 export type Role = "student" | "teacher" | "admin";
@@ -18,8 +19,12 @@ type Props = {
   role: Role;
   accentColor: string;
   canRegister: boolean;
+  /** Pre-filled email, e.g. after "Log in instead" on the sign-up screen. */
+  initialEmail?: string;
   onNavigateRegister: () => void;
   onNeedsMfa: () => void;
+  /** Shows "Forgot password?" - only when reset emails can be sent (AuthNavigator). */
+  onForgotPassword?: (email: string) => void;
   onBack: () => void;
 };
 
@@ -27,18 +32,23 @@ export default function LoginScreen({
   role,
   accentColor,
   canRegister,
+  initialEmail = "",
   onNavigateRegister,
   onNeedsMfa,
+  onForgotPassword,
   onBack,
 }: Props) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const passwordRef = useRef<TextInput>(null);
 
   const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
 
   const handleLogin = async () => {
+    // Enter in the password field can fire while a sign-in is still running.
+    if (loading) return;
     setError(null);
     if (!isSupabaseConfigured) {
       setError("Backend isn't connected yet (no Supabase project configured). This screen is UI-only for now.");
@@ -53,7 +63,7 @@ export default function LoginScreen({
     const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
     if (signInError) {
       setLoading(false);
-      setError(signInError.message);
+      setError(friendlyAuthError(signInError));
       return;
     }
     if (!data.session) {
@@ -84,7 +94,7 @@ export default function LoginScreen({
       provider: "google",
       options: { redirectTo },
     });
-    if (oauthError) setError(oauthError.message);
+    if (oauthError) setError(friendlyAuthError(oauthError));
     // On success the browser navigates away to Google; nothing else to do here.
   };
 
@@ -102,16 +112,33 @@ export default function LoginScreen({
         onChangeText={setEmail}
         keyboardType="email-address"
         placeholder="you@example.com"
-        textContentType="emailAddress"
+        textContentType="username"
+        autoComplete="username"
+        enterKeyHint="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <AuthTextField
+        ref={passwordRef}
         label="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
         placeholder="••••••••"
         textContentType="password"
+        autoComplete="current-password"
+        enterKeyHint="go"
+        onSubmitEditing={handleLogin}
       />
+      {onForgotPassword && (
+        <Text
+          style={[s.forgotLink, { color: accentColor }]}
+          onPress={() => onForgotPassword(email.trim())}
+          accessibilityRole="link"
+        >
+          Forgot password?
+        </Text>
+      )}
 
       {error ? <Text style={s.errorText}>{error}</Text> : null}
 
