@@ -13,6 +13,20 @@ import { Platform } from "react-native";
 // TranslatorHubScreen which outlives every tab, and hand the same live
 // MediaStream to whichever screen is mounted. Only the hub's own unmount
 // (leaving the Translator entirely) stops the tracks.
+// What to ask the webcam for. A bare `video: true` lets Chrome pick 640x480,
+// and some webcams' native 640x480 mode is broken: an EMEET SmartCam C60E pads
+// most frames with a ~100 px black band on one side, which shows as a black
+// strip on the mirrored preview. Its 960x720 mode is clean. `ideal` (not
+// `exact`) keeps cameras without that mode working - Chrome takes the closest
+// one and crops/scales it to 4:3, the shape the app has always used.
+// The trackers resize frames internally, so the extra pixels cost almost nothing.
+export const CAMERA_VIDEO: MediaTrackConstraints = {
+  width: { ideal: 960 },
+  height: { ideal: 720 },
+  aspectRatio: { ideal: 4 / 3 },
+  frameRate: { ideal: 30 },
+};
+
 export function useSharedCameraStream() {
   const streamPromiseRef = useRef<Promise<MediaStream> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -41,7 +55,7 @@ export function useSharedCameraStream() {
       streamPromiseRef.current = null;
     }
     if (!streamPromiseRef.current) {
-      const pending = navigator.mediaDevices.getUserMedia({ video: true }).then(
+      const pending = navigator.mediaDevices.getUserMedia({ video: CAMERA_VIDEO }).then(
         (stream) => {
           if (streamPromiseRef.current === pending) streamRef.current = stream;
           return stream;

@@ -314,15 +314,18 @@ export default function LiveTranslatorScreen({
       const canvas = canvasRef.current;
       const nowMs = performance.now();
 
-      if (video.readyState >= 2) {
+      // fpsTick is false while the camera is still on the frame we last
+      // processed (see useFpsMeter) - nothing new to detect.
+      if (video.readyState >= 2 && fpsTick(video)) {
         const result = handLandmarker.detectForVideo(video, nowMs);
-        fpsTick(video);
 
         let ctx: CanvasRenderingContext2D | null = null;
         if (canvas) {
           ctx = canvas.getContext("2d");
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+          // Assigning width/height reallocates the canvas even when the
+          // value is unchanged, so only do it when the video size changes.
+          if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
+          if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
           ctx?.clearRect(0, 0, canvas.width, canvas.height);
         }
 
@@ -354,7 +357,9 @@ export default function LiveTranslatorScreen({
             const label = classesRef.current[maxIndex] ?? "?";
             const pct = arr[maxIndex] * 100;
             setPrediction(label);
-            setConfidence(pct);
+            // Whole percent: the dial shows integers, and an unchanged value
+            // lets React skip re-rendering this screen for the frame.
+            setConfidence(Math.round(pct));
             trackPractice(label, arr[maxIndex], nowMs);
 
             if (pct >= COMMIT_THRESHOLD && label !== "-") {

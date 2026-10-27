@@ -369,7 +369,9 @@ export default function WordTranslatorScreen({
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      if (video.readyState >= 2) {
+      // fpsTick is false while the camera is still on the frame we last
+      // processed (see useFpsMeter) - nothing new to detect.
+      if (video.readyState >= 2 && fpsTick(video)) {
         // Detection runs on the RAW (unmirrored) video frame - the preview
         // is mirrored purely via CSS (see CameraDevice's videoStyle), same
         // as the alphabet screen. Feeding a visually-flipped frame into the
@@ -382,12 +384,13 @@ export default function WordTranslatorScreen({
         // landmarker's whole lifetime - a counter reset to 0 on every mount
         // would violate that as soon as you switched back to Words.
         const result = holisticLandmarker.detectForVideo(video, performance.now());
-        fpsTick(video);
 
         if (canvas) {
           const ctx = canvas.getContext("2d");
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+          // Assigning width/height reallocates the canvas even when the
+          // value is unchanged, so only do it when the video size changes.
+          if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
+          if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
           if (ctx) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawLandmarks(ctx, canvas, result);
