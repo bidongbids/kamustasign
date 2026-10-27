@@ -10,6 +10,8 @@ import StudentDashboard from "./src/screens/dashboard/StudentDashboard";
 import TeacherDashboard from "./src/screens/dashboard/TeacherDashboard";
 import AdminDashboard from "./src/screens/dashboard/AdminDashboard";
 import { useAuthGate } from "./src/lib/authGate";
+import { isPendingTeacher } from "./src/lib/queries";
+import AccountNoticeScreen from "./src/screens/auth/AccountNoticeScreen";
 import { ThemeColors } from "./src/theme/theme";
 import { ThemeProvider, useTheme, useThemedStyles } from "./src/theme/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -135,8 +137,31 @@ function AppContent() {
     );
   }
 
+  // The dashboard follows the account's real role, not the tile that was
+  // tapped - a student who logs in through the Admin tile gets the student
+  // dashboard. (RLS is what actually protects the data either way.)
+  const profile = authGate.profile;
+  if (!profile || isPendingTeacher(profile)) {
+    return (
+      <>
+        <StatusBar style={statusBarStyle} />
+        <AccountNoticeScreen
+          accentColor={roleAccent[profile?.role ?? role]}
+          title={profile ? "Waiting for approval" : "Can't open your account"}
+          message={
+            profile
+              ? "Your teacher account has been created. An admin needs to approve it before you can create classes and invite students."
+              : authGate.profileError ?? "Couldn't load your profile."
+          }
+          onCheckAgain={authGate.refresh}
+          onSignOut={() => authGate.signOut()}
+        />
+      </>
+    );
+  }
+
   const dashboardProps = {
-    accentColor: roleAccent[role],
+    accentColor: roleAccent[profile.role],
     onSignOut: () => authGate.signOut(),
     onExitToRoleSelect: () => setRole(null),
   };
@@ -144,9 +169,9 @@ function AppContent() {
   return (
     <>
       <StatusBar style={statusBarStyle} />
-      {role === "student" && <StudentDashboard {...dashboardProps} />}
-      {role === "teacher" && <TeacherDashboard {...dashboardProps} />}
-      {role === "admin" && <AdminDashboard {...dashboardProps} />}
+      {profile.role === "student" && <StudentDashboard {...dashboardProps} />}
+      {profile.role === "teacher" && <TeacherDashboard {...dashboardProps} />}
+      {profile.role === "admin" && <AdminDashboard {...dashboardProps} />}
     </>
   );
 }

@@ -8,6 +8,12 @@ import { authStyles as s } from "./authStyles";
 
 export type Role = "student" | "teacher" | "admin";
 
+// Google sign-in has to be switched on in the Supabase dashboard
+// (Authentication -> Providers) first; until then the button only errors.
+// Student tile only: an OAuth sign-up carries no role, so it always makes a
+// student account, which would surprise someone who tapped Teacher.
+const googleSignInEnabled = process.env.EXPO_PUBLIC_GOOGLE_SIGNIN === "true";
+
 type Props = {
   role: Role;
   accentColor: string;
@@ -38,12 +44,13 @@ export default function LoginScreen({
       setError("Backend isn't connected yet (no Supabase project configured). This screen is UI-only for now.");
       return;
     }
-    if (!email || !password) {
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !password) {
       setError("Enter your email and password.");
       return;
     }
     setLoading(true);
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
     if (signInError) {
       setLoading(false);
       setError(signInError.message);
@@ -110,7 +117,7 @@ export default function LoginScreen({
 
       <AuthButton label="Log In" onPress={handleLogin} loading={loading} accentColor={accentColor} />
 
-      {Platform.OS === "web" && canRegister && (
+      {Platform.OS === "web" && googleSignInEnabled && role === "student" && (
         <>
           <Text style={s.divider}>or</Text>
           <AuthButton label="Continue with Google" onPress={handleGoogleLogin} variant="secondary" />

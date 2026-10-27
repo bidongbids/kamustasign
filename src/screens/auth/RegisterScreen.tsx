@@ -9,6 +9,9 @@ import { spacing } from "../../theme/theme";
 
 type Role = "student" | "teacher";
 
+// Matches the profiles_full_name_length check (0011_auth_hardening.sql).
+const NAME_MAX = 100;
+
 type Props = {
   role: Role;
   accentColor: string;
@@ -37,8 +40,21 @@ export default function RegisterScreen({ role, accentColor, onNavigateLogin, onR
       setError("Fill in all fields.");
       return;
     }
+    if (fullName.trim().length > NAME_MAX) {
+      setError(`Keep your name under ${NAME_MAX} characters.`);
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("That doesn't look like an email address.");
+      return;
+    }
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
+      return;
+    }
+    // Supabase hashes with bcrypt, which only reads the first 72 bytes.
+    if (new TextEncoder().encode(password).length > 72) {
+      setError("Password is too long (72 characters at most).");
       return;
     }
     if (password !== confirmPassword) {
@@ -79,12 +95,22 @@ export default function RegisterScreen({ role, accentColor, onNavigateLogin, onR
   return (
     <AuthScreenShell accentColor={accentColor} onBack={onNavigateLogin} backLabel="Back to Log In">
       <Text style={[s.title, { color: accentColor }]}>{roleLabel} Sign Up</Text>
-      <Text style={s.subtitle}>Create your LCSign account</Text>
+      <Text style={s.subtitle}>
+        {role === "teacher"
+          ? "Create your LCSign account. An admin approves new teacher accounts before you can set up classes."
+          : "Create your LCSign account"}
+      </Text>
       {!isSupabaseConfigured && (
         <Text style={s.errorText}>No Supabase project connected yet — this screen is UI-only for now.</Text>
       )}
 
-      <AuthTextField label="Full name" value={fullName} onChangeText={setFullName} placeholder="Juan Dela Cruz" />
+      <AuthTextField
+        label="Full name"
+        value={fullName}
+        onChangeText={setFullName}
+        placeholder="Juan Dela Cruz"
+        maxLength={NAME_MAX}
+      />
       <AuthTextField
         label="Email"
         value={email}

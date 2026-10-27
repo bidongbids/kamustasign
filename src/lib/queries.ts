@@ -26,8 +26,15 @@ export type Profile = {
   full_name: string;
   role: ProfileRole;
   class_id: string | null;
+  /** False for a teacher sign-up an admin hasn't approved yet (0011). */
+  approved?: boolean;
   created_at: string;
 };
+
+/** A teacher account an admin hasn't approved yet - no teacher powers (0011). */
+export function isPendingTeacher(p: Pick<Profile, "role" | "approved">) {
+  return p.role === "teacher" && p.approved === false;
+}
 
 export type ClassRow = {
   id: string;
@@ -304,11 +311,17 @@ export async function upsertScore(
 // ---- admin (account management only) ----
 
 // Only students belong to a class through profiles.class_id, so changing an
-// account away from student also takes it out of its class. Which class a
-// student is in is their teacher's business, never set here.
+// account away from student also takes it out of its class (the database
+// enforces this too, 0011). An admin making someone a teacher is also their
+// approval.
 export async function updateProfileRole(profileId: string, role: ProfileRole) {
-  const patch: { role: ProfileRole; class_id?: null } = role === "student" ? { role } : { role, class_id: null };
+  const patch: { role: ProfileRole; class_id?: null; approved?: true } =
+    role === "student" ? { role } : role === "teacher" ? { role, class_id: null, approved: true } : { role, class_id: null };
   return supabase.from("profiles").update(patch).eq("id", profileId).select().single();
+}
+
+export async function approveTeacher(profileId: string) {
+  return supabase.from("profiles").update({ approved: true }).eq("id", profileId).select().single();
 }
 
 export async function updateProfileName(profileId: string, fullName: string) {

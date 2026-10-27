@@ -7,7 +7,8 @@
 // references auth.users(id), and auth users can only be created or deleted
 // through Supabase's Admin API (a service-role key), which this client-only
 // app deliberately doesn't have. People sign up themselves as a student or a
-// teacher; only an admin can make someone an admin.
+// teacher; a teacher sign-up waits here for an admin's approval
+// (0011_auth_hardening.sql), and only an admin can make someone an admin.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, TextInput } from "react-native";
 import DashboardShell, { DashboardCard, dashboardStyles as ds } from "./DashboardShell";
@@ -28,6 +29,8 @@ import { colors, fonts, radii, spacing } from "../../theme/theme";
 import {
   getMyProfile,
   adminListAccounts,
+  approveTeacher,
+  isPendingTeacher,
   updateProfileName,
   updateProfileRole,
   listAllClasses,
@@ -107,6 +110,13 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSel
             Teachers create their own classes and invite students. Here you manage who has which kind of account.
           </Text>
 
+          <PendingTeachers
+            accentColor={accentColor}
+            accounts={accounts.filter(isPendingTeacher)}
+            setNotice={setNotice}
+            onSaved={(next) => setAccounts((prev) => prev.map((p) => (p.id === next.id ? next : p)))}
+          />
+
           <AccountsList
             accentColor={accentColor}
             selfId={profile?.id ?? null}
@@ -119,6 +129,72 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSel
         </>
       )}
     </DashboardShell>
+  );
+}
+
+// Teacher sign-ups have no teacher powers until approved here. "Make
+// student" is the way to turn one down - the person keeps their account.
+function PendingTeachers({
+  accentColor,
+  accounts,
+  setNotice,
+  onSaved,
+}: {
+  accentColor: string;
+  accounts: AccountRow[];
+  setNotice: (n: NoticeState) => void;
+  onSaved: (a: AccountRow) => void;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  if (accounts.length === 0) return null;
+
+  const act = async (a: AccountRow, approve: boolean) => {
+    setBusyId(a.id);
+    const { error } = approve ? await approveTeacher(a.id) : await updateProfileRole(a.id, "student");
+    setBusyId(null);
+    if (error) {
+      setNotice({ kind: "error", message: error.message });
+      return;
+    }
+    onSaved(approve ? { ...a, approved: true } : { ...a, role: "student", class_id: null });
+    const name = a.full_name || a.email || "That account";
+    setNotice({ kind: "success", message: approve ? `${name} can now use the teacher dashboard.` : `${name} is now a student account.` });
+  };
+
+  return (
+    <DashboardCard style={styles.card}>
+      <Text style={ds.itemTitle}>Teacher accounts waiting for approval ({accounts.length})</Text>
+      <Text style={[ds.itemMeta, styles.pendingNote]}>
+        Approve only people you know are teachers - an approved teacher can see the names and emails of students who
+        aren't in a class yet.
+      </Text>
+      {accounts.map((a, i) => (
+        <View key={a.id} style={[ds.listItem, i === 0 && ds.listItemFirst]}>
+          <View style={styles.personRow}>
+            <Avatar name={a.full_name} color={ROLE_COLORS.teacher} />
+            <View style={styles.flex}>
+              <Text style={[ds.itemTitle, styles.flexShrink]} numberOfLines={1}>
+                {a.full_name || "(no name)"}
+              </Text>
+              <Text style={ds.itemMeta} numberOfLines={1}>
+                {[a.email, `signed up ${new Date(a.created_at).toLocaleDateString()}`].filter(Boolean).join(" · ")}
+              </Text>
+            </View>
+            <View style={styles.row8}>
+              <ActionButton
+                label="Approve"
+                variant="primary"
+                accentColor={accentColor}
+                onPress={() => act(a, true)}
+                loading={busyId === a.id}
+                disabled={busyId !== null}
+              />
+              <ActionButton label="Make student" variant="ghost" onPress={() => act(a, false)} disabled={busyId !== null} />
+            </View>
+          </View>
+        </View>
+      ))}
+    </DashboardCard>
   );
 }
 
@@ -180,7 +256,12 @@ function AccountsList({
         setNotice({ kind: "error", message: error.message });
         return;
       }
-      next = { ...next, role: draftRole, class_id: draftRole === "student" ? next.class_id : null };
+      next = {
+        ...next,
+        role: draftRole,
+        class_id: draftRole === "student" ? next.class_id : null,
+        approved: draftRole === "teacher" ? true : next.approved,
+      };
     }
     setSaving(false);
     onSaved(next);
@@ -235,6 +316,7 @@ function AccountsList({
                       {[
                         a.email,
                         a.role === "student" ? (a.class_id ? classNameById.get(a.class_id) ?? "Unknown class" : "No class") : null,
+                        isPendingTeacher(a) ? "Awaiting approval" : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
@@ -331,5 +413,6 @@ const styles = StyleSheet.create({
     maxWidth: 420,
   },
   warn: { fontFamily: fonts.body, fontSize: 12, color: colors.needsPractice, marginTop: 8 },
+  pendingNote: { marginTop: 4, marginBottom: spacing.sm },
   migrationNote: { fontFamily: fonts.body, fontSize: 12, color: colors.accentCoral, marginBottom: spacing.sm },
 });
