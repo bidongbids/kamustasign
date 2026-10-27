@@ -38,3 +38,13 @@ export const supabase = createClient(
   supabaseAnonKey ?? "placeholder-anon-key",
   { auth }
 );
+
+// A throwaway client that never stores or refreshes a session, for checking
+// a password without replacing the signed-in session (which may be aal2) -
+// see changePassword in account.ts. Its own storage key keeps supabase-js
+// from warning about two clients sharing one.
+export function createScratchClient() {
+  return createClient(supabaseUrl ?? "https://placeholder.supabase.co", supabaseAnonKey ?? "placeholder-anon-key", {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: "lcsign-scratch-auth" },
+  });
+}

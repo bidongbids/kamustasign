@@ -97,9 +97,11 @@ type Props = {
   accentColor: string;
   onSignOut: () => void;
   onExitToRoleSelect: () => void;
+  /** The Account panel changed the name or 2FA - App reloads the profile. */
+  onAccountChange: () => void;
 };
 
-export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleSelect }: Props) {
+export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleSelect, onAccountChange }: Props) {
   const { isDesktop } = useResponsive();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [classes, setClasses] = useState<ClassRow[]>([]);
@@ -697,6 +699,11 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
       userName={profile?.full_name ?? "..."}
       onSignOut={onSignOut}
       onExitToRoleSelect={onExitToRoleSelect}
+      profile={profile}
+      onProfileChange={(p) => {
+        setProfile(p);
+        onAccountChange();
+      }}
       contentMaxWidth={isDesktop ? 1400 : 1200}
     >
       <Notice notice={notice} onDismiss={() => setNotice(null)} />

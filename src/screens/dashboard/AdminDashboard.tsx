@@ -48,9 +48,11 @@ type Props = {
   accentColor: string;
   onSignOut: () => void;
   onExitToRoleSelect: () => void;
+  /** The Account panel changed the name or 2FA - App reloads the profile. */
+  onAccountChange: () => void;
 };
 
-export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSelect }: Props) {
+export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSelect, onAccountChange }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [emailsAvailable, setEmailsAvailable] = useState(true);
@@ -90,6 +92,12 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSel
       userName={profile?.full_name ?? "..."}
       onSignOut={onSignOut}
       onExitToRoleSelect={onExitToRoleSelect}
+      profile={profile}
+      onProfileChange={(p) => {
+        setProfile(p);
+        setAccounts((prev) => prev.map((a) => (a.id === p.id ? { ...a, full_name: p.full_name } : a)));
+        onAccountChange();
+      }}
       contentMaxWidth={1100}
     >
       <Notice notice={notice} onDismiss={() => setNotice(null)} />

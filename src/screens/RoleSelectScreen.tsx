@@ -32,31 +32,113 @@ type Role = "student" | "teacher" | "admin";
 type Props = {
   onSelectRole: (role: Role) => void;
   onOpenTranslator: () => void;
+  /** Someone is still signed in on this device (sessions survive reloads). */
+  signedInAs?: { name: string; role: Role } | null;
+  onContinueSignedIn?: () => void;
+  onSignOut?: () => void;
+  /** A one-off message, e.g. an expired email link. */
+  notice?: string | null;
+  onDismissNotice?: () => void;
 };
 
 const ROLES: { role: Role; label: string; description: string; mobileDescription: string; accentColor: string }[] = [
   {
     role: "student",
     label: "Student",
-    description: "Practice signs, submit assignments, see your scores",
-    mobileDescription: "Practice, submit, see scores",
+    description: "Practice signs with your camera and earn stars",
+    mobileDescription: "Practice signs, earn stars",
     accentColor: colors.accentCoral,
   },
   {
     role: "teacher",
     label: "Teacher",
-    description: "Post assignments, grade submissions, call students",
-    mobileDescription: "Assignments, grading, calls",
+    description: "Run classes, choose what to learn, follow progress, call students",
+    mobileDescription: "Classes, progress, calls",
     accentColor: colors.primaryTeal,
   },
   {
     role: "admin",
     label: "Administrator",
-    description: "Manage accounts and classes",
-    mobileDescription: "Accounts and classes",
+    description: "Manage accounts and approve teachers",
+    mobileDescription: "Accounts and approvals",
     accentColor: colors.adminGray,
   },
 ];
+
+const ROLE_LABELS: Record<Role, string> = { student: "Student", teacher: "Teacher", admin: "Admin" };
+
+const makeBannerStyles = (c: ThemeColors) =>
+  StyleSheet.create({
+    stack: { gap: spacing.sm, marginBottom: spacing.md },
+    card: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingVertical: spacing.sm + 2,
+      paddingHorizontal: spacing.md,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: c.hairline,
+      backgroundColor: c.surface,
+    },
+    who: { flex: 1, minWidth: 150 },
+    label: { ...typography.meta, color: c.textSecondary },
+    name: { ...typography.label, color: c.textPrimary, marginTop: 2 },
+    text: { ...typography.bodySm, flex: 1, minWidth: 150, color: c.textPrimary },
+    actions: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+    continueBtn: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 999,
+      backgroundColor: c.primaryTeal,
+    },
+    continueText: { ...typography.label, color: c.onPrimary },
+    link: { ...typography.bodySm, color: c.primaryTealText, textDecorationLine: "underline" },
+  });
+
+// A session survives reloads, so on a shared classroom computer the next
+// child would tap "Student" and land in the previous child's account. Say
+// who is signed in, with the way out right next to it.
+function SessionBanner({ signedInAs, onContinueSignedIn, onSignOut, notice, onDismissNotice }: Props) {
+  const styles = useThemedStyles(makeBannerStyles);
+  if (!signedInAs && !notice) return null;
+  return (
+    <View style={styles.stack}>
+      {notice ? (
+        <View style={styles.card} accessibilityRole="alert">
+          <Text style={styles.text}>{notice}</Text>
+          <Pressable onPress={onDismissNotice} accessibilityRole="button" hitSlop={8}>
+            <Text style={styles.link}>Dismiss</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {signedInAs ? (
+        <View style={styles.card}>
+          <View style={styles.who}>
+            <Text style={styles.label}>Signed in as</Text>
+            <Text style={styles.name} numberOfLines={1}>
+              {signedInAs.name || "Your account"} · {ROLE_LABELS[signedInAs.role]}
+            </Text>
+          </View>
+          <View style={styles.actions}>
+            <Pressable
+              onPress={onContinueSignedIn}
+              style={styles.continueBtn}
+              accessibilityRole="button"
+              accessibilityLabel={`Continue as ${signedInAs.name || "this account"}`}
+            >
+              <Text style={styles.continueText}>Continue</Text>
+            </Pressable>
+            <Pressable onPress={onSignOut} accessibilityRole="button" hitSlop={8}>
+              <Text style={styles.link}>Not you? Sign out</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 // Ambient background glow — RN has no `filter: blur()`, so the softness is
 // baked into the radial gradient's own stops (transparent well before the
@@ -139,7 +221,8 @@ const makePhoneStyles = (c: ThemeColors, theme: Theme) =>
     footer: { ...mobileTypography.caption, color: c.textMuted, marginTop: "auto", paddingTop: spacing.xl, textAlign: "center" },
   });
 
-function PhoneRoleSelect({ onSelectRole, onOpenTranslator }: Props) {
+function PhoneRoleSelect(props: Props) {
+  const { onSelectRole, onOpenTranslator } = props;
   const { colors: c } = useTheme();
   const styles = useThemedStyles(makePhoneStyles);
   const insets = useSafeAreaInsets();
@@ -148,7 +231,7 @@ function PhoneRoleSelect({ onSelectRole, onOpenTranslator }: Props) {
   const tiles = [
     { key: "student", label: "Student", description: "Practice signs and see your stars", icon: <GraduationCapIcon color={c.accentCoralText} />, onPress: () => onSelectRole("student") },
     { key: "teacher", label: "Teacher", description: "Classes, modules and calls", icon: <ClipboardCheckIcon color={c.primaryTealText} />, onPress: () => onSelectRole("teacher") },
-    { key: "admin", label: "Admin", description: "Accounts and classes", icon: <GearIcon color={c.adminGray} />, onPress: () => onSelectRole("admin") },
+    { key: "admin", label: "Admin", description: "Accounts and approvals", icon: <GearIcon color={c.adminGray} />, onPress: () => onSelectRole("admin") },
     {
       key: "translator",
       label: "Translator",
@@ -175,8 +258,10 @@ function PhoneRoleSelect({ onSelectRole, onOpenTranslator }: Props) {
           <Text style={styles.hero} accessibilityRole="header">
             Kamusta!
           </Text>
-          <Text style={styles.sub}>Who's using KamustaSign?</Text>
+          <Text style={styles.sub}>Who's using LCSign?</Text>
         </View>
+
+        <SessionBanner {...props} />
 
         <View style={styles.grid}>
           {tiles.map(({ key, ...t }) => (
@@ -196,7 +281,8 @@ export default function RoleSelectScreen(props: Props) {
   return <WideRoleSelect {...props} />;
 }
 
-function WideRoleSelect({ onSelectRole, onOpenTranslator }: Props) {
+function WideRoleSelect(props: Props) {
+  const { onSelectRole, onOpenTranslator } = props;
   const { isDesktop, isMobile } = useResponsive();
 
   const fade = useRef(new Animated.Value(0)).current;
@@ -240,6 +326,7 @@ function WideRoleSelect({ onSelectRole, onOpenTranslator }: Props) {
               { opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] },
             ]}
           >
+            <SessionBanner {...props} />
             <Text style={[typography.meta, styles.eyebrow]}>SIGN IN AS</Text>
 
             <View style={styles.cardsCol}>
@@ -273,9 +360,11 @@ function WideRoleSelect({ onSelectRole, onOpenTranslator }: Props) {
           <LogoTile size={56} radius={18} markSize={30} />
           <Wordmark style={styles.wordmarkMobile} accentColor={colors.accentCoral} />
           <Text style={[typography.body, styles.mobileSub]}>
-            Real-time American Sign Language interpretation for Liloan Central School.
+            Real-time ASL and FSL interpretation for Liloan Central School.
           </Text>
         </Animated.View>
+
+        <SessionBanner {...props} />
 
         <View style={styles.mobileCards}>
           {ROLES.map((r, i) => (

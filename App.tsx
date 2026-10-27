@@ -12,6 +12,8 @@ import AdminDashboard from "./src/screens/dashboard/AdminDashboard";
 import { useAuthGate } from "./src/lib/authGate";
 import { isPendingTeacher } from "./src/lib/queries";
 import AccountNoticeScreen from "./src/screens/auth/AccountNoticeScreen";
+import Verify2FAScreen from "./src/screens/auth/Verify2FAScreen";
+import ResetPasswordScreen from "./src/screens/auth/ResetPasswordScreen";
 import { ThemeColors } from "./src/theme/theme";
 import { ThemeProvider, useTheme, useThemedStyles } from "./src/theme/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -26,7 +28,8 @@ const roleAccentFor = (colors: ThemeColors): Record<Role, string> => ({
 });
 
 // Restores the role the user was mid-signin-as after a Google OAuth redirect
-// bounces the web page away and back (see LoginScreen's redirectTo).
+// or a password-reset email link brings them back (LoginScreen's and
+// ForgotPasswordScreen's redirectTo).
 function roleFromQueryString(): Role | null {
   if (Platform.OS !== "web" || typeof window === "undefined") return null;
   const value = new URLSearchParams(window.location.search).get("role");
@@ -84,11 +87,16 @@ function AppContent() {
   const authGate = useAuthGate();
 
   useEffect(() => {
-    if (Platform.OS === "web" && typeof window !== "undefined" && window.location.search.includes("role=")) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("role");
-      window.history.replaceState({}, "", url.toString());
-    }
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    // ?role= has been read (above), and a failed email link's #error=...
+    // has been read by authGate; neither should come back on a reload.
+    // A successful link's #access_token=... is left for supabase-js.
+    const url = new URL(window.location.href);
+    const failedLink = /[#&]error(_code)?=/.test(url.hash);
+    if (!url.searchParams.has("role") && !failedLink) return;
+    url.searchParams.delete("role");
+    if (failedLink) url.hash = "";
+    window.history.replaceState({}, "", url.toString());
   }, []);
 
   if (!fontsLoaded || authGate.status === "loading") {
@@ -99,13 +107,46 @@ function AppContent() {
     );
   }
 
+  // Opened from a password-reset email: the link signed the person in, and
+  // the new password comes before anything else. A 2FA account's session is
+  // still aal1, so its code comes first.
+  if (authGate.recovering && authGate.status !== "signedOut") {
+    const accent = role && role !== "translator" ? roleAccent[role] : colors.primaryTeal;
+    const leave = async () => {
+      authGate.endRecovery();
+      await authGate.signOut();
+    };
+    return (
+      <>
+        <StatusBar style={statusBarStyle} />
+        {authGate.status === "needsMfa" ? (
+          <Verify2FAScreen
+            accentColor={accent}
+            title="Confirm it's you"
+            factorId={authGate.mfaFactorId}
+            onVerified={authGate.refresh}
+            onCancel={leave}
+          />
+        ) : (
+          <ResetPasswordScreen accentColor={accent} onDone={authGate.endRecovery} onCancel={leave} />
+        )}
+      </>
+    );
+  }
+
   if (!role) {
+    const signedIn = authGate.status === "authenticated" ? authGate.profile : null;
     return (
       <>
         <StatusBar style={statusBarStyle} />
         <RoleSelectScreen
           onSelectRole={setRole}
           onOpenTranslator={() => setRole("translator")}
+          signedInAs={signedIn ? { name: signedIn.full_name, role: signedIn.role } : null}
+          onContinueSignedIn={() => signedIn && setRole(signedIn.role)}
+          onSignOut={() => authGate.signOut()}
+          notice={authGate.linkError}
+          onDismissNotice={authGate.clearLinkError}
         />
       </>
     );
@@ -164,6 +205,7 @@ function AppContent() {
     accentColor: roleAccent[profile.role],
     onSignOut: () => authGate.signOut(),
     onExitToRoleSelect: () => setRole(null),
+    onAccountChange: authGate.refresh,
   };
 
   return (

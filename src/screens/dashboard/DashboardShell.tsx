@@ -1,12 +1,16 @@
 // Shared chrome for the Student/Teacher/Admin dashboards: brand row, role
-// label, sign-out. Mirrors AuthScreenShell's visual language (same brand
-// mark, same card/shadow system) but laid out for scrollable content lists
-// instead of a centered form.
-import React from "react";
+// label, sign-out, and the Account panel (tap your name). Mirrors
+// AuthScreenShell's visual language (same brand mark, same card/shadow
+// system) but laid out for scrollable content lists instead of a centered
+// form.
+import React, { useState } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import HandLandmarkMark from "../../components/HandLandmarkMark";
 import GradientBackground from "../../components/GradientBackground";
 import GlassCard from "../../components/GlassCard";
+import { GearIcon } from "../../components/icons/UiIcons";
+import AccountPanel from "./AccountPanel";
+import type { Profile } from "../../lib/queries";
 import { colors, fonts, spacing, radii } from "../../theme/theme";
 import { useResponsive } from "../../theme/responsive";
 
@@ -19,6 +23,9 @@ type Props = {
   children: React.ReactNode;
   /** Desktop content width; the student learning plan uses 880 (default 720). */
   contentMaxWidth?: number;
+  /** The signed-in profile - with it, the name in the header opens the Account panel. */
+  profile?: Profile | null;
+  onProfileChange?: (p: Profile) => void;
 };
 
 export default function DashboardShell({
@@ -29,8 +36,12 @@ export default function DashboardShell({
   onExitToRoleSelect,
   children,
   contentMaxWidth,
+  profile,
+  onProfileChange,
 }: Props) {
   const { isDesktop } = useResponsive();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const canOpenAccount = Boolean(profile && onProfileChange);
 
   return (
     <GradientBackground style={styles.root} variant="subtle">
@@ -47,12 +58,22 @@ export default function DashboardShell({
         </Pressable>
 
         <View style={styles.headerRight}>
-          <View style={styles.identity}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {userName}
-            </Text>
-            <Text style={[styles.roleBadge, { color: accentColor }]}>{roleLabel}</Text>
-          </View>
+          <Pressable
+            onPress={() => setAccountOpen(true)}
+            disabled={!canOpenAccount}
+            style={({ pressed }) => [styles.identityBtn, pressed && { opacity: 0.7 }]}
+            accessibilityRole="button"
+            accessibilityLabel={`Account settings for ${userName}`}
+            accessibilityHint="Change your name, password or 2FA"
+          >
+            <View style={styles.identity}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {userName}
+              </Text>
+              <Text style={[styles.roleBadge, { color: accentColor }]}>{roleLabel}</Text>
+            </View>
+            {canOpenAccount && <GearIcon size={16} color={colors.textSecondary} />}
+          </Pressable>
           <Pressable
             onPress={onSignOut}
             style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.7 }]}
@@ -62,6 +83,16 @@ export default function DashboardShell({
           </Pressable>
         </View>
       </GlassCard>
+
+      {profile && onProfileChange && (
+        <AccountPanel
+          visible={accountOpen}
+          onClose={() => setAccountOpen(false)}
+          accentColor={accentColor}
+          profile={profile}
+          onProfileChange={onProfileChange}
+        />
+      )}
 
       <ScrollView
         style={styles.flex}
@@ -169,7 +200,16 @@ const styles = StyleSheet.create({
   brandRow: { flexDirection: "row", alignItems: "center" },
   brandWordmark: { fontFamily: fonts.heading, fontSize: 16, marginLeft: spacing.xs },
   headerRight: { flexDirection: "row", alignItems: "center" },
-  identity: { alignItems: "flex-end", marginRight: spacing.md, maxWidth: 160 },
+  identityBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginRight: spacing.sm,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+  },
+  identity: { alignItems: "flex-end", maxWidth: 160 },
   userName: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.textPrimary },
   roleBadge: { fontFamily: fonts.bodyMedium, fontSize: 11, marginTop: 1 },
   signOutBtn: {

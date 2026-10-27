@@ -18,9 +18,9 @@ TensorFlow.js); no camera video is sent to any server.
 | **Translator: Signer** | Text-to-sign direction: a 3D avatar plays sign recordings (early stage). |
 | **Students** | Curriculum by language and group (letters / numbers / words), "How to make it" reference videos, practice graded by the model (one good try learns a sign; stars show how well it was made), word categories by part of speech. |
 | **Teachers** | Multiple classes, inviting students (checklist or join code), custom modules (an ordered set of signs with an optional due date), class progress. |
-| **Admin** | Account management. |
+| **Admin** | Account management, approving teacher sign-ups. |
 | **Video call** | Teacher-controlled WebRTC calls with an in-call sign reader that ignores signs outside its vocabulary. |
-| **Auth** | Supabase email/password + Google, optional TOTP two-factor. |
+| **Auth** | Supabase email/password (Google optional). Teacher accounts wait for an admin's approval. Two-factor sign-in (TOTP) for teachers and admins, enforced by the database. An Account panel (tap your name in the dashboard header) changes your name and password and turns 2FA on or off. "Forgot password?" once email sending is set up (below). |
 
 ## Getting started
 
@@ -39,6 +39,8 @@ npm run web               # http://localhost:8081
 | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Accounts, classroom, progress, video-call signalling. Without them the translator still works; sign-in is disabled. |
 | `EXPO_PUBLIC_TURN_CREDENTIALS_URL`, or `EXPO_PUBLIC_TURN_URLS` + `EXPO_PUBLIC_TURN_USERNAME` + `EXPO_PUBLIC_TURN_CREDENTIAL` | Video calls between **different networks** (school Wi-Fi, mobile data). Without TURN, calls only connect reliably on the same network. Free tier: [metered.ca](https://www.metered.ca/stun-turn). |
 | `EXPO_PUBLIC_MYMEMORY_EMAIL` | Optional: raises the free translation quota. |
+| `EXPO_PUBLIC_PASSWORD_RESET` | `true` shows "Forgot password?". Turn it on only after custom SMTP is set up (see below); Supabase's built-in mailer only sends to the project team's own addresses. |
+| `EXPO_PUBLIC_GOOGLE_SIGNIN` | `true` shows "Continue with Google" on the student sign-in screen, after the Google provider is turned on in Supabase. |
 
 ### Database
 
@@ -47,6 +49,35 @@ in the Supabase SQL editor (or `supabase db push`). Row Level Security is
 defined there; the anon key is safe to ship because RLS, not the key,
 restricts access. `supabase/tests/rls_test.sql` checks the main access rules
 (see [Testing](#testing)).
+
+### Supabase dashboard settings
+
+These live in the dashboard, not in the migrations:
+
+- **Realtime → Settings → "Allow public access": off.** Calls use private
+  channels (0011). Builds from before 0011 used a public channel and can't
+  call once this is off, so replace them first.
+- **Authentication → Emails → SMTP:** a custom SMTP server (Brevo, Resend,
+  Gmail with an app password, ...). Then turn on **"Confirm email"** in the
+  Email provider settings. Without it, anyone can sign up with an address
+  that isn't theirs, including a real teacher's - so until it's on, approve
+  teacher accounts only after checking with the person.
+- **Email provider settings → minimum password length: 8**, to match the app.
+- **Authentication → URL Configuration:** add the web app's address (for
+  example `https://lcsign.example.org/**` and `http://localhost:8081/**`)
+  to the redirect URLs, so reset and confirmation links come back to it.
+
+### Admin help
+
+- **Approving teachers:** new teacher accounts appear at the top of the
+  Admin dashboard. "Make student" turns one down.
+- **Lost 2FA phone:** in the Supabase SQL editor,
+  `delete from auth.mfa_factors where user_id = (select id from auth.users where email = 'teacher@example.com');`
+  The person can then log in with just their password and set 2FA up again
+  from the Account panel.
+- **Forgotten password before SMTP is set up:** set a temporary one in the
+  SQL editor and ask the person to change it in the Account panel:
+  `update auth.users set encrypted_password = extensions.crypt('Temporary-Pass-123', extensions.gen_salt('bf')) where email = 'student@example.com';`
 
 ### Offline use
 

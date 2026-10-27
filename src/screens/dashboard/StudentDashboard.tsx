@@ -86,11 +86,13 @@ type Props = {
   accentColor: string;
   onSignOut: () => void;
   onExitToRoleSelect: () => void;
+  /** The Account panel changed the name or 2FA - App reloads the profile. */
+  onAccountChange: () => void;
 };
 
 const GROUP_PLURAL: Record<SignGroup, string> = { letters: "letters", numbers: "numbers", words: "words" };
 
-export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleSelect }: Props) {
+export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleSelect, onAccountChange }: Props) {
   const { isDesktop } = useResponsive();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [teacher, setTeacher] = useState<CallPeer | null>(null);
@@ -514,6 +516,11 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
       userName={profile?.full_name ?? "..."}
       onSignOut={onSignOut}
       onExitToRoleSelect={onExitToRoleSelect}
+      profile={profile}
+      onProfileChange={(p) => {
+        setProfile(p);
+        onAccountChange();
+      }}
       contentMaxWidth={1600}
     >
       {error ? (
