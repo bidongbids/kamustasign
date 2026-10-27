@@ -10,6 +10,14 @@
 // The same topics carry Realtime presence (0013): each side "tracks" itself
 // on them, so the teacher sees which students are online or already on a
 // call, and a student sees whether their teacher is.
+//
+// Presence only says who is ONLINE: each side tracks itself once and never
+// re-tracks. "Busy"/"available" travels as a small broadcast instead
+// (STATUS_EVENT). Re-tracking with a new status is what realtime-js 2.110
+// gets wrong: its presence adapter rewrites phoenix's own state objects
+// while handling the join half of an update, so the leave half can't remove
+// the old entry - the person then shows "On a call" after the call, and
+// never goes offline.
 import { supabase } from "./supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -81,6 +89,10 @@ export type CallChannel = {
 };
 
 const BROADCAST_EVENT = "call-signal";
+const STATUS_EVENT = "presence-status";
+
+/** "I'm on a call" / "I'm free again", from one person on a topic. */
+type StatusMessage = { id: string; status: PresenceStatus };
 
 // One private topic per student: only that student and their class's
 // (approved) teacher may join it - enforced by realtime.messages RLS
@@ -97,17 +109,23 @@ export function newCallId() {
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** The other members of one topic, from a Realtime presenceState(). */
+/**
+ * The other members of one topic: who is online comes from a Realtime
+ * presenceState(), whether they're busy from their last status broadcast
+ * (`statuses`). A status tracked in the presence itself (builds before the
+ * broadcast) still counts when no broadcast has arrived.
+ */
 export function presenceMembers(
   state: Record<string, { status?: PresenceStatus }[]>,
   selfId: string,
-  peerId: string | null
+  peerId: string | null,
+  statuses: Record<string, PresenceStatus> = {}
 ): PresenceMap {
   const members: PresenceMap = {};
   for (const [key, metas] of Object.entries(state)) {
     if (key === selfId || (peerId && key !== peerId) || metas.length === 0) continue;
     // Several tabs on one account: "busy" in any of them wins.
-    members[key] = metas.some((m) => m.status === "busy") ? "busy" : "available";
+    members[key] = statuses[key] ?? (metas.some((m) => m.status === "busy") ? "busy" : "available");
   }
   return members;
 }
@@ -130,7 +148,7 @@ const pendingRemovals = new Map<string, Promise<unknown>>();
 
 type TopicChannel = {
   send: (signal: CallSignal) => void;
-  track: (status: PresenceStatus) => void;
+  setStatus: (status: PresenceStatus) => void;
   close: () => void;
 };
 
@@ -138,7 +156,7 @@ type TopicChannel = {
 // other end: the teacher listening on a student's topic only accepts that
 // student; a student (peerId null) accepts whoever else could join, which
 // the RLS policy limits to their teacher. `onPresence` gets the topic's
-// other members whenever presence changes.
+// other members whenever presence or their status changes.
 function openTopic(
   topic: string,
   selfId: string,
@@ -151,6 +169,14 @@ function openTopic(
   let closed = false;
   let subscribed = false;
   let current = status;
+  // The others' last status broadcast, and who was online at the last sync.
+  const statuses: Record<string, PresenceStatus> = {};
+  let online = new Set<string>();
+
+  const sendStatus = () => {
+    const msg: StatusMessage = { id: selfId, status: current };
+    void channel?.send({ type: "broadcast", event: STATUS_EVENT, payload: msg });
+  };
 
   const ready = (pendingRemovals.get(topic) ?? Promise.resolve()).then(() => {
     if (closed) return;
@@ -158,21 +184,39 @@ function openTopic(
       config: { private: true, broadcast: { self: false }, presence: { key: selfId } },
     });
     channel = ch;
+    const report = () => onPresence(presenceMembers(ch.presenceState<{ status?: PresenceStatus }>(), selfId, peerId, statuses));
     ch.on("broadcast", { event: BROADCAST_EVENT }, ({ payload }) => {
       const signal = payload as CallSignal;
       if (signal?.to !== selfId) return;
       if (peerId && signal.from?.id !== peerId) return;
       onSignal(signal);
     });
+    ch.on("broadcast", { event: STATUS_EVENT }, ({ payload }) => {
+      const msg = payload as StatusMessage;
+      if (!msg?.id || msg.id === selfId || (peerId && msg.id !== peerId)) return;
+      if (msg.status !== "busy" && msg.status !== "available") return;
+      statuses[msg.id] = msg.status;
+      report();
+    });
     ch.on("presence", { event: "sync" }, () => {
-      onPresence(presenceMembers(ch.presenceState<{ status?: PresenceStatus }>(), selfId, peerId));
+      const state = ch.presenceState<{ status?: PresenceStatus }>();
+      const now = new Set(Object.keys(state).filter((k) => k !== selfId && state[k].length > 0));
+      // Someone left: forget their status, so they don't come back "busy".
+      for (const id of online) if (!now.has(id)) delete statuses[id];
+      // Someone arrived: broadcasts aren't stored, so tell them ours.
+      const arrived = [...now].some((id) => !online.has(id));
+      online = now;
+      if (arrived && subscribed) sendStatus();
+      report();
     });
     ch.subscribe((state) => {
       if (state !== "SUBSCRIBED" || closed) return;
       subscribed = true;
+      // Tracked once and never again (see the note at the top of the file).
       // Best-effort: without 0013's presence policies the track is refused
       // and calls still work - nobody just shows as online.
-      void ch.track({ status: current }).catch(() => {});
+      void ch.track({ online: true }).catch(() => {});
+      sendStatus();
     });
   });
 
@@ -182,9 +226,9 @@ function openTopic(
       // broadcast endpoint, so an early send still gets delivered.
       void ready.then(() => channel?.send({ type: "broadcast", event: BROADCAST_EVENT, payload: signal }));
     },
-    track(next) {
+    setStatus(next) {
       current = next;
-      if (subscribed && channel) void channel.track({ status: next }).catch(() => {});
+      if (subscribed) sendStatus();
     },
     close() {
       if (closed) return;
@@ -249,7 +293,7 @@ export function openCallChannel(
     },
     setStatus(next) {
       status = next;
-      for (const topic of topics.values()) topic.track(next);
+      for (const topic of topics.values()) topic.setStatus(next);
     },
     close() {
       if (closed) return;
