@@ -122,6 +122,26 @@ export const darkColors = {
   cameraBezel: "#12151B",
   onCamera: "#FFFFFF",
   cameraScrim: "rgba(18,21,27,0.62)",
+
+  // Teacher / admin / call redesign (design_handoff_teacher_admin_videocall
+  // README, "Token additions"): aliases or one darker step of existing hues,
+  // named by role.
+  presenceOnline: "#3FB56A", // = success, always with the word "Online"
+  presenceOnCall: "#F2B23E", // = accentCoral, drawn as a diamond (shape, not colour)
+  presenceOffline: "#8A93A6", // = textTertiary, an outlined ring
+  attention: "#F2B23E", // = accentCoral - approvals inbox, "Needs you" count, due chips
+  callDanger: "#C23A47", // needsPractice darkened: white label 5.3:1 (needsPractice is 3.8:1)
+  callAccept: "#3FB56A", // = success
+  textOnCallAccept: "#1E1F26", // = textOnFrosted: 6.3:1 on green (white is 3.1:1)
+  actionPrimaryFill: "#5A50A8", // = primaryTealDark: white on primaryTeal is only 3.95:1
+  captionScrim: "rgba(10,12,16,0.78)", // floor for any caption over video
+  ringHalo: "rgba(124,108,245,0.35)", // primaryTeal @ 35% - ringing halos
+  qualityGood: "#5FD08A", // = successText
+  qualityFair: "#F2B23E", // = accentCoral
+  qualityPoor: "#FF7A85", // = needsPracticeText
+  heatLearned: "#3FB56A", // = success, filled cell + check
+  heatTried: "#F2B23E", // = accentCoral, ring + dot
+  heatNone: "rgba(255,255,255,0.06)", // empty cell
 };
 
 export type ThemeColors = typeof darkColors;
@@ -209,6 +229,23 @@ export const lightColors: ThemeColors = {
   cameraBezel: "#12151B",
   onCamera: "#FFFFFF",
   cameraScrim: "rgba(18,21,27,0.62)",
+
+  presenceOnline: "#237F48",
+  presenceOnCall: "#8A5A00",
+  presenceOffline: "#5D6579",
+  attention: "#8A5A00",
+  callDanger: "#B3303D",
+  callAccept: "#237F48",
+  textOnCallAccept: "#FFFFFF",
+  actionPrimaryFill: "#5241C9",
+  captionScrim: "rgba(10,12,16,0.78)",
+  ringHalo: "rgba(99,82,230,0.30)",
+  qualityGood: "#1B713D",
+  qualityFair: "#8A5A00",
+  qualityPoor: "#B3303D",
+  heatLearned: "#237F48",
+  heatTried: "#8A5A00",
+  heatNone: "rgba(27,31,42,0.06)",
 };
 
 export const palettes: Record<ThemeName, ThemeColors> = { dark: darkColors, light: lightColors };

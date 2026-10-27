@@ -152,6 +152,36 @@ export function gradeQuality(rttMs: number | null, lossPct: number): QualityLeve
 export const isVideoCallSupported =
   Platform.OS === "web" && typeof window !== "undefined" && typeof window.RTCPeerConnection !== "undefined";
 
+/** Why a call ended up on the "ended" screen - the screen picks its card from this. */
+export type EndReason =
+  | "left" // this side left a connected call
+  | "theyLeft" // the other side left
+  | "declined"
+  | "busy" // the other side was on another call
+  | "noAnswer"
+  | "cameraBlocked"
+  | "cameraBusy"
+  | "noCamera"
+  | "dropped" // a connected call lost its connection
+  | "connectFailed" // never got connected
+  | "failed"; // anything else (message in `error`)
+
+function mediaErrorReason(err: any): EndReason {
+  switch (err?.name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "cameraBlocked";
+    case "NotReadableError":
+    case "AbortError":
+      return "cameraBusy";
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return "noCamera";
+    default:
+      return "failed";
+  }
+}
+
 function mediaErrorMessage(err: any): string {
   switch (err?.name) {
     case "NotAllowedError":
@@ -176,6 +206,7 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [endReason, setEndReason] = useState<EndReason | null>(null);
   // The teacher's call settings as last received (student side only).
   const [remoteSettings, setRemoteSettings] = useState<CallSettings | null>(null);
   const [presence, setPresence] = useState<PresenceMap>({});
@@ -237,6 +268,7 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
   const resetCallRecord = useCallback(() => {
     setConnectedAt(null);
     setEndedAt(null);
+    setEndReason(null);
     setPracticeResults([]);
     setQuality(null);
   }, []);
@@ -289,21 +321,22 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
   // End the call from this side with a reason shown on the "Call ended"
   // screen, telling the other side so it doesn't wait forever.
   const fail = useCallback(
-    (message: string, notifyPeer = true) => {
+    (message: string, notifyPeer = true, reason: EndReason = "failed") => {
       if (notifyPeer) send({ kind: "hangup", reason: "failed" });
       teardownCall();
       setError(message);
+      setEndReason(reason);
       setCallState("ended");
     },
     [send, teardownCall, setCallState]
   );
 
   const startTimer = useCallback(
-    (ms: number, message: string, onExpire?: () => void) => {
+    (ms: number, message: string, reason: EndReason, onExpire?: () => void) => {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         onExpire?.();
-        fail(message);
+        fail(message, true, reason);
       }, ms);
     },
     [fail]
@@ -347,18 +380,22 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
             break;
           case "disconnected":
             if (!graceRef.current) {
-              graceRef.current = setTimeout(() => fail("The connection was lost."), DISCONNECT_GRACE_MS);
+              graceRef.current = setTimeout(() => fail("The connection was lost.", true, "dropped"), DISCONNECT_GRACE_MS);
             }
             break;
-          case "failed":
+          case "failed": {
+            const wasConnected = callStateRef.current === "connected";
             fail(
-              callStateRef.current === "connected"
+              wasConnected
                 ? "The connection was lost."
                 : hasTurnRelay
                   ? "Couldn't connect the call. Try again."
-                  : "Couldn't connect the call. Your networks may be blocking it - try again from the same Wi-Fi, or ask your admin to set up a TURN relay."
+                  : "Couldn't connect the call. Your networks may be blocking it - try again from the same Wi-Fi, or ask your admin to set up a TURN relay.",
+              true,
+              wasConnected ? "dropped" : "connectFailed"
             );
             break;
+          }
         }
         if (pc.connectionState !== "disconnected" && graceRef.current) {
           clearTimeout(graceRef.current);
@@ -417,7 +454,8 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
         if (state !== "ringing-outgoing") return;
         fail(
           signal.reason === "busy" ? `${signal.from.name} is on another call.` : `${signal.from.name} declined the call.`,
-          false
+          false,
+          signal.reason === "busy" ? "busy" : "declined"
         );
         return;
       }
@@ -431,6 +469,7 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
           return;
         }
         setError(signal.reason === "failed" ? `The call couldn't continue on ${signal.from.name}'s side.` : null);
+        setEndReason(signal.reason === "failed" ? "failed" : "theyLeft");
         setCallState("ended");
         return;
       }
@@ -441,7 +480,7 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
         ringStartedRef.current = null;
         try {
           setCallState("connecting");
-          startTimer(CONNECT_TIMEOUT_MS, "Couldn't connect the call. Try again.");
+          startTimer(CONNECT_TIMEOUT_MS, "Couldn't connect the call. Try again.", "connectFailed");
           const callId = callIdRef.current;
           const config = await (iceRef.current ?? iceConfig());
           if (callIdRef.current !== callId) return;
@@ -660,12 +699,12 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
       try {
         if (!(await acquireLocalMedia(callId))) return;
       } catch (err) {
-        fail(mediaErrorMessage(err), false);
+        fail(mediaErrorMessage(err), false, mediaErrorReason(err));
         return;
       }
       send({ kind: "ring" });
       ringStartedRef.current = Date.now();
-      startTimer(RING_TIMEOUT_MS, `${to.name} didn't answer. They'll see that you called.`, noteMissedCall);
+      startTimer(RING_TIMEOUT_MS, `${to.name} didn't answer. They'll see that you called.`, "noAnswer", noteMissedCall);
     },
     [teardownCall, resetCallRecord, setCallState, acquireLocalMedia, fail, send, startTimer, noteMissedCall]
   );
@@ -679,11 +718,11 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
     try {
       if (!(await acquireLocalMedia(callId))) return;
     } catch (err) {
-      fail(mediaErrorMessage(err));
+      fail(mediaErrorMessage(err), true, mediaErrorReason(err));
       return;
     }
     send({ kind: "accept" });
-    startTimer(CONNECT_TIMEOUT_MS, "Couldn't connect the call. Try again.");
+    startTimer(CONNECT_TIMEOUT_MS, "Couldn't connect the call. Try again.", "connectFailed");
   }, [clearTimers, setCallState, acquireLocalMedia, fail, send, startTimer]);
 
   const declineCall = useCallback(() => {
@@ -705,6 +744,7 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
     teardownCall();
     setError(null);
     if (state === "connected") {
+      setEndReason("left");
       setCallState("ended");
       return;
     }
@@ -734,6 +774,7 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
     localStream,
     remoteStream,
     error,
+    endReason,
     remoteSettings,
     sendSettings,
     requestSettings,

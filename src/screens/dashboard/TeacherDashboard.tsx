@@ -350,7 +350,7 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
     .join(" · ");
 
   if (call.callState !== "idle" && self && klass) {
-    return <VideoCallScreen role="teacher" call={call} self={self} classId={klass.id} plan={plan} accentColor={accentColor} />;
+    return <VideoCallScreen role="teacher" call={call} self={self} classId={klass.id} className={klass.name} plan={plan} accentColor={accentColor} />;
   }
 
   const nameOfStudent = (id: string) => progress.find((p) => p.id === id)?.full_name || "A student";

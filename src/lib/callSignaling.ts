@@ -30,13 +30,14 @@ export type CallModelKey = "asl-letters" | "asl-words" | "fsl-words";
 // signs are read by role, not "them"/"me", so it means the same thing on
 // both screens. `big` is the text the teacher put up full-screen (null when
 // closed); `id` changes on every press, so showing the same text again
-// re-opens it on a student screen where it was dismissed. `practice` is a
+// re-opens it on a student screen where it was dismissed, and `by` says
+// whose signs the text is ("Ana signed" / "You signed"). `practice` is a
 // sign the teacher asked the student to make (one of the current model's
 // signs); a new `id` is a new request, even for the same sign.
 export type CallSettings = {
   model: CallModelKey;
   read: "teacher" | "student" | "both";
-  big: { text: string; id: number } | null;
+  big: { text: string; id: number; by?: "teacher" | "student" } | null;
   practice: { sign: string; id: number } | null;
 };
 

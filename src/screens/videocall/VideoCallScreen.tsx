@@ -1,68 +1,74 @@
-// In-call UI (Graphite Aurora). Both video feeds can be read by the on-device
-// sign pipeline (useCallSignReader) with a model the caller chooses - ASL
-// letters, ASL words or FSL words - and each side's signs build up as text
-// that can be spoken aloud (useTranslateAndSpeak, in the standing speech
-// language) or shown full-screen. Recognition runs on this device only and
-// nothing is sent over the network. Deaf-first: every state is shown in
-// words, nothing depends on sound.
+// In-call UI (Graphite Aurora, "call mode": design_handoff_teacher_admin_videocall
+// C1-C9). Both video feeds can be read by the on-device sign pipeline
+// (useCallSignReader) with a model the teacher chooses - ASL letters, ASL
+// words or FSL words - and each side's signs build up as text that can be
+// spoken aloud (useTranslateAndSpeak, in the standing speech language) or
+// shown full-screen. Recognition runs on this device only and nothing is
+// sent over the network. Deaf-first: every state is shown in words, nothing
+// depends on sound.
 //
 // Rendered by the Student/Teacher dashboards in place of their normal
 // content whenever a call is anything other than idle (useVideoCall).
 //
 // Calls are always teacher <-> student, and the teacher runs the call: the
-// sign language/model, whose signs are read, and "Show big" (which opens on
-// both screens) are set on the teacher's side and sent to the student
-// (CallSettings in ../../lib/callSignaling.ts). The student sees those
-// settings but can't change them; mic, camera, captions and speech language
-// stay each person's own.
+// model, whose signs are read, and "Show big" (which opens on both screens)
+// are set in the teacher's Tools and sent to the student (CallSettings in
+// ../../lib/callSignaling.ts). The student's screen doesn't show those
+// controls at all; mic, camera, captions and speech language stay each
+// person's own.
+//
+// Layout: a focus layout - the other person big, one caption strip below the
+// video, tools in a drawer (desktop) or sheet (phone), and a control bar that
+// never scrolls away. The two <video> elements are created once, at the top
+// of the in-call tree, and only moved and resized (callGeometry.ts); a
+// different element tree per layout is what used to leave them black.
 //
 // Practice in the call: the teacher picks a sign (letters, or the class
 // plan's words) and asks the student for it. The student's own device
 // checks it with the classroom's pass rule (callPractice.ts), records the
 // attempt in lesson_progress like the practice screen does, and sends the
-// result back so the teacher sees it at once.
+// result back so the teacher sees it at once. While asked, the student's own
+// video becomes the big one: the check reads it.
 //
-// After a call that connected, "Call ended" shows its notes - how long it
-// was, the signs practised and what each side signed - to download, and on
-// the teacher's side to save to the class's call notes (0013).
-import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import Svg, { Circle, Rect } from "react-native-svg";
-import GradientBackground from "../../components/GradientBackground";
-import GlassCard from "../../components/GlassCard";
-import SegmentedToggle from "../../components/SegmentedToggle";
+// After a call that connected, the teacher gets a summary to save to the
+// class's call notes (0013) or download; the student a short summary.
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Modal, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LanguagePicker, { useSelectedLanguage } from "../../components/LanguagePicker";
 import { useHandedness } from "../../components/HandednessPicker";
-import KidButton from "../../components/learn/KidButton";
-import SignReference from "../../components/learn/SignReference";
 import {
-  ArrowRightIcon,
   BackspaceIcon,
   CaptionsIcon,
-  CheckIcon,
   ChevronDownIcon,
   CloseIcon,
   EyeIcon,
+  ExpandIcon,
   HandIcon,
   MicIcon,
-  PhoneIcon,
   PhoneOffIcon,
-  SearchIcon,
+  SlidersIcon,
   SpeakerIcon,
   VideoIcon,
 } from "../../components/icons/UiIcons";
-import { colors, fonts, radii, spacing, typography } from "../../theme/theme";
+import { colors, fonts } from "../../theme/theme";
 import { neuInset, neuRaised } from "../../theme/shadows";
-import { useResponsive } from "../../theme/responsive";
-import { isVideoCallSupported, type CallQuality, type VideoCall } from "../../hooks/useVideoCall";
-import { useCallSignReader, type CallModel, type ReaderPhase, type SignReading } from "../../hooks/useCallSignReader";
+import { useReduceMotion } from "../../hooks/useReduceMotion";
+import { isVideoCallSupported, type VideoCall } from "../../hooks/useVideoCall";
+import { useCallSignReader, type SignReading } from "../../hooks/useCallSignReader";
 import { useTranslateAndSpeak } from "../../hooks/useTranslateAndSpeak";
 import { findLanguage } from "../../lib/languages";
 import { CallPracticeGrader, callModelScope, practiceSignsFor, summarizePractice } from "../../lib/callPractice";
-import { getMotionHint, getSignMedia } from "../../lib/referenceMedia";
-import { recordAttempt, saveCallNotes, type CallPracticeEntry } from "../../lib/queries";
+import { recordAttempt, saveCallNotes } from "../../lib/queries";
 import type { ClassPlan } from "../../lib/curriculum";
 import type { CallModelKey, CallPeer, CallSettings, PracticeResult } from "../../lib/callSignaling";
+import { callLayout, type Rect } from "./callGeometry";
+import { MODELS, MODEL_NAMES, firstName, fromRead, clock, toRead, type ReadFrom } from "./callUi";
+import { CallAvatar, CallPill, ControlToggle, PhaseChip, QualityBadge, QualityBars, SpinnerArc } from "./CallParts";
+import CaptionStrip from "./CaptionStrip";
+import CallToolsPanel, { type ToolsTab } from "./CallToolsPanel";
+import StudentAskPanel from "./StudentAskPanel";
+import { CallErrorScreen, CallingScreen, IncomingScreen, StudentEnded, TeacherSummary, WebOnlyScreen, type NotesData } from "./CallScreens";
 
 type Props = {
   role: "teacher" | "student";
@@ -71,52 +77,20 @@ type Props = {
   /** This side of the call, and the class it's in (for attempts and notes). */
   self: CallPeer;
   classId: string;
+  /** Shown on the teacher's summary ("Back to Grade 5 - Mabini") and incoming calls. */
+  className?: string | null;
   /** Teacher side: the class learning plan, which words can be practised. */
   plan?: ClassPlan | null;
   accentColor: string;
 };
 
-const MODELS: Record<CallModelKey, CallModel> = {
-  "asl-letters": { kind: "letters" },
-  "asl-words": { kind: "words", language: "asl" },
-  "fsl-words": { kind: "words", language: "fsl" },
-};
-const MODEL_NAMES: Record<CallModelKey, string> = {
-  "asl-letters": "ASL Letters",
-  "asl-words": "ASL Words",
-  "fsl-words": "FSL Words",
-};
-type ReadFrom = "them" | "me" | "both";
+type Big = { text: string; by: "teacher" | "student" };
 
-// "them"/"me" on this screen <-> the role-based `read` the settings carry.
-const toRead = (readFrom: ReadFrom, role: Props["role"]): CallSettings["read"] =>
-  readFrom === "both" ? "both" : (readFrom === "me") === (role === "teacher") ? "teacher" : "student";
-const fromRead = (read: CallSettings["read"], role: Props["role"]): ReadFrom =>
-  read === "both" ? "both" : read === role ? "me" : "them";
+// Plain CSS: these go on the <video> elements themselves, not on RN views.
+const VIDEO_CSS: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
+const MIRRORED_CSS: React.CSSProperties = { ...VIDEO_CSS, transform: "scaleX(-1)" };
 
-const PHASE: Record<ReaderPhase, { chip: string; tone: "neutral" | "gold" | "success" | "error" }> = {
-  off: { chip: "Paused", tone: "neutral" },
-  loading: { chip: "Starting…", tone: "neutral" },
-  error: { chip: "Can't read signs", tone: "error" },
-  "no-hand": { chip: "No hand", tone: "neutral" },
-  unsure: { chip: "Not sure", tone: "neutral" },
-  holding: { chip: "Hold still", tone: "gold" },
-  added: { chip: "Added", tone: "success" },
-  reading: { chip: "Reading sign…", tone: "gold" },
-  checking: { chip: "Checking…", tone: "gold" },
-};
-const toneColor = (t: string) =>
-  t === "success" ? colors.success : t === "gold" ? colors.accentCoral : t === "error" ? colors.needsPractice : colors.textSecondary;
-
-const initials = (name?: string | null) =>
-  (name ?? "?")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("") || "?";
-
-export default function VideoCallScreen({ role, call, self, classId, plan, accentColor }: Props) {
+export default function VideoCallScreen({ role, call, self, classId, className, plan, accentColor }: Props) {
   const {
     remoteSettings,
     sendSettings,
@@ -127,6 +101,7 @@ export default function VideoCallScreen({ role, call, self, classId, plan, accen
     localStream,
     remoteStream,
     error,
+    endReason,
     acceptCall,
     declineCall,
     hangUp,
@@ -134,13 +109,15 @@ export default function VideoCallScreen({ role, call, self, classId, plan, accen
     connectedAt,
     endedAt,
   } = call;
-  const { isDesktop } = useResponsive();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const isTeacher = role === "teacher";
-  // The teacher's own choices. On the student's screen the same three come
-  // from remoteSettings instead (defaults until the first one arrives).
+  // The teacher's own choices. On the student's screen the same come from
+  // remoteSettings instead (defaults until the first one arrives).
   const [teacherModel, setTeacherModel] = useState<CallModelKey>("asl-letters");
   const [teacherReadFrom, setTeacherReadFrom] = useState<ReadFrom>("both");
   const [teacherBig, setTeacherBig] = useState<CallSettings["big"]>(null);
@@ -152,27 +129,42 @@ export default function VideoCallScreen({ role, call, self, classId, plan, accen
   // Which model each practice request was made with, for the notes.
   const practiceModelsRef = useRef(new Map<number, CallModelKey>());
   if (practice && !practiceModelsRef.current.has(practice.id)) practiceModelsRef.current.set(practice.id, modelKey);
+  const modelOf = useCallback((r: PracticeResult) => practiceModelsRef.current.get(r.practiceId) ?? modelKey, [modelKey]);
   // Student side: this call's practice attempts (the teacher gets them as call.practiceResults).
   const [ownResults, setOwnResults] = useState<PracticeResult[]>([]);
   const practiceResults = isTeacher ? call.practiceResults : ownResults;
   // Student side: the id of a teacher "Show big" this student closed, and a
   // "Show big" of their own (which only opens on their own screen).
   const [dismissedBigId, setDismissedBigId] = useState<number | null>(null);
-  const [ownBig, setOwnBig] = useState<string | null>(null);
+  const [ownBig, setOwnBig] = useState<Big | null>(null);
   const [captionsOn, setCaptionsOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [autoSpeak, setAutoSpeak] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [toolsTab, setToolsTab] = useState<ToolsTab>("practice");
+  const [yourSignsOpen, setYourSignsOpen] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [speechLang, setSpeechLang] = useSelectedLanguage();
   const [handedness] = useHandedness();
 
-  useEffect(() => {
-    if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
-  }, [localStream, callState]);
-  useEffect(() => {
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
-  }, [remoteStream, callState]);
+  // Attach each stream to its element whenever either changes. The elements
+  // are created once per call, so this only runs when a stream arrives.
+  const attachLocal = useCallback(
+    (el: HTMLVideoElement | null) => {
+      localVideoRef.current = el;
+      if (el && el.srcObject !== localStream) el.srcObject = localStream;
+    },
+    [localStream]
+  );
+  const attachRemote = useCallback(
+    (el: HTMLVideoElement | null) => {
+      remoteVideoRef.current = el;
+      if (el && el.srcObject !== remoteStream) el.srcObject = remoteStream;
+    },
+    [remoteStream]
+  );
 
   // Mic / camera switches act on the local tracks (the peer sees a frozen
   // or black frame, and hears nothing, exactly as in any call app).
@@ -207,6 +199,13 @@ export default function VideoCallScreen({ role, call, self, classId, plan, accen
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [connected]);
+
+  // The weak-connection banner shows once per drop: dismissing it lasts
+  // until the link recovers.
+  const poor = quality?.level === "poor";
+  useEffect(() => {
+    if (!poor) setBannerDismissed(false);
+  }, [poor]);
 
   // ---- practice ----
   const practiceScope = callModelScope(modelKey);
@@ -258,1127 +257,737 @@ export default function VideoCallScreen({ role, call, self, classId, plan, accen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remote.lastAdded]);
 
+  // A remote video whose frames stop for 3 s says so, instead of freezing.
+  const [noVideo, setNoVideo] = useState(false);
+  useEffect(() => {
+    if (!connected) {
+      setNoVideo(false);
+      return;
+    }
+    let last = -1;
+    let stalledFor = 0;
+    const id = setInterval(() => {
+      const v = remoteVideoRef.current;
+      const frames = v?.getVideoPlaybackQuality?.().totalVideoFrames ?? -1;
+      stalledFor = frames === last ? stalledFor + 1 : 0;
+      last = frames;
+      setNoVideo(stalledFor >= 3);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [connected]);
+
+  // Esc closes Show big, the sheet and the drawer, in that order (web).
   const peerName = peer?.name ?? incomingCallFrom?.name ?? "Your call";
+  const first = firstName(peerName);
   const elapsed = connectedAt ? Math.max(0, Math.floor((now - connectedAt) / 1000)) : 0;
-  const clock = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
   const languageName = findLanguage(speechLang)?.name ?? "English";
 
   // What the big view shows: the student's own "Show big" first, else the
   // teacher's unless this student closed that one.
-  const bigText = ownBig ?? (sharedBig && sharedBig.id !== dismissedBigId ? sharedBig.text : null);
-  const bigFromTeacher = ownBig === null && bigText !== null;
-  const showBig = (text: string) => (isTeacher ? setTeacherBig({ text, id: Date.now() }) : setOwnBig(text));
+  const big: Big | null =
+    ownBig ?? (sharedBig && sharedBig.id !== dismissedBigId ? { text: sharedBig.text, by: sharedBig.by ?? (isTeacher ? "student" : "teacher") } : null);
+  const bigFromTeacher = !isTeacher && ownBig === null && big !== null;
+  const showBig = (text: string, by: Big["by"]) =>
+    isTeacher ? setTeacherBig({ text, id: Date.now(), by }) : setOwnBig({ text, by });
   const closeBig = () => {
     if (isTeacher) setTeacherBig(null);
     else if (ownBig !== null) setOwnBig(null);
     else if (sharedBig) setDismissedBigId(sharedBig.id);
   };
-  const readLabel = readFrom === "both" ? "Both of you" : readFrom === "me" ? "Your signs" : `${peerName}'s signs`;
+  const escapeRef = useRef<() => void>(() => {});
+  escapeRef.current = () => {
+    if (big) closeBig();
+    else if (yourSignsOpen) setYourSignsOpen(false);
+    else if (toolsOpen) setToolsOpen(false);
+  };
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined" || !inCall) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") escapeRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [inCall]);
 
-  if (!isVideoCallSupported) {
-    return (
-      <GradientBackground variant="subtle" style={styles.center}>
-        <StateCard title="Video calls work on the web app" subtitle="Open LCSign in a browser to make calls.">
-          <KidButton label="Back" onPress={hangUp} />
-        </StateCard>
-      </GradientBackground>
-    );
-  }
+  if (!isVideoCallSupported) return <WebOnlyScreen onBack={hangUp} />;
 
   // ---------- ringing / ended ----------
   if (callState === "ringing-incoming" && incomingCallFrom) {
     return (
-      <GradientBackground variant="subtle" style={styles.center}>
-        <StateCard avatar={initials(incomingCallFrom.name)} title={incomingCallFrom.name} subtitle="is calling you" ringing>
-          <View style={styles.stateActions}>
-            <KidButton
-              variant="ghost"
-              label="Decline"
-              onPress={declineCall}
-              iconLeft={<PhoneOffIcon size={20} color={colors.needsPractice} />}
-              style={styles.flex}
-            />
-            <Pressable onPress={acceptCall} style={[styles.acceptButton, styles.flex]} accessibilityRole="button" accessibilityLabel="Accept call">
-              <PhoneIcon size={20} color={colors.textOnFrosted} />
-              <Text style={styles.acceptLabel}>Accept</Text>
-            </Pressable>
-          </View>
-        </StateCard>
-      </GradientBackground>
+      <IncomingScreen
+        callerName={incomingCallFrom.name}
+        selfRole={role}
+        className={className}
+        phone={width < 768}
+        onAccept={acceptCall}
+        onDecline={declineCall}
+      />
     );
   }
   if (callState === "ringing-outgoing") {
     return (
-      <GradientBackground variant="subtle" style={styles.center}>
-        <StateCard avatar={initials(peer?.name)} title={peer?.name ?? "…"} subtitle="Calling… waiting for them to answer" ringing>
-          <ActivityIndicator color={colors.accentCoral} style={{ marginBottom: 16 }} />
-          <KidButton variant="ghost" label="Cancel" onPress={hangUp} iconLeft={<PhoneOffIcon size={20} color={colors.needsPractice} />} />
-        </StateCard>
-      </GradientBackground>
+      <CallingScreen
+        peerName={peer?.name ?? "…"}
+        presence={peer ? call.presence[peer.id] : undefined}
+        accent={isTeacher ? colors.accentCoral : colors.primaryTealLight}
+        localStream={localStream}
+        onCancel={hangUp}
+      />
     );
   }
   if (callState === "ended") {
     // Notes only for a call that actually connected.
-    const notes =
+    const notes: NotesData | null =
       connectedAt !== null
         ? {
             startedAt: connectedAt,
             seconds: Math.max(0, Math.round(((endedAt ?? Date.now()) - connectedAt) / 1000)),
             mine: local.text.trim(),
             theirs: remote.text.trim(),
-            practice: summarizePractice(practiceResults, (r) => practiceModelsRef.current.get(r.practiceId) ?? modelKey),
+            practice: summarizePractice(practiceResults, modelOf),
           }
         : null;
-    return (
-      <GradientBackground variant="subtle" style={styles.center}>
-        <ScrollView contentContainerStyle={styles.endedScroll}>
-          <StateCard avatar={initials(peerName)} title="Call ended" subtitle={error ?? `Your call with ${peerName} has ended.`}>
-            {notes ? (
-              <CallNotes
-                notes={notes}
-                isTeacher={isTeacher}
-                peerName={peerName}
-                selfName={self.name}
-                onSave={
-                  isTeacher && peer
-                    ? () =>
-                        saveCallNotes({
-                          class_id: classId,
-                          teacher_id: self.id,
-                          student_id: peer.id,
-                          started_at: new Date(notes.startedAt).toISOString(),
-                          duration_seconds: notes.seconds,
-                          teacher_text: notes.mine,
-                          student_text: notes.theirs,
-                          practice: notes.practice,
-                        })
-                    : undefined
-                }
-              />
-            ) : null}
-            <KidButton variant="primary" label="Back" onPress={hangUp} />
-          </StateCard>
-        </ScrollView>
-      </GradientBackground>
-    );
+    if (!notes) {
+      return <CallErrorScreen reason={endReason} peerName={peerName} error={error} onBack={hangUp} onCallAgain={() => peer && call.startCall(peer)} />;
+    }
+    if (isTeacher && peer) {
+      return (
+        <TeacherSummary
+          peerName={peerName}
+          selfName={self.name}
+          className={className}
+          notes={notes}
+          reason={endReason}
+          onBack={hangUp}
+          onSave={() =>
+            saveCallNotes({
+              class_id: classId,
+              teacher_id: self.id,
+              student_id: peer.id,
+              started_at: new Date(notes.startedAt).toISOString(),
+              duration_seconds: notes.seconds,
+              teacher_text: notes.mine,
+              student_text: notes.theirs,
+              practice: notes.practice,
+            })
+          }
+        />
+      );
+    }
+    return <StudentEnded teacherName={peerName} selfName={self.name} notes={notes} reason={endReason} onBack={hangUp} />;
   }
-  if (callState !== "connecting" && callState !== "connected") {
-    return <GradientBackground variant="subtle" style={styles.center}>{null}</GradientBackground>;
-  }
+  if (!inCall) return <View style={styles.root} />;
 
   // ---------- in call ----------
-  const remoteTail = remote.text.slice(-60);
+  const asked = !isTeacher && !!practice;
   const readingRemote = connected && captionsOn && readFrom !== "me";
+  const readingLocal = connected && captionsOn && readFrom !== "them" && camOn;
+  const layout = callLayout({
+    width,
+    height,
+    role,
+    toolsOpen: isTeacher && toolsOpen,
+    asked,
+    showBig: big !== null,
+    twoRows: readFrom === "both" && isTeacher,
+    insetTop: insets.top,
+    insetBottom: insets.bottom,
+  });
+  const { phone, compact } = layout;
+  const words = model.kind === "words";
 
-  const modelPicker = isTeacher ? (
-    <SegmentedToggle
-      size="kid"
-      options={[
-        { key: "asl-letters", label: "ASL Letters" },
-        { key: "asl-numbers", label: "ASL Numbers", disabled: true, badge: "soon" },
-        { key: "asl-words", label: "ASL Words" },
-        { key: "fsl-words", label: "FSL Words" },
-      ]}
-      value={modelKey}
-      onChange={(k) => k !== "asl-numbers" && setTeacherModel(k)}
-    />
-  ) : (
-    <View style={[styles.setPill, neuInset("sm")]} accessibilityLabel={`Reading ${MODEL_NAMES[modelKey]}, set by your teacher`}>
-      <Text style={styles.setPillValue}>{MODEL_NAMES[modelKey]}</Text>
-      <Text style={styles.setPillNote}>Set by your teacher</Text>
-    </View>
-  );
+  const remoteSource = {
+    label: `${first} is signing`,
+    reader: remote,
+    active: readingRemote,
+    pausedText: !captionsOn
+      ? "Captions are off."
+      : isTeacher
+        ? `Not reading ${first}'s signs. In Tools → Reading, choose ${first} or Both of us.`
+        : "Your teacher isn't reading their own signs right now.",
+    placeholder: `${first}'s signs appear here as text.`,
+  };
+  const localSource = {
+    label: isTeacher ? "You" : "Your signs",
+    reader: local,
+    active: readingLocal,
+    pausedText: !camOn
+      ? "Your camera is off."
+      : !captionsOn
+        ? "Captions are off."
+        : isTeacher
+          ? "Not reading your signs. In Tools → Reading, choose Me or Both of us."
+          : "Your teacher isn't reading your signs right now.",
+    placeholder: isTeacher ? "Your signs appear here as text." : "Your signs appear here. Speak them aloud for people near you.",
+  };
+  // The strip shows the other person's signs, or your own when only yours are read.
+  const primary = readFrom === "me" ? localSource : remoteSource;
+  const secondary = isTeacher && readFrom === "both" ? localSource : null;
+  const primarySpeech = readFrom === "me" ? localSpeech : remoteSpeech;
+  const readingNote = isTeacher
+    ? `Reading ${readFrom === "both" ? "both of you" : readFrom === "me" ? "your signs" : `${first}'s signs`} with ${MODEL_NAMES[modelKey]}`
+    : `Reading ${MODEL_NAMES[modelKey]}, chosen by your teacher`;
 
-  const speechPicker = (
+  const transcriptTools = (reader: typeof remote, speech: typeof remoteSpeech, by: Big["by"], showBigLabel: string) => {
+    const has = reader.text.trim().length > 0;
+    return (
+      <>
+        <CallPill
+          size="sm"
+          label={speech.status === "speaking" ? "Speaking…" : speech.status === "translating" ? "Translating…" : "Speak aloud"}
+          onPress={() => speech.speak(reader.text.trim())}
+          disabled={!has}
+          icon={(c) => <SpeakerIcon size={15} color={c} />}
+        />
+        <CallPill size="sm" label={showBigLabel} onPress={() => showBig(reader.text, by)} disabled={!has} icon={(c) => <ExpandIcon size={14} color={c} />} />
+        {!words ? <CallPill size="sm" label="␣" accessibilityLabel="Add a space" onPress={reader.addSpace} /> : null}
+        <CallPill
+          size="sm"
+          label=""
+          accessibilityLabel={words ? "Delete last word" : "Delete last letter"}
+          onPress={reader.backspace}
+          disabled={!has}
+          icon={(c) => <BackspaceIcon size={16} color={c} />}
+        />
+        <CallPill size="sm" variant="ghost" label="Clear" onPress={reader.clear} disabled={!has} />
+      </>
+    );
+  };
+
+  const speechPicker = (inline: boolean) => (
     <LanguagePicker
       value={speechLang}
       onChange={setSpeechLang}
       accentColor={colors.accentCoral}
       renderTrigger={({ open, current }) => (
-        <Pressable onPress={open} style={[styles.langPill, neuRaised("sm")]} accessibilityRole="button" accessibilityLabel="Choose speech language">
-          <SpeakerIcon size={15} color={colors.textSecondary} />
-          <Text style={styles.langText}>{current.name}</Text>
-          <ChevronDownIcon size={13} color={colors.textSecondary} />
-        </Pressable>
+        <View style={styles.speakWrap}>
+          <Pressable onPress={open} style={[styles.langPill, neuRaised("sm")]} accessibilityRole="button" accessibilityLabel={`Speak in ${current.name}. Change the speech language`}>
+            <SpeakerIcon size={15} color={colors.textOnGlass} />
+            <Text style={styles.langText}>{inline ? `Speak in ${current.name}` : current.name}</Text>
+            <ChevronDownIcon size={13} color={colors.textOnGlass} />
+          </Pressable>
+          {!inline ? <Text style={styles.ctrlCaption}>Speak in</Text> : null}
+        </View>
       )}
     />
   );
 
-  const stage = (
-    <View style={[styles.stage, !isDesktop && styles.stageMobile]}>
-      <video ref={remoteVideoRef} autoPlay playsInline style={styles.remoteVideo as any} />
-      {callState === "connecting" && (
-        <View style={styles.connectingOverlay}>
-          <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.connectingText}>Connecting to {peerName}…</Text>
-        </View>
-      )}
-      {readingRemote && (
-        <View style={[styles.captionBar, styles.captionContent]}>
-          <PhaseChip phase={remote.phase} />
-          <Text style={[styles.captionText, !remoteTail && styles.captionPlaceholder]} numberOfLines={1}>
-            {remoteTail || `${peerName}'s signs appear here as text`}
-          </Text>
-        </View>
-      )}
-      <View style={[styles.pip, !isDesktop && styles.pipMobile]}>
-        <video ref={localVideoRef} autoPlay muted playsInline style={styles.localVideo as any} />
-        {!camOn && (
-          <View style={styles.pipOff}>
-            <VideoIcon size={22} color={colors.textSecondary} off />
-            <Text style={styles.pipOffText}>Camera off</Text>
-          </View>
-        )}
-        <View style={styles.pipLabel}>
-          <Text style={styles.pipLabelText}>You{!micOn ? " · muted" : ""}</Text>
-        </View>
-      </View>
+  const peerAccent = isTeacher ? colors.accentCoral : colors.primaryTealLight;
+  const statusLine = (
+    <View style={styles.statusRow}>
+      <View style={[styles.statusDot, { backgroundColor: connected ? colors.success : colors.accentCoral }]} />
+      <Text style={[styles.statusText, { color: connected ? colors.successText : colors.textOnGlass }]}>
+        {connected ? (phone ? clock(elapsed) : `Connected · ${clock(elapsed)}`) : "Connecting…"}
+      </Text>
+      {connected && quality ? <QualityBadge quality={quality} /> : null}
     </View>
   );
-
-  const remoteCard = (
-    <CaptionCard
-      title={`${peerName} is signing`}
-      active={readingRemote}
-      pausedText={
-        readFrom !== "me"
-          ? "Captions are off."
-          : isTeacher
-            ? "Not reading their signs. Choose “Them” or “Both” below."
-            : "Your teacher isn't reading their own signs right now."
-      }
-      reader={remote}
-      speech={remoteSpeech}
-      words={model.kind === "words"}
-      onShowBig={() => showBig(remote.text)}
-      showBigLabel={isTeacher ? "Show big to both" : "Show big"}
-      placeholder="Their signs appear here as text."
-      autoSpeak={model.kind === "words" ? { on: autoSpeak, toggle: () => setAutoSpeak((v) => !v) } : undefined}
-      compact={!isDesktop}
-    />
-  );
-  const localCard = (
-    <CaptionCard
-      title="You"
-      active={connected && captionsOn && readFrom !== "them" && camOn}
-      pausedText={
-        !camOn
-          ? "Your camera is off."
-          : readFrom !== "them"
-            ? "Captions are off."
-            : isTeacher
-              ? "Not reading your signs. Choose “Me” or “Both” below."
-              : "Your teacher isn't reading your signs right now."
-      }
-      reader={local}
-      speech={localSpeech}
-      words={model.kind === "words"}
-      onShowBig={() => showBig(local.text)}
-      showBigLabel={isTeacher ? "Show big to both" : "Show big"}
-      placeholder="Your signs appear here. Speak them aloud for people near you."
-      compact={!isDesktop}
-    />
-  );
-
-  const resultsForCurrent = practice ? practiceResults.filter((r) => r.practiceId === practice.id) : [];
-  const practiceCard = isTeacher ? (
-    <TeacherPracticePanel
-      signs={practiceSignsFor(modelKey, plan)}
-      wordLike={model.kind === "words"}
-      practice={practice}
-      results={resultsForCurrent}
-      peerName={peerName}
-      reading={readFrom !== "me" && captionsOn}
-      onAsk={askFor}
-      accentColor={accentColor}
-      compact={!isDesktop}
-    />
-  ) : practice ? (
-    <StudentPracticeCard
-      sign={practice.sign}
-      language={practiceScope.language}
-      group={practiceScope.group}
-      results={resultsForCurrent}
-      checking={connected && captionsOn && camOn && readFrom !== "them"}
-      cameraOff={!camOn}
-      captionsOff={!captionsOn}
-      compact={!isDesktop}
-    />
+  const readingChip = isTeacher && connected ? (
+    <Pressable
+      onPress={() => {
+        setToolsTab("reading");
+        setToolsOpen(true);
+      }}
+      style={[styles.readingChip, neuRaised("sm")]}
+      accessibilityRole="button"
+      accessibilityLabel={`${readingNote}. Change in Tools`}
+    >
+      <EyeIcon size={16} color={colors.textOnGlass} />
+      <Text style={styles.readingChipText} numberOfLines={1}>
+        Reading <Text style={styles.readingChipStrong}>{readFrom === "both" ? "both" : readFrom === "me" ? "you" : first}</Text> · {MODEL_NAMES[modelKey]}
+      </Text>
+    </Pressable>
   ) : null;
-
-  const controls = (
-    <View style={[styles.controls, !isDesktop && styles.controlsMobile]}>
-      <ControlButton label={micOn ? "Mute" : "Unmute"} on={micOn} onPress={() => setMicOn((v) => !v)} icon={<MicIcon size={22} color={micOn ? colors.textPrimary : colors.needsPractice} off={!micOn} />} />
-      <ControlButton label={camOn ? "Camera off" : "Camera on"} on={camOn} onPress={() => setCamOn((v) => !v)} icon={<VideoIcon size={22} color={camOn ? colors.textPrimary : colors.needsPractice} off={!camOn} />} />
-      <ControlButton
-        label={captionsOn ? "Captions on" : "Captions off"}
-        on={captionsOn}
-        onPress={() => setCaptionsOn((v) => !v)}
-        icon={<CaptionsIcon size={22} color={captionsOn ? colors.accentCoral : colors.textSecondary} />}
-      />
-      <View style={styles.readFrom}>
-        <Text style={styles.readFromLabel}>Read signs from</Text>
-        {isTeacher ? (
-          <SegmentedToggle
-            size="kid"
-            options={[
-              { key: "them", label: "Them" },
-              { key: "me", label: "Me" },
-              { key: "both", label: "Both" },
-            ]}
-            value={readFrom}
-            onChange={setTeacherReadFrom}
-          />
-        ) : (
-          <View style={[styles.setPill, styles.setPillControls, neuInset("sm")]} accessibilityLabel={`Reading ${readLabel}, set by your teacher`}>
-            <Text style={styles.setPillValue}>{readLabel}</Text>
-            <Text style={styles.setPillNote}>Set by your teacher</Text>
-          </View>
-        )}
-      </View>
-      <Pressable onPress={hangUp} style={styles.hangup} accessibilityRole="button" accessibilityLabel="Leave call">
-        <PhoneOffIcon size={22} color="#FFFFFF" />
-        <Text style={styles.hangupText}>Leave</Text>
-      </Pressable>
-    </View>
-  );
-
-  const bigModal = (
-    <Modal visible={bigText !== null} transparent animationType="fade" onRequestClose={closeBig}>
-      <Pressable style={styles.bigScrim} onPress={closeBig} accessibilityLabel={isTeacher ? "Close big view for both of you" : "Close big view"}>
-        {isTeacher ? (
-          <Text style={styles.bigFrom}>Showing on {peerName}'s screen too</Text>
-        ) : bigFromTeacher ? (
-          <Text style={styles.bigFrom}>From {peerName}</Text>
-        ) : null}
-        <Text style={[styles.bigText, { fontSize: Math.max(44, Math.min(200, 1500 / Math.max(bigText?.length ?? 1, 1))) }]}>
-          {bigText}
-        </Text>
-        <Text style={styles.bigHint}>{isTeacher ? "Tap anywhere to close it for both of you" : "Tap anywhere to close"}</Text>
-      </Pressable>
-    </Modal>
-  );
-
-  const topBar = (
-    <View style={[styles.topBar, !isDesktop && styles.topBarMobile]}>
-      <View style={styles.who}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials(peerName)}</Text>
-        </View>
-        <View>
-          <Text style={styles.peerName}>{peerName}</Text>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: connected ? colors.success : colors.accentCoral }]} />
-            <Text style={styles.statusText}>{connected ? `Connected · ${clock}` : "Connecting…"}</Text>
-            {connected && quality ? <QualityBadge quality={quality} /> : null}
-          </View>
-        </View>
-      </View>
-      {isDesktop && <View style={styles.topCenter}>{modelPicker}</View>}
-      <View style={styles.topRight}>
-        {isDesktop && <Text style={styles.speakLabelSmall}>Speak in</Text>}
-        {speechPicker}
-      </View>
-    </View>
-  );
-
-  return (
-    <GradientBackground variant="subtle" style={styles.root}>
-      {error ? (
-        <View style={styles.errorBanner} accessibilityLiveRegion="polite">
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
-      {topBar}
-      {isDesktop ? (
+  const toolsButton = (size: "md" | "phone") => (
+    <Pressable
+      onPress={() => {
+        if (!toolsOpen) setToolsTab(practice ? "practice" : toolsTab);
+        setToolsOpen((v) => !v);
+      }}
+      style={size === "phone" ? styles.phoneCtrl : [styles.toolsBtn, toolsOpen ? [styles.toolsBtnOn, neuInset("sm")] : neuRaised("sm")]}
+      accessibilityRole="button"
+      accessibilityLabel={toolsOpen ? "Close Tools" : "Open Tools"}
+      accessibilityState={{ expanded: toolsOpen }}
+    >
+      {size === "phone" ? (
         <>
-          <View style={styles.main}>
-            <View style={styles.stageWrap}>{stage}</View>
-            <ScrollView style={styles.side} contentContainerStyle={styles.sideContent}>
-              {practiceCard}
-              {remoteCard}
-              {localCard}
-            </ScrollView>
+          <View style={[styles.phoneCtrlBtn, toolsOpen ? [styles.toolsBtnOn, neuInset("sm")] : neuRaised("sm")]}>
+            <SlidersIcon size={20} color={toolsOpen ? colors.accentCoral : colors.textPrimary} />
           </View>
-          {controls}
+          <Text style={[styles.ctrlCaption, toolsOpen && { color: colors.accentCoral }]}>Tools</Text>
         </>
       ) : (
-        <ScrollView contentContainerStyle={styles.mobileBody}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 4 }}>
-            {modelPicker}
-          </ScrollView>
-          {stage}
-          {practiceCard}
-          {remoteCard}
-          {localCard}
-          {controls}
-        </ScrollView>
+        <>
+          <SlidersIcon size={17} color={toolsOpen ? colors.accentCoral : colors.textPrimary} />
+          <Text style={[styles.toolsText, toolsOpen && { color: colors.accentCoral }]}>Tools</Text>
+        </>
       )}
-      {bigModal}
+    </Pressable>
+  );
+
+  const ctrlSize = phone ? 52 : isTeacher ? (compact ? 48 : 56) : compact ? 56 : 64;
+  const toggles = (
+    <>
+      <ControlToggle label="Mute" offLabel="Muted" on={micOn} onPress={() => setMicOn((v) => !v)} size={ctrlSize} inlineLabel={compact && !phone} icon={(c) => <MicIcon size={22} color={c} off={!micOn} />} />
+      <ControlToggle label="Camera" offLabel="Camera off" on={camOn} onPress={() => setCamOn((v) => !v)} size={ctrlSize} inlineLabel={compact && !phone} icon={(c) => <VideoIcon size={22} color={c} off={!camOn} />} />
+      <ControlToggle label="Captions" offLabel="Captions off" on={captionsOn} onPress={() => setCaptionsOn((v) => !v)} size={ctrlSize} inlineLabel={compact && !phone} icon={(c) => <CaptionsIcon size={22} color={captionsOn ? colors.accentCoral : c} />} />
+    </>
+  );
+  const leave = phone ? (
+    <Pressable onPress={hangUp} style={styles.phoneCtrl} accessibilityRole="button" accessibilityLabel="Leave call">
+      <View style={[styles.phoneCtrlBtn, styles.leavePhone]}>
+        <PhoneOffIcon size={22} color="#FFFFFF" />
+      </View>
+      <Text style={[styles.ctrlCaption, { color: colors.needsPracticeText }]}>Leave</Text>
+    </Pressable>
+  ) : (
+    <CallPill size="lg" variant="danger" label="Leave" accessibilityLabel="Leave call" onPress={hangUp} icon={(c) => <PhoneOffIcon size={20} color={c} />} style={styles.leaveDesk} />
+  );
+
+  const rect = (r: Rect) => ({ position: "absolute" as const, left: r.left, top: r.top, width: r.width, height: r.height });
+  // The small video sits above the big one; in "Show big" both are tiles above the text.
+  const remoteZ = big ? 31 : layout.selfBig ? 2 : 1;
+  const selfZ = big ? 31 : layout.selfBig ? 1 : 2;
+
+  return (
+    <View style={styles.root}>
+      {/* The two videos: created once, only their wrappers' styles change. */}
+      <View style={[rect(layout.remote), styles.videoBox, phone && !big && !asked && styles.videoBoxFull, { zIndex: remoteZ }]}>
+        <video ref={attachRemote} autoPlay playsInline style={VIDEO_CSS} />
+        {callState === "connecting" ? (
+          <View style={styles.overlay}>
+            <SpinnerArc size={44} />
+            <Text style={styles.overlayTitle}>Connecting to {peerName}…</Text>
+            <Text style={styles.overlaySub}>This usually takes a few seconds.</Text>
+          </View>
+        ) : noVideo && !big ? (
+          <View style={styles.overlay}>
+            <CallAvatar name={peerName} size={phone ? 72 : 96} color={peerAccent} />
+            <Text style={styles.overlayTitle}>{first}'s video isn't coming through</Text>
+          </View>
+        ) : null}
+        {big || (phone && asked) ? (
+          <View style={styles.tag}>
+            <Text style={styles.tagText}>{first}</Text>
+          </View>
+        ) : null}
+      </View>
+      <View
+        style={[
+          rect(layout.self),
+          styles.videoBox,
+          styles.selfBox,
+          layout.selfBig && styles.selfBoxBig,
+          { zIndex: selfZ },
+        ]}
+      >
+        <video ref={attachLocal} autoPlay muted playsInline style={MIRRORED_CSS} />
+        {!camOn ? (
+          <View style={styles.overlay}>
+            <VideoIcon size={22} color={colors.needsPracticeText} off />
+            <Text style={[styles.overlaySub, { color: colors.needsPracticeText }]}>Your camera is off</Text>
+          </View>
+        ) : null}
+        {layout.selfBig ? (
+          camOn ? (
+            <View style={phone ? styles.tagBottom : styles.tagTop}>
+              <EyeIcon size={14} color="#FFFFFF" />
+              <Text style={styles.tagText}>{phone ? "The computer is watching your hand" : "You · the computer is watching your hand"}</Text>
+            </View>
+          ) : null
+        ) : (
+          <View style={styles.tag}>
+            <Text style={styles.tagText}>You</Text>
+            {!micOn ? (
+              <>
+                <MicIcon size={12} color={colors.needsPracticeText} off />
+                <Text style={[styles.tagText, { color: colors.needsPracticeText }]}>muted</Text>
+              </>
+            ) : null}
+          </View>
+        )}
+      </View>
+
+      {/* Top bar: who, status, quality; the teacher's reading chip and Tools. */}
+      <View style={[rect(layout.topBar), phone ? styles.topBarPhone : styles.topBar]} pointerEvents="box-none">
+        <View style={styles.who}>
+          <CallAvatar name={peerName} size={phone ? 36 : 44} color={peerAccent} />
+          <View style={styles.flexShrink}>
+            <Text style={styles.peerName} numberOfLines={1}>
+              {peerName}
+              {!isTeacher && !phone ? <Text style={styles.peerRole}> · your teacher</Text> : null}
+            </Text>
+            {statusLine}
+          </View>
+        </View>
+        {!phone ? (
+          <View style={styles.topRight}>
+            {readingChip}
+            {isTeacher && connected ? toolsButton("md") : null}
+          </View>
+        ) : null}
+      </View>
+
+      {poor && !bannerDismissed && !big ? (
+        <View
+          style={[
+            styles.banner,
+            { left: layout.remote.left + 16, top: (phone ? layout.topBar.top + layout.topBar.height : layout.remote.top) + 12, width: Math.max(200, layout.remote.width - 32) },
+          ]}
+          accessibilityLiveRegion="polite"
+        >
+          <QualityBars bars={1} color={colors.qualityPoor} />
+          {!phone ? <Text style={[styles.bannerStrong, { color: colors.qualityPoor }]}>Weak connection</Text> : null}
+          <Text style={styles.bannerText}>The connection is weak. Your video is lowered to keep the call going. Captions still work.</Text>
+          <Pressable onPress={() => setBannerDismissed(true)} accessibilityRole="button" accessibilityLabel="Dismiss" hitSlop={8} style={[styles.bannerClose, neuRaised("sm")]}>
+            <CloseIcon size={13} color={colors.textPrimary} />
+          </Pressable>
+        </View>
+      ) : null}
+
+      {layout.caption ? (
+        <View style={[rect(layout.caption), styles.layer]}>
+          <CaptionStrip
+            role={role}
+            phone={phone}
+            compact={compact}
+            letters={!words}
+            primary={primary}
+            secondary={secondary}
+            speech={primarySpeech}
+            onShowBig={() => showBig(primary.reader.text, readFrom === "me" ? (isTeacher ? "teacher" : "student") : isTeacher ? "student" : "teacher")}
+            showBigLabel={isTeacher ? "Show big to both" : "Show big"}
+            onYourSigns={!isTeacher ? () => setYourSignsOpen(true) : undefined}
+            readingNote={readingNote}
+            width={layout.caption.width}
+          />
+          {phone && !isTeacher ? (
+            <Pressable onPress={() => setYourSignsOpen(true)} style={[styles.yourSignsPhone, neuRaised("sm")]} accessibilityRole="button" accessibilityLabel="Your signs">
+              <HandIcon size={15} color={colors.textPrimary} />
+              <Text style={styles.yourSignsText}>Your signs</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
+      {layout.panel && isTeacher && toolsOpen && peer ? (
+        <View style={[rect(layout.panel), styles.layer]}>
+          <CallToolsPanel
+            phone={phone}
+            tab={toolsTab}
+            onTab={setToolsTab}
+            onClose={() => setToolsOpen(false)}
+            peer={peer}
+            modelKey={modelKey}
+            onModel={setTeacherModel}
+            readFrom={teacherReadFrom}
+            onReadFrom={setTeacherReadFrom}
+            autoSpeak={words ? { on: autoSpeak, toggle: () => setAutoSpeak((v) => !v) } : null}
+            signs={practiceSignsFor(modelKey, plan)}
+            practice={practice}
+            results={practiceResults}
+            modelOf={modelOf}
+            onAsk={askFor}
+            reading={readFrom !== "me" && captionsOn}
+            transcriptTools={
+              phone ? (
+                <>
+                  {transcriptTools(primary.reader, primarySpeech, readFrom === "me" ? "teacher" : "student", "Show big")}
+                  {speechPicker(true)}
+                </>
+              ) : undefined
+            }
+          />
+        </View>
+      ) : null}
+      {layout.panel && asked && practice ? (
+        <View style={[rect(layout.panel), styles.layer]}>
+          <StudentAskPanel
+            phone={phone}
+            sign={practice.sign}
+            language={practiceScope.language}
+            group={practiceScope.group}
+            results={practiceResults.filter((r) => r.practiceId === practice.id)}
+            checking={readingLocal}
+            cameraOff={!camOn}
+            captionsOff={!captionsOn}
+            hold={local.hold}
+            guess={local.guess.label}
+            phase={local.phase}
+            reduceMotion={reduceMotion}
+          />
+        </View>
+      ) : null}
+
+      {/* Control bar: never scrolls away. Leave is set apart. */}
+      <View style={[rect(layout.controls), phone ? styles.controlsPhone : styles.controls, phone && { paddingBottom: insets.bottom }]}>
+        {phone ? (
+          <>
+            {toggles}
+            {isTeacher && connected ? toolsButton("phone") : null}
+            {leave}
+          </>
+        ) : (
+          <>
+            <View style={styles.controlsCenter}>
+              {toggles}
+              {speechPicker(compact)}
+            </View>
+            {leave}
+          </>
+        )}
+      </View>
+
+      {big ? (
+        <Pressable
+          style={styles.bigScrim}
+          onPress={closeBig}
+          accessibilityRole="button"
+          accessibilityLabel={isTeacher ? "Close the big view for both of you" : "Close the big view"}
+        >
+          <View style={styles.bigTop} pointerEvents="box-none">
+            {isTeacher || bigFromTeacher ? (
+              <View style={styles.bigChip}>
+                <ExpandIcon size={14} color={colors.primaryTealText} />
+                <Text style={styles.bigChipText}>{isTeacher ? `Showing big to ${first} too` : "Shown big by your teacher"}</Text>
+              </View>
+            ) : (
+              <View />
+            )}
+            <CallPill size="lg" label={isTeacher ? "Close for both" : "Close"} onPress={closeBig} icon={(c) => <CloseIcon size={15} color={c} />} />
+          </View>
+          <View style={styles.bigBody} pointerEvents="none">
+            <Text style={styles.bigLabel}>
+              {(big.by === "teacher") === isTeacher ? "You signed" : `${first} signed`}
+            </Text>
+            <Text
+              style={[
+                styles.bigText,
+                (() => {
+                  const fs = Math.max(36, Math.min(132, Math.floor((4.6 * (width - 64)) / Math.max(big.text.length, 1))));
+                  return { fontSize: fs, lineHeight: Math.round(fs * 1.08) };
+                })(),
+              ]}
+              numberOfLines={3}
+            >
+              {big.text}
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
+
+      {!isTeacher ? (
+        <Modal visible={yourSignsOpen} transparent animationType={reduceMotion ? "none" : "slide"} onRequestClose={() => setYourSignsOpen(false)}>
+          <View style={styles.sheetScrim}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setYourSignsOpen(false)} accessibilityRole="button" accessibilityLabel="Close your signs" />
+            <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]}>
+              <View style={styles.sheetHead}>
+                <Text style={styles.sheetTitle}>Your signs</Text>
+                <PhaseChip phase={readingLocal ? local.phase : "off"} />
+                <View style={styles.flex} />
+                <Pressable onPress={() => setYourSignsOpen(false)} style={[styles.sheetClose, neuRaised("sm")]} accessibilityRole="button" accessibilityLabel="Close" hitSlop={6}>
+                  <CloseIcon size={15} color={colors.textPrimary} />
+                </Pressable>
+              </View>
+              <View style={[styles.sheetText, neuInset("sm")]}>
+                <Text style={[styles.sheetTranscript, !local.text.trim() && styles.sheetPlaceholder]}>
+                  {readingLocal || local.text.trim() ? local.text.trim() || localSource.placeholder : localSource.pausedText}
+                </Text>
+              </View>
+              <View style={styles.sheetTools}>
+                {transcriptTools(local, localSpeech, "student", "Show big")}
+                {phone ? speechPicker(true) : null}
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+
       <Text style={styles.srOnly} accessibilityLiveRegion="polite">
         {`Speech: ${languageName}`}
       </Text>
-    </GradientBackground>
-  );
-}
-
-// ---------------------------------------------------------------------------
-
-function PhaseChip({ phase }: { phase: ReaderPhase }) {
-  const p = PHASE[phase];
-  const c = toneColor(p.tone);
-  return (
-    <View style={[styles.chip, { backgroundColor: p.tone === "neutral" ? "rgba(255,255,255,0.08)" : `${c}29` }]}>
-      <View style={[styles.chipDot, { backgroundColor: c }]} />
-      <Text style={[styles.chipText, { color: p.tone === "neutral" ? colors.textSecondary : c }]}>{p.chip}</Text>
     </View>
-  );
-}
-
-function CaptionCard({
-  title,
-  active,
-  pausedText,
-  reader,
-  speech,
-  words,
-  onShowBig,
-  showBigLabel,
-  placeholder,
-  autoSpeak,
-  compact,
-}: {
-  title: string;
-  active: boolean;
-  pausedText: string;
-  reader: ReturnType<typeof useCallSignReader>;
-  speech: ReturnType<typeof useTranslateAndSpeak>;
-  words: boolean;
-  onShowBig: () => void;
-  showBigLabel: string;
-  placeholder: string;
-  autoSpeak?: { on: boolean; toggle: () => void };
-  compact?: boolean;
-}) {
-  const hasText = reader.text.trim().length > 0;
-  const speakLabel =
-    speech.status === "speaking" ? "Speaking…" : speech.status === "translating" ? "Translating…" : "Speak aloud";
-  const showGuess = active && !words && reader.guess.label && reader.phase !== "no-hand";
-  const R = 26;
-  const C = 2 * Math.PI * R;
-  return (
-    <GlassCard radius={radii.lg} padding={compact ? 14 : 18} style={compact ? undefined : styles.flex} contentStyle={styles.cardContent}>
-      <View style={styles.cardHead}>
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {title}
-        </Text>
-        {active ? <PhaseChip phase={reader.phase} /> : <PhaseChip phase="off" />}
-      </View>
-
-      {!active ? (
-        <Text style={styles.pausedText}>{pausedText}</Text>
-      ) : (
-        <View style={styles.liveRow}>
-          {!words && (
-            <View style={styles.guessWrap} accessibilityLabel={showGuess ? `Seeing ${reader.guess.label}` : "No letter yet"}>
-              <View style={[styles.guessTile, neuRaised("sm")]}>
-                <Text style={[styles.guessText, !showGuess && { color: colors.textTertiary }]}>
-                  {showGuess ? (reader.guess.label.length > 2 ? reader.guess.label.slice(0, 3) : reader.guess.label) : "?"}
-                </Text>
-              </View>
-              <Svg width={64} height={64} style={StyleSheet.absoluteFill} pointerEvents="none">
-                <Circle cx={32} cy={32} r={R} fill="none" stroke={colors.holdTrack} strokeWidth={4} />
-                {reader.hold > 0 && (
-                  <Circle
-                    cx={32}
-                    cy={32}
-                    r={R}
-                    fill="none"
-                    stroke={reader.phase === "added" ? colors.success : colors.accentCoral}
-                    strokeWidth={4}
-                    strokeLinecap="round"
-                    strokeDasharray={`${C} ${C}`}
-                    strokeDashoffset={C * (1 - reader.hold)}
-                    transform="rotate(-90 32 32)"
-                  />
-                )}
-              </Svg>
-            </View>
-          )}
-          <Text style={styles.liveHint}>
-            {words
-              ? reader.phase === "reading"
-                ? "Reading a sign…"
-                : reader.phase === "checking"
-                  ? "Checking the sign…"
-                  : reader.phase === "unsure"
-                    ? "Not sure what that was. Sign it again."
-                    : "Signs are read hands-free. Pause briefly between signs."
-              : reader.phase === "holding"
-                ? "Hold still… adding the letter."
-                : reader.phase === "added"
-                  ? "Added. To repeat a letter, lower your hand first."
-                  : reader.phase === "no-hand"
-                    ? "Show a hand to the camera."
-                    : "Spell one letter at a time and hold still."}
-          </Text>
-        </View>
-      )}
-
-      <View style={[styles.transcript, neuInset("sm"), compact && { minHeight: 64 }]}>
-        <Text style={[styles.transcriptText, !hasText && styles.transcriptPlaceholder]} numberOfLines={compact ? 2 : 4}>
-          {hasText ? reader.text : placeholder}
-        </Text>
-      </View>
-
-      <View style={styles.cardActions}>
-        <KidButton
-          small
-          variant="primary"
-          label={speakLabel}
-          onPress={() => speech.speak(reader.text.trim())}
-          disabled={!hasText}
-          iconLeft={<SpeakerIcon size={16} color={colors.textOnAccent} />}
-          style={styles.flex}
-        />
-        <KidButton small label={showBigLabel} onPress={onShowBig} disabled={!hasText} iconLeft={<EyeIcon size={18} color={colors.textPrimary} />} />
-      </View>
-      <View style={styles.cardActions}>
-        {!words && <KidButton small label="Space" onPress={reader.addSpace} style={styles.flex} />}
-        <KidButton
-          small
-          iconOnly
-          label={words ? "Delete last word" : "Delete last letter"}
-          onPress={reader.backspace}
-          disabled={!hasText}
-          iconLeft={<BackspaceIcon size={18} color={colors.textSecondary} />}
-        />
-        <KidButton small variant="ghost" label="Clear" onPress={reader.clear} disabled={!hasText} style={styles.flex} />
-      </View>
-      {autoSpeak && (
-        <Pressable
-          onPress={autoSpeak.toggle}
-          style={styles.autoRow}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: autoSpeak.on }}
-        >
-          <View style={[styles.switchTrack, autoSpeak.on && styles.switchOn]}>
-            <View style={[styles.switchKnob, autoSpeak.on && styles.switchKnobOn]} />
-          </View>
-          <Text style={styles.autoText}>Speak each new word aloud</Text>
-        </Pressable>
-      )}
-      {speech.error ? <Text style={styles.speechError}>{speech.error}</Text> : null}
-    </GlassCard>
-  );
-}
-
-const pct = (x: number) => `${Math.round(x * 100)}%`;
-/** "best 88%", or nothing when the target sign was never seen. */
-const bestPart = (p: CallPracticeEntry) => (p.confidence > 0 ? `, best ${pct(p.confidence)}` : "");
-
-/** How the latest try at the requested sign went, in words. */
-function practiceStatus(results: PracticeResult[]): { text: string; tone: "neutral" | "success" | "gold" } {
-  const passed = results.find((r) => r.passed);
-  if (passed) return { text: `Got it! ${pct(passed.confidence)} sure.`, tone: "success" };
-  const last = results[results.length - 1];
-  if (!last) return { text: "Waiting for a try…", tone: "neutral" };
-  const tries = `${results.length} ${results.length === 1 ? "try" : "tries"}`;
-  if (last.seen && last.seen !== last.sign) return { text: `Not yet - the computer saw “${last.seen}”. ${tries}.`, tone: "gold" };
-  return { text: `Close - ${pct(last.confidence)} sure, needs 80%. ${tries}.`, tone: "gold" };
-}
-
-function TeacherPracticePanel({
-  signs,
-  wordLike,
-  practice,
-  results,
-  peerName,
-  reading,
-  onAsk,
-  accentColor,
-  compact,
-}: {
-  signs: string[];
-  wordLike: boolean;
-  practice: CallSettings["practice"];
-  results: PracticeResult[];
-  peerName: string;
-  /** The student's signs are being read (else results can't arrive). */
-  reading: boolean;
-  onAsk: (sign: string | null) => void;
-  accentColor: string;
-  compact?: boolean;
-}) {
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const q = search.trim().toLowerCase();
-  const shown = (q ? signs.filter((s) => s.toLowerCase().includes(q)) : signs).slice(0, wordLike ? 24 : 26);
-
-  if (practice) {
-    const status = practiceStatus(results);
-    const next = signs[(signs.indexOf(practice.sign) + 1) % Math.max(1, signs.length)];
-    return (
-      <GlassCard radius={radii.lg} padding={compact ? 14 : 18} contentStyle={styles.cardContent}>
-        <View style={styles.cardHead}>
-          <Text style={styles.cardTitle}>Practice</Text>
-          <KidButton small variant="ghost" label="Stop" onPress={() => onAsk(null)} iconLeft={<CloseIcon size={14} color={colors.textSecondary} />} />
-        </View>
-        <Text style={styles.practiceAsk}>
-          Asked {peerName} to sign <Text style={{ color: colors.accentCoral }}>“{practice.sign}”</Text>
-        </Text>
-        <View style={[styles.practiceStatus, neuInset("sm")]} accessibilityLiveRegion="polite">
-          {status.tone === "success" ? <CheckIcon size={18} color={colors.success} /> : <HandIcon size={18} color={toneColor(status.tone)} />}
-          <Text style={[styles.practiceStatusText, { color: status.tone === "neutral" ? colors.textSecondary : toneColor(status.tone) }]}>
-            {status.text}
-          </Text>
-        </View>
-        {!reading ? <Text style={styles.pausedText}>Their signs aren't being read - choose “Them” or “Both”, with captions on.</Text> : null}
-        <View style={styles.cardActions}>
-          {next && next !== practice.sign ? (
-            <KidButton
-              small
-              variant="primary"
-              label={`Next: ${next}`}
-              onPress={() => onAsk(next)}
-              iconRight={<ArrowRightIcon size={16} color={colors.textOnAccent} />}
-              style={styles.flex}
-            />
-          ) : null}
-          <KidButton small label="Ask again" onPress={() => onAsk(practice.sign)} />
-        </View>
-      </GlassCard>
-    );
-  }
-
-  return (
-    <GlassCard radius={radii.lg} padding={compact ? 14 : 18} contentStyle={styles.cardContent}>
-      <Pressable
-        onPress={() => setOpen((v) => !v)}
-        style={styles.cardHead}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-      >
-        <Text style={styles.cardTitle}>Practice a sign</Text>
-        <ChevronDownIcon size={16} color={colors.textSecondary} />
-      </Pressable>
-      {open ? (
-        <>
-          <Text style={styles.pausedText}>
-            Tap a sign to ask {peerName} for it. Their device checks it and counts it toward their learning plan.
-          </Text>
-          {wordLike ? (
-            <View style={[styles.searchRow, neuInset("sm")]}>
-              <SearchIcon size={16} color={colors.textSecondary} />
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search the plan's words"
-                placeholderTextColor={colors.textTertiary}
-                style={styles.searchInput}
-                accessibilityLabel="Search signs to practise"
-              />
-            </View>
-          ) : null}
-          <View style={styles.practiceChips}>
-            {shown.map((s) => (
-              <Pressable
-                key={s}
-                onPress={() => onAsk(s)}
-                accessibilityRole="button"
-                accessibilityLabel={`Ask ${peerName} to sign ${s}`}
-                style={({ pressed }) => [styles.practiceChip, neuRaised("sm"), pressed && { borderColor: accentColor }]}
-              >
-                <Text style={styles.practiceChipText}>{s}</Text>
-              </Pressable>
-            ))}
-            {shown.length === 0 ? <Text style={styles.pausedText}>No signs match.</Text> : null}
-          </View>
-        </>
-      ) : null}
-    </GlassCard>
-  );
-}
-
-function StudentPracticeCard({
-  sign,
-  language,
-  group,
-  results,
-  checking,
-  cameraOff,
-  captionsOff,
-  compact,
-}: {
-  sign: string;
-  language: ReturnType<typeof callModelScope>["language"];
-  group: ReturnType<typeof callModelScope>["group"];
-  results: PracticeResult[];
-  checking: boolean;
-  cameraOff: boolean;
-  captionsOff: boolean;
-  compact?: boolean;
-}) {
-  const [showHow, setShowHow] = useState(false);
-  const status = practiceStatus(results);
-  const media = getSignMedia(language, group, sign);
-  return (
-    <GlassCard radius={radii.lg} padding={compact ? 14 : 18} contentStyle={styles.cardContent} style={{ borderColor: "rgba(242,178,62,0.45)" }}>
-      <Text style={styles.cardTitle}>Your teacher asks you to sign</Text>
-      <Text style={styles.practiceSign} accessibilityRole="header">
-        {sign}
-      </Text>
-      <View style={[styles.practiceStatus, neuInset("sm")]} accessibilityLiveRegion="polite">
-        {status.tone === "success" ? <CheckIcon size={18} color={colors.success} /> : <HandIcon size={18} color={toneColor(status.tone)} />}
-        <Text style={[styles.practiceStatusText, { color: status.tone === "neutral" ? colors.textSecondary : toneColor(status.tone) }]}>
-          {status.tone === "success"
-            ? "Great signing! That counts."
-            : results.length === 0
-              ? checking
-                ? "Sign it when you're ready."
-                : cameraOff
-                  ? "Turn your camera on so the computer can see your sign."
-                  : captionsOff
-                    ? "Turn captions on so the computer can check your sign."
-                    : "Waiting for your teacher…"
-              : status.text}
-        </Text>
-      </View>
-      {media ? (
-        <KidButton small label={showHow ? "Hide how to make it" : "Show me how"} onPress={() => setShowHow((v) => !v)} iconLeft={<EyeIcon size={18} color={colors.textPrimary} />} />
-      ) : null}
-      {showHow ? <SignReference sign={sign} media={media} motionHint={getMotionHint(language, group, sign)} /> : null}
-    </GlassCard>
-  );
-}
-
-/** Signal bars + words: never colour alone. */
-function QualityBadge({ quality }: { quality: CallQuality }) {
-  const bars = quality.level === "good" ? 3 : quality.level === "fair" ? 2 : 1;
-  const color = quality.level === "good" ? colors.success : quality.level === "fair" ? colors.accentCoral : colors.needsPractice;
-  const label =
-    quality.level === "good" ? "Good connection" : quality.level === "fair" ? "OK connection" : "Weak connection";
-  const detail = [
-    quality.rttMs !== null ? `${quality.rttMs} ms` : null,
-    quality.lossPct > 0 ? `${quality.lossPct}% lost` : null,
-    quality.relayed ? "via relay" : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  return (
-    <View
-      style={styles.quality}
-      accessibilityLabel={`${label}${quality.reduced ? ", your video is lowered to keep the call going" : ""}. ${detail}`}
-    >
-      <Svg width={14} height={12} viewBox="0 0 14 12">
-        {[0, 1, 2].map((i) => (
-          <Rect key={i} x={i * 5} y={8 - i * 4} width={3.5} height={4 + i * 4} rx={1} fill={i < bars ? color : colors.holdTrack} />
-        ))}
-      </Svg>
-      <Text style={[styles.statusText, { color }]}>
-        {label}
-        {quality.reduced ? " · video lowered" : ""}
-      </Text>
-    </View>
-  );
-}
-
-type NotesData = {
-  startedAt: number;
-  seconds: number;
-  mine: string;
-  theirs: string;
-  practice: CallPracticeEntry[];
-};
-
-export function notesText(n: NotesData, selfName: string, peerName: string, isTeacher: boolean): string {
-  const length = `${Math.floor(n.seconds / 60)}:${String(n.seconds % 60).padStart(2, "0")}`;
-  const lines = [
-    "LCSign call notes",
-    `With: ${peerName}`,
-    `Started: ${new Date(n.startedAt).toLocaleString()}`,
-    `Length: ${length}`,
-    "",
-  ];
-  if (n.practice.length) {
-    lines.push("Practised:");
-    for (const p of n.practice) {
-      lines.push(
-        `  - ${p.sign} (${p.language.toUpperCase()} ${p.group === "words" ? "word" : "letter"}): ${p.passed ? "passed" : "not yet"}${bestPart(p)}, ${p.tries} ${p.tries === 1 ? "try" : "tries"}`
-      );
-    }
-    lines.push("");
-  }
-  const teacherText = isTeacher ? n.mine : n.theirs;
-  const studentText = isTeacher ? n.theirs : n.mine;
-  lines.push(`${isTeacher ? selfName : peerName} (teacher) signed: ${teacherText || "-"}`);
-  lines.push(`${isTeacher ? peerName : selfName} (student) signed: ${studentText || "-"}`);
-  return lines.join("\n");
-}
-
-function CallNotes({
-  notes,
-  isTeacher,
-  peerName,
-  selfName,
-  onSave,
-}: {
-  notes: NotesData;
-  isTeacher: boolean;
-  peerName: string;
-  selfName: string;
-  onSave?: () => Promise<{ error: { message: string } | null }>;
-}) {
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const length = `${Math.floor(notes.seconds / 60)}:${String(notes.seconds % 60).padStart(2, "0")}`;
-  const hasContent = notes.mine || notes.theirs || notes.practice.length > 0;
-
-  const download = () => {
-    if (Platform.OS !== "web" || typeof document === "undefined") return;
-    const blob = new Blob([notesText(notes, selfName, peerName, isTeacher)], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `call-notes-${peerName.replace(/[^\w-]+/g, "-").toLowerCase()}-${new Date(notes.startedAt).toISOString().slice(0, 10)}.txt`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-
-  const save = async () => {
-    if (!onSave || saveState !== "idle") return;
-    setSaveState("saving");
-    setSaveError(null);
-    const { error } = await onSave();
-    if (error) {
-      setSaveError(error.message);
-      setSaveState("idle");
-    } else setSaveState("saved");
-  };
-
-  return (
-    <View style={[styles.notes, neuInset("sm")]}>
-      <Text style={styles.notesHead}>Call notes · {length}</Text>
-      {notes.practice.length ? (
-        <View style={styles.notesBlock}>
-          {notes.practice.map((p, i) => (
-            <View key={`${p.sign}-${i}`} style={styles.notesRow}>
-              {p.passed ? <CheckIcon size={14} color={colors.success} /> : <HandIcon size={14} color={colors.accentCoral} />}
-              <Text style={styles.notesText}>
-                {p.sign}: {p.passed ? "passed" : "not yet"}
-                {bestPart(p)} ({p.tries} {p.tries === 1 ? "try" : "tries"})
-              </Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-      {notes.theirs ? (
-        <Text style={styles.notesText}>
-          <Text style={styles.notesLabel}>{peerName}: </Text>
-          {notes.theirs}
-        </Text>
-      ) : null}
-      {notes.mine ? (
-        <Text style={styles.notesText}>
-          <Text style={styles.notesLabel}>You: </Text>
-          {notes.mine}
-        </Text>
-      ) : null}
-      {!hasContent ? <Text style={styles.notesText}>Nothing was signed or practised in this call.</Text> : null}
-      {hasContent ? (
-        <View style={styles.cardActions}>
-          {Platform.OS === "web" ? <KidButton small label="Download notes" onPress={download} style={styles.flex} /> : null}
-          {onSave ? (
-            <KidButton
-              small
-              variant={saveState === "saved" ? "ghost" : "raised"}
-              label={saveState === "saved" ? "Saved" : saveState === "saving" ? "Saving…" : "Save notes"}
-              accessibilityLabel={saveState === "saved" ? "Saved to class notes" : "Save to class notes"}
-              onPress={save}
-              disabled={saveState !== "idle"}
-              iconLeft={saveState === "saved" ? <CheckIcon size={14} color={colors.success} /> : undefined}
-              style={styles.flex}
-            />
-          ) : null}
-        </View>
-      ) : null}
-      {saveError ? <Text style={styles.speechError}>{saveError}</Text> : null}
-    </View>
-  );
-}
-
-function ControlButton({ label, on, onPress, icon }: { label: string; on: boolean; onPress: () => void; icon: React.ReactNode }) {
-  return (
-    <View style={styles.ctrlWrap}>
-      <Pressable
-        onPress={onPress}
-        style={[styles.ctrl, on ? [styles.ctrlOn, neuRaised("md")] : [styles.ctrlOff, neuInset("sm")]]}
-        accessibilityRole="switch"
-        accessibilityLabel={label}
-        accessibilityState={{ checked: on }}
-      >
-        {icon}
-      </Pressable>
-      <Text style={styles.ctrlLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function StateCard({
-  avatar,
-  title,
-  subtitle,
-  ringing,
-  children,
-}: {
-  avatar?: string;
-  title: string;
-  subtitle: string;
-  ringing?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <GlassCard radius={radii.lg} padding={32} dropShadow style={styles.stateCard} contentStyle={styles.stateContent}>
-      {avatar ? (
-        <View style={[styles.bigAvatar, ringing && styles.bigAvatarRinging]}>
-          <Text style={styles.bigAvatarText}>{avatar}</Text>
-        </View>
-      ) : null}
-      <Text style={styles.stateTitle}>{title}</Text>
-      <Text style={styles.stateSubtitle}>{subtitle}</Text>
-      {children}
-    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: colors.background, overflow: "hidden" },
   flex: { flex: 1 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.lg },
+  flexShrink: { flexShrink: 1, minWidth: 0 },
   srOnly: { position: "absolute", width: 1, height: 1, opacity: 0 },
 
-  // state cards
-  stateCard: { width: 420, maxWidth: "100%" },
-  stateContent: { alignItems: "center" },
-  bigAvatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.primaryTeal,
+  videoBox: { backgroundColor: colors.cameraBezel, borderRadius: 20, overflow: "hidden" },
+  videoBoxFull: { borderRadius: 0 },
+  selfBox: { borderRadius: 14, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.18)" },
+  selfBoxBig: { borderRadius: 20, borderWidth: 2.5, borderColor: colors.attention },
+  overlay: {
+    position: "absolute", left: 0, top: 0, right: 0, bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    gap: 10,
+    padding: 16,
+    backgroundColor: colors.cameraBezel,
   },
-  bigAvatarRinging: {
-    boxShadow: [
-      { offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 8, color: "rgba(124,108,245,0.25)" },
-      { offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 18, color: "rgba(124,108,245,0.12)" },
-    ],
-  } as any,
-  bigAvatarText: { fontFamily: fonts.heading, fontSize: 36, color: "#FFFFFF" },
-  stateTitle: { ...typography.h2, fontSize: 26, lineHeight: 30, color: colors.textPrimary, textAlign: "center" },
-  stateSubtitle: { fontFamily: fonts.bodyMedium, fontSize: 16, lineHeight: 24, color: colors.textSecondary, textAlign: "center", marginTop: 6, marginBottom: 24 },
-  stateActions: { flexDirection: "row", gap: 12, alignSelf: "stretch" },
-  acceptButton: {
-    minHeight: 56,
-    borderRadius: 28,
-    backgroundColor: colors.success,
+  overlayTitle: { fontFamily: fonts.heading, fontSize: 20, lineHeight: 26, color: colors.textPrimary, textAlign: "center" },
+  overlaySub: { fontFamily: fonts.body, fontSize: 14, color: colors.textOnGlass, textAlign: "center" },
+  tag: {
+    position: "absolute",
+    left: 10,
+    bottom: 10,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
+    gap: 5,
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+    borderRadius: 8,
+    backgroundColor: "rgba(10,12,16,0.82)",
   },
-  acceptLabel: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.textOnFrosted },
-
-  // top bar
-  errorBanner: { backgroundColor: "rgba(224,82,95,0.9)", paddingVertical: 8, paddingHorizontal: 16 },
-  errorText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: "#FFFFFF", textAlign: "center" },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8, gap: 16 },
-  topBarMobile: { paddingHorizontal: 16 },
-  who: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primaryTeal, alignItems: "center", justifyContent: "center" },
-  avatarText: { fontFamily: fonts.heading, fontSize: 18, color: "#FFFFFF" },
-  peerName: { ...typography.h3, fontSize: 18, color: colors.textPrimary },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textSecondary },
-  topCenter: { flex: 1, alignItems: "center" },
-  topRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  speakLabelSmall: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textSecondary },
-  langPill: {
+  tagTop: {
+    position: "absolute",
+    top: 12,
+    left: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    minHeight: 44,
-    paddingHorizontal: 16,
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
     borderRadius: 999,
-    backgroundColor: colors.neuBase,
+    backgroundColor: "rgba(10,12,16,0.82)",
   },
+  // Phone: the top bar lies over the top of this video, so the tag goes low.
+  tagBottom: {
+    position: "absolute",
+    bottom: 12,
+    left: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(10,12,16,0.82)",
+  },
+  // Caption, drawer and sheets: above both videos (on a phone they overlap them).
+  layer: { zIndex: 3 },
+  tagText: { fontFamily: fonts.bodySemiBold, fontSize: 12.5, color: "#FFFFFF" },
+
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+    backgroundColor: colors.background,
+  },
+  topBarPhone: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, backgroundColor: "rgba(10,12,16,0.45)", zIndex: 3 },
+  who: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1, minWidth: 0 },
+  peerName: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.textPrimary },
+  peerRole: { fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 },
+  statusDot: { width: 7, height: 7, borderRadius: 3.5 },
+  statusText: { fontFamily: fonts.bodyMedium, fontSize: 13 },
+  topRight: { flexDirection: "row", alignItems: "center", gap: 12 },
+  readingChip: { flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingHorizontal: 16, borderRadius: 999, backgroundColor: colors.neuBase, maxWidth: 360 },
+  readingChipText: { fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.textOnGlass },
+  readingChipStrong: { fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
+  toolsBtn: { flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingHorizontal: 16, borderRadius: 999, backgroundColor: colors.neuBase },
+  toolsBtnOn: { backgroundColor: colors.neuWell },
+  toolsText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
+
+  banner: {
+    position: "absolute",
+    zIndex: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,122,133,0.5)",
+    backgroundColor: "rgba(12,14,19,0.9)",
+  },
+  bannerStrong: { fontFamily: fonts.bodySemiBold, fontSize: 13 },
+  bannerText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textPrimary },
+  bannerClose: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase },
+
+  controls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+    backgroundColor: colors.background,
+  },
+  controlsCenter: { flexDirection: "row", alignItems: "center", gap: 28 },
+  controlsPhone: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingHorizontal: 6,
+    backgroundColor: "rgba(16,18,24,0.96)",
+    borderTopLeftRadius: 0,
+    zIndex: 5,
+  },
+  phoneCtrl: { alignItems: "center", gap: 6 },
+  phoneCtrlBtn: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase },
+  leavePhone: { backgroundColor: colors.callDanger, width: 64 },
+  leaveDesk: { position: "absolute", right: 24, minWidth: 140 },
+  ctrlCaption: { fontFamily: fonts.bodySemiBold, fontSize: 12.5, color: colors.textOnGlass },
+  speakWrap: { alignItems: "center", gap: 6 },
+  langPill: { flexDirection: "row", alignItems: "center", gap: 7, height: 44, paddingHorizontal: 16, borderRadius: 999, backgroundColor: colors.neuBase },
   langText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
 
-  // main
-  main: { flex: 1, minHeight: 0, flexDirection: "row", gap: 20, paddingHorizontal: 24, paddingTop: 8 },
-  stageWrap: { flex: 1, minWidth: 0 },
-  stage: {
-    flex: 1,
-    borderRadius: 24,
-    overflow: "hidden",
-    backgroundColor: "#000",
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  stageMobile: { flexGrow: 0, flexShrink: 0, flexBasis: "auto", height: 300 },
-  remoteVideo: { width: "100%", height: "100%", objectFit: "cover" },
-  connectingOverlay: {
+  yourSignsPhone: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: colors.overlay,
-  },
-  connectingText: { fontFamily: fonts.bodyMedium, fontSize: 17, color: "#FFFFFF" },
-  captionBar: {
-    position: "absolute",
-    left: 20,
-    right: 20,
-    bottom: 20,
-    borderRadius: 18,
-    backgroundColor: "rgba(10,12,16,0.78)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-  captionContent: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 18 },
-  captionText: { flex: 1, fontFamily: fonts.heading, fontSize: 30, lineHeight: 36, color: "#FFFFFF" },
-  captionPlaceholder: { fontFamily: fonts.bodyMedium, fontSize: 17, lineHeight: 24, color: "rgba(255,255,255,0.72)" },
-  pip: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    width: 240,
-    height: 135,
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: colors.neuWell,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.22)",
-  },
-  pipMobile: { width: 120, height: 90, top: 10, right: 10, borderRadius: 12 },
-  localVideo: { width: "100%", height: "100%", objectFit: "cover", transform: [{ scaleX: -1 }] },
-  pipOff: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.neuWell },
-  pipOffText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.textSecondary },
-  pipLabel: { position: "absolute", left: 8, bottom: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: "rgba(10,12,16,0.7)" },
-  pipLabelText: { fontFamily: fonts.bodySemiBold, fontSize: 12, color: "#FFFFFF" },
-
-  // side cards
-  side: { width: 400, flexGrow: 0 },
-  sideContent: { gap: 16, flexGrow: 1, paddingBottom: 4 },
-
-  // practice
-  practiceAsk: { fontFamily: fonts.bodySemiBold, fontSize: 17, lineHeight: 24, color: colors.textPrimary },
-  practiceSign: { fontFamily: fonts.heading, fontSize: 44, lineHeight: 50, color: colors.accentCoral },
-  practiceStatus: {
+    right: 10,
+    top: 8,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    borderRadius: radii.md,
-    backgroundColor: colors.neuWell,
-    paddingVertical: 10,
+    gap: 6,
+    height: 36,
     paddingHorizontal: 12,
-  },
-  practiceStatusText: { flex: 1, fontFamily: fonts.bodySemiBold, fontSize: 15, lineHeight: 21 },
-  practiceChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  practiceChip: {
-    minHeight: 40,
-    paddingHorizontal: 14,
     borderRadius: 999,
     backgroundColor: colors.neuBase,
-    borderWidth: 1.5,
-    borderColor: "transparent",
-    alignItems: "center",
-    justifyContent: "center",
   },
-  practiceChipText: { fontFamily: fonts.bodySemiBold, fontSize: 15, color: colors.textPrimary },
-  searchRow: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 999, backgroundColor: colors.neuWell, paddingHorizontal: 14, minHeight: 42 },
-  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 14, color: colors.textPrimary, minHeight: 40 } as any,
-  quality: { flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 8 },
+  yourSignsText: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.textPrimary },
 
-  // notes (call ended)
-  endedScroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", paddingVertical: spacing.lg },
-  notes: { alignSelf: "stretch", borderRadius: radii.md, backgroundColor: colors.neuWell, padding: 14, gap: 8, marginBottom: 20 },
-  notesHead: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
-  notesBlock: { gap: 4 },
-  notesRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  notesText: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.textPrimary, flexShrink: 1 },
-  notesLabel: { fontFamily: fonts.bodySemiBold, color: colors.textSecondary },
-  cardContent: { flex: 1, gap: 12 },
-  cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  cardTitle: { ...typography.h3, fontSize: 18, color: colors.textPrimary, flexShrink: 1 },
-  chip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
-  chipDot: { width: 7, height: 7, borderRadius: 4 },
-  chipText: { fontFamily: fonts.bodySemiBold, fontSize: 12 },
-  pausedText: { fontFamily: fonts.bodyMedium, fontSize: 15, lineHeight: 22, color: colors.textSecondary },
-  liveRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  guessWrap: { width: 64, height: 64, alignItems: "center", justifyContent: "center" },
-  guessTile: { width: 50, height: 50, borderRadius: 14, backgroundColor: colors.neuBase, alignItems: "center", justifyContent: "center" },
-  guessText: { fontFamily: fonts.heading, fontSize: 26, color: colors.accentCoral },
-  liveHint: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 20, color: colors.textPrimary },
-  transcript: { flex: 1, minHeight: 80, borderRadius: radii.md, backgroundColor: colors.neuWell, padding: 14 },
-  transcriptText: { fontFamily: fonts.heading, fontSize: 24, lineHeight: 30, color: colors.textPrimary },
-  transcriptPlaceholder: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.textSecondary },
-  cardActions: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-  autoRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 36 },
-  switchTrack: { width: 40, height: 24, borderRadius: 12, backgroundColor: colors.neuWell, padding: 3, borderWidth: 1, borderColor: colors.border },
-  switchOn: { backgroundColor: colors.accentCoral, borderColor: colors.accentCoral },
-  switchKnob: { width: 16, height: 16, borderRadius: 8, backgroundColor: colors.textSecondary },
-  switchKnobOn: { backgroundColor: colors.textOnAccent, transform: [{ translateX: 16 }] },
-  autoText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.textPrimary },
-  speechError: { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary },
-
-  // controls
-  controls: { flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: 22, paddingVertical: 16, paddingHorizontal: 24 },
-  controlsMobile: { flexWrap: "wrap", gap: 14 },
-  ctrlWrap: { alignItems: "center", gap: 6 },
-  ctrl: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
-  ctrlOn: { backgroundColor: colors.neuBase },
-  ctrlOff: { backgroundColor: colors.neuWell },
-  ctrlLabel: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.textSecondary },
-  readFrom: { alignItems: "center", gap: 0 },
-  readFromLabel: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.textSecondary },
-  // student side: a setting the teacher controls, shown but not changeable
-  setPill: {
-    alignSelf: "center",
-    alignItems: "center",
-    minHeight: 44,
-    justifyContent: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 6,
-    borderRadius: radii.md,
-    backgroundColor: colors.neuWell,
-  },
-  setPillControls: { marginTop: 6, marginBottom: 18 },
-  setPillValue: { fontFamily: fonts.bodySemiBold, fontSize: 15, color: colors.textPrimary },
-  setPillNote: { fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary },
-  hangup: {
+  bigScrim: { position: "absolute", left: 0, top: 0, right: 0, bottom: 0, zIndex: 30, backgroundColor: "#0E1015", padding: 32 },
+  bigTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 32 },
+  bigChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    height: 56,
-    paddingHorizontal: 28,
-    borderRadius: 28,
-    backgroundColor: colors.needsPractice,
-    marginBottom: 18,
+    gap: 8,
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(179,168,255,0.5)",
+    backgroundColor: "rgba(90,80,168,0.25)",
   },
-  hangupText: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: "#FFFFFF" },
-
-  mobileBody: { padding: 16, gap: 14 },
-
-  // big view
-  bigScrim: { flex: 1, backgroundColor: "rgba(10,12,16,0.96)", alignItems: "center", justifyContent: "center", padding: 32, gap: 24 },
+  bigChipText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
+  bigBody: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingBottom: 140 },
+  bigLabel: { fontFamily: fonts.bodySemiBold, fontSize: 20, color: colors.textOnGlass },
   bigText: { fontFamily: fonts.heading, color: colors.textPrimary, textAlign: "center" },
-  bigHint: { fontFamily: fonts.body, fontSize: 16, color: colors.textSecondary },
-  bigFrom: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.accentCoral },
+
+  sheetScrim: { flex: 1, justifyContent: "flex-end", backgroundColor: colors.overlay },
+  sheet: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 640,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: "rgba(48,54,68,0.98)",
+    padding: 20,
+    gap: 14,
+  },
+  sheetHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+  sheetTitle: { fontFamily: fonts.heading, fontSize: 20, color: colors.textPrimary },
+  sheetClose: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase },
+  sheetText: { minHeight: 72, padding: 14, borderRadius: 14, backgroundColor: colors.neuWell, justifyContent: "center" },
+  sheetTranscript: { fontFamily: fonts.heading, fontSize: 24, lineHeight: 30, color: colors.textPrimary },
+  sheetPlaceholder: { fontFamily: fonts.bodyMedium, fontSize: 15, lineHeight: 21, color: colors.textOnGlass },
+  sheetTools: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
 });
