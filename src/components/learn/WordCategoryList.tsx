@@ -9,8 +9,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import GlassCard from "../GlassCard";
 import SignTile from "./SignTile";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "../icons/UiIcons";
-import { colors, fonts, kidTypography, radii, sizes } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, kidTypography, radii, sizes, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { isMastered, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { type ProgressLike } from "../../lib/practiceFlow";
 import { WORD_CATEGORIES, getWordCategory } from "../../lib/wordCategories";
@@ -40,6 +40,8 @@ type Props = {
 const TILE_GAP = 14;
 
 export default function WordCategoryList({ sections, language, group, rows, nextSign, onPressSign, columns = 1 }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const initiallyOpen = useMemo(() => {
     if (sections.length === 1) return sections[0].key;
     return sections.find((s) => nextSign !== null && s.signs.includes(nextSign))?.key ?? sections[0]?.key ?? null;
@@ -89,7 +91,7 @@ export default function WordCategoryList({ sections, language, group, rows, next
               accessibilityState={{ expanded }}
               accessibilityLabel={`${section.title}${hasNext ? ", next sign is here" : ""}, ${learned} of ${total} learned`}
             >
-              <View style={[styles.disc, done ? styles.discDone : hasNext ? styles.discNext : [styles.discAhead, neuInset("sm")]]}>
+              <View style={[styles.disc, done ? styles.discDone : hasNext ? styles.discNext : [styles.discAhead, shadows.neuInset("sm")]]}>
                 {done ? (
                   <CheckIcon size={20} color={colors.textOnFrosted} strokeWidth={3.2} />
                 ) : (
@@ -107,14 +109,14 @@ export default function WordCategoryList({ sections, language, group, rows, next
                     </View>
                   ) : null}
                 </View>
-                <View style={[styles.track, neuInset("sm")]}>
+                <View style={[styles.track, shadows.neuInset("sm")]}>
                   <View style={[styles.fill, { width: `${total ? (learned / total) * 100 : 0}%` }]} />
                 </View>
               </View>
               <Text style={styles.count}>
                 {learned} of {total}
               </Text>
-              <View style={[styles.chevron, neuRaised("sm")]}>
+              <View style={[styles.chevron, shadows.neuRaised("sm")]}>
                 {expanded ? <ChevronUpIcon size={20} color={colors.textSecondary} /> : <ChevronDownIcon size={20} color={colors.textSecondary} />}
               </View>
             </Pressable>
@@ -142,7 +144,8 @@ export default function WordCategoryList({ sections, language, group, rows, next
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   list: { gap: 12, flexDirection: "row", flexWrap: "wrap" },
   full: { width: "100%" },
   half: { flexBasis: "40%", flexGrow: 1, minWidth: 0 },

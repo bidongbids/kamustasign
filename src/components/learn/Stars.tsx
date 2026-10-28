@@ -6,8 +6,8 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { StarIcon } from "../icons/UiIcons";
-import { colors, kidTypography, sizes } from "../../theme/theme";
-import { neuInset } from "../../theme/shadows";
+import { kidTypography, sizes, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { MASTERY_PASSES } from "../../lib/curriculum";
 import { STAR_COUNT, starsText } from "../../lib/starReference";
 
@@ -25,6 +25,7 @@ export function StarRow({
   animateIndex?: number;
   scale?: Animated.Value;
 }) {
+  const { colors } = useTheme();
   return (
     <View style={{ flexDirection: "row", gap }} accessible={false}>
       {Array.from({ length: STAR_COUNT }).map((_, i) => {
@@ -67,6 +68,8 @@ export function StarMeter({
   reduceMotion?: boolean;
   showCaption?: boolean;
 }) {
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const scale = useRef(new Animated.Value(1)).current;
   const prev = useRef(stars);
   useEffect(() => {
@@ -85,7 +88,7 @@ export function StarMeter({
       accessibilityRole="image"
       accessibilityLabel={`${starsText(stars)} of ${STAR_COUNT}. ${caption}`}
     >
-      <View style={[styles.well, neuInset("sm"), { paddingVertical: size * 0.25, paddingHorizontal: size * 0.4 }]}>
+      <View style={[styles.well, shadows.neuInset("sm"), { paddingVertical: size * 0.25, paddingHorizontal: size * 0.4 }]}>
         <Animated.View style={{ transform: [{ scale }] }}>
           <StarRow filled={stars} size={size} gap={size * 0.22} />
         </Animated.View>
@@ -95,7 +98,8 @@ export function StarMeter({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   wrap: { gap: 10, alignItems: "flex-start" },
   well: { backgroundColor: colors.neuWell, borderRadius: 999 },
   caption: { ...kidTypography.kidBody, color: colors.textSecondary },

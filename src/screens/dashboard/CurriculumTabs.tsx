@@ -9,7 +9,8 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import SegmentedToggle from "../../components/SegmentedToggle";
 import { CURRICULUM, getLanguage, type SignGroup, type SignLanguage } from "../../lib/curriculum";
-import { colors, typography } from "../../theme/theme";
+import { typography, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   language: SignLanguage;
@@ -25,6 +26,10 @@ type Props = {
   layout?: "stacked" | "row";
   /** Teacher: the line naming a group with no model. Off where the tab's "· soon" says enough. */
   note?: boolean;
+  /** Student: "21/26" inside each group's tab. */
+  counts?: Partial<Record<SignGroup, string>>;
+  /** In a row with other controls (no padding above, not centred). */
+  inline?: boolean;
 };
 
 /** The group to land on in `language`: `preferred` if gradable, else the first that is. */
@@ -34,24 +39,27 @@ export function availableGroupFor(language: SignLanguage, preferred: SignGroup):
   return groups.find((g) => g.available)?.group ?? preferred;
 }
 
-export default function CurriculumTabs({ language, group, onChange, audience = "teacher", layout = "stacked", note = true }: Props) {
+export default function CurriculumTabs({ language, group, onChange, audience = "teacher", layout = "stacked", note = true, counts, inline }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const student = audience === "student";
   const lang = getLanguage(language);
   const unavailable = lang.groups.filter((g) => !g.available);
 
   return (
-    <View style={layout === "row" ? styles.row : undefined}>
+    <View style={layout === "row" ? styles.row : inline ? styles.stack : undefined}>
       <SegmentedToggle
         size={student ? "kid" : "default"}
+        inline={inline}
         options={CURRICULUM.map((l) => ({ key: l.language, label: l.label }))}
         value={language}
         onChange={(next) => onChange(next, availableGroupFor(next, group))}
       />
       <SegmentedToggle
         size={student ? "kid" : "default"}
+        inline={inline}
         options={lang.groups.map((g) =>
           student
-            ? { key: g.group, label: g.label, badge: g.available ? undefined : ("soon" as const) }
+            ? { key: g.group, label: g.label, badge: g.available ? undefined : ("soon" as const), count: g.available ? counts?.[g.group] : undefined }
             : {
                 key: g.group,
                 label: g.available ? g.label : `${g.label} · soon`,
@@ -70,8 +78,10 @@ export default function CurriculumTabs({ language, group, onChange, audience = "
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 16, flexWrap: "wrap" },
+  stack: { gap: 10, alignItems: "flex-start" },
   note: {
     ...typography.caption,
     color: colors.textSecondary,

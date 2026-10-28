@@ -1,14 +1,17 @@
-// One sign in the learning plan - a raised neumorphic slab (tiles are
-// controls). State is shape, not just colour: no stars (not started), stars
-// filled by accuracy (tried - see starReference.ts), check + ring (learned),
-// "Next" chip (next up).
+// One sign in the learning plan (classroom theming handoff §3.5, H2). State
+// is shape, not just colour, and the tiles stay calm so the signs are what
+// you see first:
+//   learned  - a raised tile, a small check inside its top-right corner, stars
+//   tried    - a raised tile with stars, no check
+//   not yet  - no fill, a dashed outline, the sign in grey and "not yet"
+//   next     - raised, an accent ring and a "NEXT" pill, and "start"
 // All from lesson_progress.
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { StarRow } from "./Stars";
 import { CheckIcon } from "../icons/UiIcons";
-import { colors, fonts, kidTypography, radii, sizes } from "../../theme/theme";
-import { neuRaised } from "../../theme/shadows";
+import { fonts, kidTypography, sizes, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { signName } from "../../lib/signNames";
 import { starReference, starsText } from "../../lib/starReference";
@@ -22,26 +25,26 @@ type Props = {
   row: ProgressLike | undefined;
   isNext?: boolean;
   onPress: () => void;
-  /** Letter/number tile edge in px (default sizes.tileGlyph, never smaller). */
+  /** Letter/number tile width in px (76 on desktop, 58 on phones; never under 48). The tile is 1.1x as tall. */
   size?: number;
   /** Word tiles: fixed width so a category reads as an even grid. */
   width?: number;
 };
 
 export default function SignTile({ sign, language, group, word, row, isNext, onPress, size, width }: Props) {
-  const edge = Math.max(sizes.tileGlyph, size ?? sizes.tileGlyph);
-  const glyphScale = edge / sizes.tileGlyph;
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const w = Math.max(sizes.tapMin, size ?? 76);
+  const big = w >= 70;
   const status = tileStatus(row);
   const stars = starsFor(row, starReference(language, group, sign));
   const learned = status === "learned";
+  const notYet = status === "not-started";
   const name = signName(language, sign);
 
-  const stateWords =
-    status === "not-started"
-      ? "not started"
-      : learned
-        ? `learned, ${starsText(stars)}`
-        : `${starsText(stars)}, not learned yet`;
+  const stateWords = notYet ? "not started" : learned ? `learned, ${starsText(stars)}` : `${starsText(stars)}, not learned yet`;
+  // "not yet" under an untried sign; the next one says where to begin.
+  const hint = notYet ? (isNext ? "start" : "not yet") : null;
 
   return (
     <Pressable
@@ -50,9 +53,8 @@ export default function SignTile({ sign, language, group, word, row, isNext, onP
       accessibilityLabel={`Practise ${name}, ${stateWords}${isNext ? ", next up" : ""}`}
       style={(state: any) => [
         styles.tile,
-        word ? [styles.word, width ? { width, maxWidth: width, justifyContent: "space-between" } : null] : [styles.glyph, { width: edge, height: edge }],
-        neuRaised("sm"),
-        learned && styles.learned,
+        word ? [styles.word, width ? { width, maxWidth: width } : null] : [styles.glyph, { width: w, height: Math.round(w * 1.1) }],
+        notYet && !isNext ? styles.notYet : styles.raised,
         isNext && styles.next,
         state.pressed && { transform: [{ scale: 0.97 }] },
         state.focused && styles.focused,
@@ -64,88 +66,76 @@ export default function SignTile({ sign, language, group, word, row, isNext, onP
         </View>
       )}
       <Text
-        style={[
-          word ? styles.wordText : status === "not-started" ? styles.glyphText : styles.glyphTextSmall,
-          status === "not-started" && { color: colors.textSecondary },
-          !word && glyphScale > 1 && {
-            fontSize: (status === "not-started" ? 30 : 26) * glyphScale,
-            lineHeight: (status === "not-started" ? 30 : 28) * glyphScale,
-          },
-        ]}
+        style={[word ? styles.wordText : [styles.glyphText, { fontSize: big ? 30 : 22, lineHeight: big ? 32 : 24 }], notYet && !isNext && { color: colors.textTertiary }]}
         numberOfLines={1}
       >
         {name}
       </Text>
-      {status !== "not-started" && (
-        <StarRow filled={stars} size={word ? sizes.starSm : Math.round(sizes.starSm * Math.min(glyphScale, 1.3))} />
+      {hint ? (
+        <Text style={[styles.hint, !big && !word && styles.hintSmall]}>{hint}</Text>
+      ) : (
+        <StarRow filled={stars} size={word ? sizes.starSm : big ? 12 : 9} gap={2} />
       )}
       {learned ? (
-        <View style={[styles.badge, styles.badgeCheck]}>
-          <CheckIcon size={13} color={colors.textOnFrosted} strokeWidth={3.6} />
+        <View style={[styles.check, word ? styles.checkWord : !big && styles.checkSmall]}>
+          <CheckIcon size={big || word ? 12 : 9} color={colors.onStatus} strokeWidth={3.5} />
         </View>
       ) : null}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  tile: {
-    backgroundColor: colors.neuBase,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  glyph: {
-    width: sizes.tileGlyph,
-    height: sizes.tileGlyph,
-    borderRadius: radii.md,
-    gap: 4,
-  },
-  word: {
-    minHeight: sizes.tileWordH,
-    borderRadius: 999,
-    flexDirection: "row",
-    paddingLeft: 18,
-    paddingRight: 16,
-    gap: 10,
-    maxWidth: 260,
-  },
-  learned: {
-    borderWidth: 2,
-    borderColor: colors.masteredRing,
-  },
-  next: {
-    boxShadow: [
-      { offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 6, color: "rgba(242,178,62,0.22)" },
-      { offsetX: 0, offsetY: 0, blurRadius: 28, color: colors.celebrationGlow },
-    ],
-  } as any,
-  focused: { outlineColor: colors.focusRing, outlineWidth: 2, outlineStyle: "solid", outlineOffset: 2 } as any,
-  glyphText: { ...kidTypography.tileGlyph, color: colors.textPrimary },
-  glyphTextSmall: { fontFamily: fonts.heading, fontSize: 26, lineHeight: 28, color: colors.textPrimary, marginTop: 2 },
-  wordText: { ...kidTypography.kidLabel, color: colors.textPrimary, flexShrink: 1 },
-  badge: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.neuBase,
-  },
-  badgeCheck: { backgroundColor: colors.success },
-  nextChip: {
-    position: "absolute",
-    top: -10,
-    alignSelf: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    backgroundColor: colors.accentCoral,
-    zIndex: 1,
-  },
-  nextChipWord: { left: 16, alignSelf: "auto" },
-  nextChipText: { fontFamily: fonts.bodySemiBold, fontSize: 10, lineHeight: 13, letterSpacing: 0.6, color: colors.textOnAccent },
-});
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
+    tile: { alignItems: "center", justifyContent: "center" },
+    glyph: { borderRadius: 18, gap: 4 },
+    word: {
+      minHeight: sizes.tileWordH,
+      borderRadius: 999,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingLeft: 18,
+      paddingRight: 34,
+      gap: 10,
+      maxWidth: 260,
+    },
+    raised: { backgroundColor: colors.surfaceRaised, ...theme.shadows.neuRaised("sm") },
+    notYet: { backgroundColor: "transparent", borderWidth: 1.5, borderStyle: "dashed", borderColor: theme.name === "dark" ? "rgba(255,255,255,0.16)" : colors.border },
+    // A 2.5px accent ring on top of the raised shadow.
+    next: {
+      boxShadow: [
+        { offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 2.5, color: colors.accentText },
+        ...((theme.shadows.neuRaised("sm") as any).boxShadow ?? []),
+      ],
+    } as any,
+    focused: { outlineColor: colors.focusRing, outlineWidth: 2, outlineStyle: "solid", outlineOffset: 3 } as any,
+    glyphText: { fontFamily: fonts.heading, color: colors.textPrimary },
+    wordText: { ...kidTypography.kidLabel, color: colors.textPrimary, flexShrink: 1 },
+    hint: { fontFamily: fonts.body, fontSize: 11, lineHeight: 14, color: colors.textTertiary },
+    hintSmall: { fontSize: 9.5, lineHeight: 12 },
+    check: {
+      position: "absolute",
+      top: 7,
+      right: 7,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.success,
+    },
+    checkSmall: { top: 5, right: 5, width: 14, height: 14, borderRadius: 7 },
+    checkWord: { top: undefined, right: 12 },
+    nextChip: {
+      position: "absolute",
+      top: -10,
+      alignSelf: "center",
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: colors.accent,
+      zIndex: 1,
+    },
+    nextChipWord: { left: 16, alignSelf: "auto" },
+    nextChipText: { fontFamily: fonts.bodySemiBold, fontSize: 10, lineHeight: 12, letterSpacing: 0.6, color: colors.textOnAccent },
+  });

@@ -5,37 +5,42 @@
 // option with no model behind it is shown but disabled rather than hidden.
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, sizes, typography } from "../theme/theme";
+import { sizes, typography, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 import { ClockIcon } from "./icons/UiIcons";
-import { neuInset, neuRaised } from "../theme/shadows";
 import { useResponsive } from "../theme/responsive";
 
 type Props<K extends string> = {
-  options: { key: K; label: string; disabled?: boolean; badge?: "soon" }[];
+  /** `count`: a small figure after the label, e.g. "21/26" (classroom theming H2). */
+  options: { key: K; label: string; disabled?: boolean; badge?: "soon"; count?: string }[];
   value: K;
   onChange: (key: K) => void;
   /** "kid": 48px segments (tap-min) for the student learning plan. */
   size?: "default" | "kid";
+  /** Sits in a row of other controls: no padding above, not centred. */
+  inline?: boolean;
 };
 
-export default function SegmentedToggle<K extends string>({ options, value, onChange, size = "default" }: Props<K>) {
+export default function SegmentedToggle<K extends string>({ options, value, onChange, size = "default", inline }: Props<K>) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const kid = size === "kid";
   const { isDesktop } = useResponsive();
 
   return (
-    <View style={[styles.toggleRow, !isDesktop && styles.toggleRowMobile]}>
-      <View style={[styles.track, neuInset("sm")]}>
-        {options.map(({ key, label, disabled, badge }) => {
+    <View style={inline ? undefined : [styles.toggleRow, !isDesktop && styles.toggleRowMobile]}>
+      <View style={[styles.track, shadows.neuInset("sm")]}>
+        {options.map(({ key, label, disabled, badge, count }) => {
           const active = value === key;
           return (
             <Pressable
               key={key}
               onPress={() => onChange(key)}
               disabled={disabled}
-              style={[styles.option, kid && styles.optionKid, active && [styles.optionActive, neuRaised("sm")]]}
+              style={[styles.option, kid && styles.optionKid, active && [styles.optionActive, shadows.neuRaised("sm")]]}
               accessibilityRole="tab"
               accessibilityState={{ selected: active, disabled: !!disabled }}
-              accessibilityLabel={badge === "soon" ? `${label}, coming soon` : undefined}
+              accessibilityLabel={badge === "soon" ? `${label}, coming soon` : count ? `${label}, ${count.replace("/", " of ")} learned` : undefined}
             >
               <Text
                 style={[
@@ -47,6 +52,7 @@ export default function SegmentedToggle<K extends string>({ options, value, onCh
               >
                 {label}
               </Text>
+              {count ? <Text style={[styles.count, active && styles.countActive]}>{count}</Text> : null}
               {badge === "soon" && (
                 // The word + clock carry the state, not disabledText alone (2.84:1).
                 <View style={styles.soonBadge}>
@@ -62,7 +68,8 @@ export default function SegmentedToggle<K extends string>({ options, value, onCh
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   toggleRow: {
     alignItems: "center",
     paddingTop: 12,
@@ -122,6 +129,8 @@ const styles = StyleSheet.create({
   labelInactive: {
     color: colors.adminGray,
   },
+  count: { fontFamily: typography.labelSm.fontFamily, fontSize: 12, lineHeight: 16, color: colors.textTertiary },
+  countActive: { color: colors.textSecondary },
   labelDisabled: {
     color: colors.disabledText,
   },

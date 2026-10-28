@@ -3,8 +3,8 @@
 // neumorphic control; "ghost" a hairline outline for the quiet way out.
 import React, { forwardRef } from "react";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
-import { colors, kidTypography, sizes } from "../../theme/theme";
-import { neuRaised } from "../../theme/shadows";
+import { kidTypography, sizes, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   label: string;
@@ -24,6 +24,8 @@ const KidButton = forwardRef<View, Props>(function KidButton(
   { label, onPress, variant = "raised", small, iconLeft, iconRight, iconOnly, disabled, accessibilityLabel, style },
   ref
 ) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const h = small ? sizes.tapMin : sizes.buttonKidH;
   const textColor = variant === "primary" ? colors.textOnAccent : colors.textPrimary;
   return (
@@ -39,7 +41,7 @@ const KidButton = forwardRef<View, Props>(function KidButton(
         { minHeight: h, borderRadius: h / 2 },
         iconOnly ? { width: h, paddingHorizontal: 0 } : { paddingHorizontal: small ? 16 : 24 },
         variant === "primary" && styles.primary,
-        variant === "raised" && [styles.raised, neuRaised(small ? "sm" : "md")],
+        variant === "raised" && [styles.raised, shadows.neuRaised(small ? "sm" : "md")],
         variant === "ghost" && styles.ghost,
         state.pressed && { transform: [{ scale: 0.98 }] },
         state.focused && styles.focused,
@@ -60,7 +62,8 @@ const KidButton = forwardRef<View, Props>(function KidButton(
 
 export default KidButton;
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   base: {
     flexDirection: "row",
     alignItems: "center",
@@ -69,7 +72,8 @@ const styles = StyleSheet.create({
   },
   primary: {
     backgroundColor: colors.accentCoral,
-    boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: "rgba(242,178,62,0.28)" }],
+    // The accent's glow (celebrationGlow is the accent at 0.35): rgba(242,178,62,0.28) in Graphite.
+    boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: colors.celebrationGlow.replace(/0\.35\)$/, "0.28)") }],
   } as any,
   raised: { backgroundColor: colors.neuBase },
   ghost: { borderWidth: 1, borderColor: colors.border, backgroundColor: "transparent" },

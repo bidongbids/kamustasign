@@ -6,10 +6,12 @@
 import React from "react";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors, kidTypography, typography } from "../theme/theme";
-import { neuInset } from "../theme/shadows";
+import { kidTypography, typography, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 
 export type ProgressTone = "empty" | "progress" | "nearlyDone" | "complete";
+/** One fixed fill colour instead of the tone ramp (classroom theming handoff §7). */
+export type BarColor = "primary" | "accent" | "success";
 
 type Props = {
   /** 0-1; clamped. */
@@ -33,6 +35,7 @@ type Props = {
   readout?: "percent" | "count" | "none";
   /** "kid": label in kidLabel (16px) for the student learning plan. */
   size?: "default" | "kid";
+  color?: BarColor;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -43,12 +46,14 @@ export function toneFor(value: number): ProgressTone {
   return "progress";
 }
 
-const FILL: Record<ProgressTone, [string, string]> = {
-  empty: [colors.primaryTealDark, colors.primaryTeal],
-  progress: [colors.primaryTealDark, colors.primaryTeal],
-  nearlyDone: [colors.accentCoralDark, colors.accentCoral],
-  complete: ["#2E8A50", colors.success],
-};
+function fill(colors: ThemeColors, tone: ProgressTone, color?: BarColor): [string, string] {
+  if (color === "accent") return [colors.accentCoralDark, colors.accent];
+  if (color === "success") return [colors.success, colors.success];
+  if (color === "primary") return [colors.primaryTealDark, colors.primary];
+  if (tone === "nearlyDone") return [colors.accentCoralDark, colors.accentCoral];
+  if (tone === "complete") return ["#2E8A50", colors.success];
+  return [colors.primaryTealDark, colors.primaryTeal];
+}
 
 export default function ProgressBar({
   value,
@@ -59,8 +64,11 @@ export default function ProgressBar({
   onFrosted,
   readout = "percent",
   size = "default",
+  color,
   style,
 }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const showPct = readout === "percent";
   const clamped = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
   const pct = Math.round(clamped * 100);
@@ -70,14 +78,14 @@ export default function ProgressBar({
 
   const track = (
     <View
-      style={[styles.track, compact ? styles.trackCompact : styles.trackFull, neuInset("sm"), compact && styles.flex]}
+      style={[styles.track, compact ? styles.trackCompact : styles.trackFull, shadows.neuInset("sm"), compact && styles.flex]}
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: pct }}
       accessibilityLabel={label}
     >
       {clamped > 0 && (
         <LinearGradient
-          colors={FILL[resolvedTone]}
+          colors={fill(colors, resolvedTone, color)}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           // A sliver under ~3% would render as a dot; keep it a visible pill.
@@ -110,7 +118,8 @@ export default function ProgressBar({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1 },
   header: {
     flexDirection: "row",

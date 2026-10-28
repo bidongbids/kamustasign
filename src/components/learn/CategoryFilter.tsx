@@ -1,10 +1,10 @@
 // Student: narrow Words to one part of speech ("Verbs", "Question words").
-// Big tappable pills in a sideways-scrolling row, like ModuleStrip; each says
+// Big tappable pills in a sideways-scrolling row; each says
 // how many of its words are learned, as a count (no percentages for kids).
 import React from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text } from "react-native";
-import { colors, kidTypography, radii } from "../../theme/theme";
-import { neuRaised } from "../../theme/shadows";
+import { kidTypography, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import type { WordCategory } from "../../lib/wordCategories";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
@@ -25,6 +25,8 @@ export default function CategoryFilter({
   total: number;
   accentColor: string;
 }) {
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   if (options.length < 2) return null;
   const pill = (key: WordCategory | null, label: string, meta: string, a11y: string) => {
     const active = value === key;
@@ -37,7 +39,7 @@ export default function CategoryFilter({
         accessibilityState={{ selected: active }}
         style={({ pressed }) => [
           styles.pill,
-          active ? { backgroundColor: accentColor, borderColor: accentColor } : [styles.pillIdle, neuRaised("sm")],
+          active ? { backgroundColor: accentColor, borderColor: accentColor } : [styles.pillIdle, shadows.neuRaised("sm")],
           pressed && styles.pressed,
           webCursor,
         ]}
@@ -57,7 +59,8 @@ export default function CategoryFilter({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   row: { gap: 10, paddingVertical: 4, paddingHorizontal: 2 },
   pill: {
     flexDirection: "row",

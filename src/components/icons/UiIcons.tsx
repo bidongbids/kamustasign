@@ -578,3 +578,11 @@ export function UserIcon({ size = 18, color = "#000000" }: IconProps) {
     </Svg>
   );
 }
+
+export function ChevronRightIcon({ size = 14, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M9 5l7 7-7 7" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}

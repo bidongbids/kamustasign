@@ -6,8 +6,8 @@ import { Platform, StyleSheet, Text, TextInput, View, type StyleProp, type ViewS
 import GlassCard from "../GlassCard";
 import KidButton from "./KidButton";
 import { HandIcon } from "../icons/UiIcons";
-import { colors, fonts, kidTypography, radii } from "../../theme/theme";
-import { neuInset } from "../../theme/shadows";
+import { fonts, kidTypography, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { joinClassWithCode } from "../../lib/queries";
 
 const CODE_LENGTH = 6;
@@ -21,6 +21,8 @@ export default function JoinClassCard({
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export default function JoinClassCard({
   return (
     <GlassCard radius={radii.lg} padding={18} style={style} contentStyle={contentStyle}>
       <View style={styles.head}>
-        <View style={[styles.icon, neuInset("sm")]}>
+        <View style={[styles.icon, shadows.neuInset("sm")]}>
           <HandIcon size={24} color={colors.accentCoral} />
         </View>
         <View style={styles.flex}>
@@ -80,7 +82,8 @@ export default function JoinClassCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   head: { flexDirection: "row", gap: 14, alignItems: "center" },
   icon: {

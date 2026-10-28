@@ -247,7 +247,8 @@ export default function DashboardShell({
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={t.badge ? `${t.label}, ${t.badgeLabel ?? `${t.badge} new`}` : t.label}
-                style={[styles.tab, active && [styles.tabActive, theme.shadows.neuInset("sm")], webCursor]}
+                // Three tabs get the student layout's wider targets (112, handoff H6).
+                style={[styles.tab, tabs!.length <= 3 && styles.tabWide, active && [styles.tabActive, theme.shadows.neuInset("sm")], webCursor]}
               >
                 <View>
                   {t.icon(active ? colors.primaryTealText : color)}
@@ -443,6 +444,7 @@ const makeStyles = (colors: ThemeColors, theme: Theme) => {
       backgroundColor: dark ? "rgba(20,23,30,0.97)" : colors.surface,
     },
     tab: { width: 80, minHeight: 50, alignItems: "center", justifyContent: "center", gap: 3, borderRadius: radii.md },
+    tabWide: { width: 112 },
     tabActive: { backgroundColor: colors.neuWell },
     tabLabel: { fontFamily: fonts.bodySemiBold, fontSize: 12 },
     tabBadge: {

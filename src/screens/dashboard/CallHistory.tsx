@@ -8,6 +8,7 @@ import { DashboardCard, dashboardStyles as ds } from "./DashboardShell";
 import { ActionButton, ConfirmInline } from "./ManageKit";
 import { CheckIcon, PhoneIcon, TrashIcon, VideoIcon } from "../../components/icons/UiIcons";
 import { colors, fonts, spacing } from "../../theme/theme";
+import { useTheme } from "../../theme/ThemeProvider";
 import type { CallNoteRow, MissedCallRow } from "../../lib/queries";
 import type { PresenceStatus } from "../../lib/callSignaling";
 import { signName } from "../../lib/signNames";
@@ -21,6 +22,8 @@ export function presenceLabel(status: PresenceStatus | undefined): string {
  * Online, a diamond for On a call, an outlined ring for Offline.
  */
 export function PresenceDot({ status, withLabel = true, size = 9 }: { status: PresenceStatus | undefined; withLabel?: boolean; size?: number }) {
+  // Themed (classroom theming): the rest of this file follows with the teacher screens.
+  const { colors } = useTheme();
   const text = status === "busy" ? colors.presenceOnCall : status === "available" ? colors.successText : colors.textOnGlass;
   return (
     <View style={styles.presence} accessibilityLabel={presenceLabel(status)}>
@@ -30,7 +33,7 @@ export function PresenceDot({ status, withLabel = true, size = 9 }: { status: Pr
         <View
           style={[
             { width: size, height: size, borderRadius: size / 2 },
-            status === "available" ? { backgroundColor: colors.presenceOnline } : styles.dotOffline,
+            status === "available" ? { backgroundColor: colors.presenceOnline } : [styles.dotOffline, { borderColor: colors.presenceOffline }],
           ]}
         />
       )}
