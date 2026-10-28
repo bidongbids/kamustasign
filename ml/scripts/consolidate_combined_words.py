@@ -54,13 +54,26 @@ Output (float16 to fit ~100k clips in RAM):
     (src: 0 = our clips, 1 = new dataset)
   data/combined_word_classes.json
 
+Extra webcam clips (--webcam-extra, 2026-10-28): the 211 words learned
+from the new dataset have webcam clips on disk (ASL Citizen / WLASL / MS-ASL)
+that were only ever a test set, and they score ~0-25% on them - the gap is
+camera/signer domain, not the word. With this flag, half of every word's
+held-out webcam clips (a fixed half, by hash of the clip id) go into training,
+listed in data/webcam_train_extra.json so word_model_diagnostics.py never
+scores them; the other half stays the webcam test. The YouTube dictionary
+segments that harvest_youtube_signs.py verify kept are added too. Both are
+counted EXTRA_REPEAT times, since a word has a few of them against ~300 phone
+clips. src: 2 = moved webcam clip, 3 = YouTube.
+
 Run with the main venv:
   cd ml
   python scripts/consolidate_combined_words.py
+  python scripts/consolidate_combined_words.py --webcam-extra
 """
 import csv
 import json
 import os
+import sys
 from collections import Counter
 
 import numpy as np
@@ -205,6 +218,42 @@ def match_webcam_aspect(g_X, g_part, ours):
     assert abs(after - target) < 0.05, f"aspect correction off: {after:.2f} vs {target:.2f}"
 
 
+WEBCAM_EXTRA = "--webcam-extra" in sys.argv
+EXTRA_REPEAT = 2
+YOUTUBE_DIR = os.path.join(DATA_DIR, "youtube_signs")
+
+
+def webcam_extra(words, idx):
+    """(X, y, src) of the extra training clips, and writes the moved-clip list."""
+    import hashlib
+    import word_model_diagnostics as wd
+    by_word = {}
+    for vid, i, cached in wd.webcam_clip_files(words):
+        by_word.setdefault(i, []).append((hashlib.md5(vid.encode()).hexdigest(), vid, cached))
+    moved, X, y, src = [], [], [], []
+    for i, clips in by_word.items():
+        clips.sort()
+        for _, vid, cached in clips[:len(clips) // 2]:  # a word with one clip keeps it as a test
+            moved.append(vid)
+            X.append(normalize(np.load(cached)).astype(np.float16))
+            y.append(i)
+            src.append(2)
+    with open(wd.WEBCAM_TRAIN_LIST, "w") as f:
+        json.dump(sorted(moved), f, indent=0)
+    n_web = len(X)
+    verified = os.path.join(YOUTUBE_DIR, "verified.csv")
+    if os.path.exists(verified):
+        with open(verified, newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if r["kept"] == "1" and r["word"] in idx:
+                    X.append(normalize(np.load(os.path.join(YOUTUBE_DIR, "segments", r["file"]))).astype(np.float16))
+                    y.append(idx[r["word"]])
+                    src.append(3)
+    print(f"  extra: {n_web} held-out webcam clips moved to training (list in {os.path.basename(wd.WEBCAM_TRAIN_LIST)}), "
+          f"{len(X) - n_web} YouTube segments, each x{EXTRA_REPEAT}")
+    return X * EXTRA_REPEAT, y * EXTRA_REPEAT, src * EXTRA_REPEAT
+
+
 def main():
     our_vocab = json.load(open(OUR_CLASSES, encoding="utf-8"))
     with open(MANIFEST_CSV, newline="", encoding="utf-8") as f:
@@ -242,6 +291,12 @@ def main():
         y.append(idx[r["word"]])
         src.append(0)
 
+    if WEBCAM_EXTRA:
+        Xe, ye, se = webcam_extra(words, idx)
+        out["train"][0].extend(Xe)
+        out["train"][1].extend(ye)
+        out["train"][2].extend(se)
+
     g_split = np.where(np.isin(g_part, list(TEST_PARTICIPANTS)), "test",
                        np.where(np.isin(g_part, list(VAL_PARTICIPANTS)), "val", "train"))
     g_norm = np.empty((len(g_X), g_X.shape[1], ex.MODEL_FEATURES_PER_FRAME), dtype=np.float16)
@@ -260,7 +315,8 @@ def main():
         arrays[f"X_{s}"] = np.concatenate(X)
         arrays[f"y_{s}"] = np.array(y, dtype=np.int32)
         arrays[f"src_{s}"] = np.array(src, dtype=np.int8)
-        print(f"{s}: {len(y)} clips ({sum(1 for v in src if v == 0)} ours, {sum(1 for v in src if v == 1)} new)")
+        print(f"{s}: {len(y)} clips ({sum(1 for v in src if v == 0)} ours, {sum(1 for v in src if v == 1)} new"
+              f"{f', {sum(1 for v in src if v >= 2)} extra webcam/YouTube' if WEBCAM_EXTRA else ''})")
 
     np.savez(OUTPUT_NPZ, **arrays)
     with open(OUTPUT_CLASSES, "w", encoding="utf-8") as f:

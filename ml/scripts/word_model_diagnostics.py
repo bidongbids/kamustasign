@@ -67,15 +67,19 @@ def load_fsl():
     return d["X"][test], d["y"][test], np.bincount(d["y"][train], minlength=len(classes)), classes, paths
 
 
-def webcam_clips(classes):
-    """(X, y) of the held-out webcam clips for the ASL webcam check."""
-    import extract_word_landmarks as ex
+# Since 2026-10-28 half of each word's held-out webcam clips may be moved into
+# training (consolidate_combined_words.py --webcam-extra); they are listed here
+# and never scored, so the webcam check stays a test of unseen clips.
+WEBCAM_TRAIN_LIST = os.path.join(DATA_DIR, "webcam_train_extra.json")
+
+
+def webcam_clip_files(classes):
+    """[(video_id, class index, cache path)] of every held-out webcam clip on disk."""
     import select_asl_word_references as sel
-    from consolidate_combined_words import trim_to_hand_span
     with open(os.path.join(DATA_DIR, "word_manifest.csv"), newline="", encoding="utf-8") as f:
         used = {r["video_id"] for r in csv.DictReader(f) if r["split"] in ("train", "val")}
     folders = {sel.key(d): d for d in os.listdir(sel.SL_DIR)}
-    X, y = [], []
+    out = []
     for i, w in enumerate(classes):
         names = [w] + [a for a in sel.ALIASES.get(w, []) if a[:-1] == w and a[-1].isdigit()]
         for n in names:
@@ -84,10 +88,23 @@ def webcam_clips(classes):
                 vid = os.path.splitext(f)[0]
                 cached = os.path.join(sel.CACHE_DIR, vid + ".npy")
                 if f.endswith(".mp4") and vid not in used and os.path.exists(cached):
-                    raw = trim_to_hand_span(np.load(cached).astype("float32"))
-                    raw[:, [k * 4 + 3 for k in range(ex.NUM_POSE)]] = 0.0  # as in training
-                    X.append(ex.normalize_sequence(raw))
-                    y.append(i)
+                    out.append((vid, i, cached))
+    return out
+
+
+def webcam_clips(classes, include_moved=False):
+    """(X, y) of the held-out webcam clips for the ASL webcam check."""
+    import extract_word_landmarks as ex
+    from consolidate_combined_words import trim_to_hand_span
+    moved = set() if include_moved or not os.path.exists(WEBCAM_TRAIN_LIST) else set(json.load(open(WEBCAM_TRAIN_LIST)))
+    X, y = [], []
+    for vid, i, cached in webcam_clip_files(classes):
+        if vid in moved:
+            continue
+        raw = trim_to_hand_span(np.load(cached).astype("float32"))
+        raw[:, [k * 4 + 3 for k in range(ex.NUM_POSE)]] = 0.0  # as in training
+        X.append(ex.normalize_sequence(raw))
+        y.append(i)
     return np.array(X, dtype="float32"), np.array(y)
 
 
