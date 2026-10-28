@@ -15,9 +15,19 @@
 // - Everything else (Supabase, translation, other origins, video): untouched.
 //
 // Bump CACHE when the caching rules change; old caches are deleted on activate.
-const CACHE = "kamustasign-v1";
+const CACHE = "kamustasign-v2";
 const IMMUTABLE = [/^\/_expo\/static\//, /^\/assets\//];
-const REVALIDATE = [/^\/model\//, /^\/word-model\//, /^\/fsl-model\//, /^\/mediapipe\//, /^\/icons\//, /^\/reference\/.*\.(jpg|png)$/];
+const REVALIDATE = [
+  /^\/model\//,
+  /^\/number-model\//,
+  /^\/fsl-letter-model\//,
+  /^\/fsl-number-model\//,
+  /^\/word-model\//,
+  /^\/fsl-model\//,
+  /^\/mediapipe\//,
+  /^\/icons\//,
+  /^\/reference\/.*\.(jpg|png)$/,
+];
 
 // Whole files only: 206 (range) responses can't be cached.
 function store(req, res) {

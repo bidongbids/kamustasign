@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
-import { loadAlphabet, type Alphabet } from "../ml/modelLoader";
+import { loadAlphabet, type Alphabet, type SignLanguage } from "../ml/modelLoader";
+import { frameAspect, handshapeInput, type HandshapeInputFormat } from "../ml/handshapeInput";
 import * as tf from "@tensorflow/tfjs";
 import { colors, fonts, spacing, typography } from "../theme/theme";
 import { neuInset, neuRaised } from "../theme/shadows";
@@ -10,7 +11,7 @@ import { useResponsive } from "../theme/responsive";
 import GlassCard from "../components/GlassCard";
 import CameraDevice from "../components/CameraDevice";
 import ConfidenceDial from "../components/ConfidenceDial";
-import HandednessPicker, { useHandedness, mirrorFlatLandmarks } from "../components/HandednessPicker";
+import HandednessPicker, { useHandedness } from "../components/HandednessPicker";
 import HoldDurationControl, { useHoldDuration } from "../components/HoldDurationControl";
 import TranslatorPanel from "../components/TranslatorPanel";
 import { BackspaceIcon, CheckIcon, ClockIcon, EyeIcon, HandIcon, SpeakerIcon } from "../components/icons/UiIcons";
@@ -46,6 +47,8 @@ type Props = {
    *  separate models because several ASL digits share a handshape with a
    *  letter (O/0, F/9, V/2, W/6) - see modelLoader.ts. */
   alphabet?: Alphabet;
+  /** ASL or FSL fingerspelling. Each language has its own letters and numbers models. */
+  language?: SignLanguage;
   /** Classroom practice mode: the sign the student is trying to make. */
   targetSign?: string;
   /**
@@ -83,6 +86,7 @@ export default function LiveTranslatorScreen({
   createHandLandmarker,
   releaseLandmarker,
   alphabet = "letters",
+  language = "asl",
   targetSign,
   onPracticeResult,
   variant = "full",
@@ -99,6 +103,7 @@ export default function LiveTranslatorScreen({
   // without the camera effect needing to re-run when the alphabet changes.
   const modelRef = useRef<any>(null);
   const classesRef = useRef<string[]>([]);
+  const inputFormatRef = useRef<HandshapeInputFormat>("raw");
   const [prediction, setPrediction] = useState("-");
   const [confidence, setConfidence] = useState(0);
   const [status, setStatus] = useState("Starting...");
@@ -188,22 +193,23 @@ export default function LiveTranslatorScreen({
     setPrediction("-");
     setConfidence(0);
 
-    loadAlphabet(alphabet)
-      .then(({ model, classes }) => {
+    loadAlphabet(alphabet, language)
+      .then(({ model, classes, input }) => {
         if (cancelled) return;
         modelRef.current = model;
         classesRef.current = classes;
-        trace(`${alphabet} model ready (${classes.length} classes)`);
+        inputFormatRef.current = input;
+        trace(`${language} ${alphabet} model ready (${classes.length} classes)`);
       })
       .catch((err: any) => {
         if (cancelled) return;
-        setStatus(`ERROR loading ${alphabet} model: ${err?.message ?? err}`);
+        setStatus(`ERROR loading ${language} ${alphabet} model: ${err?.message ?? err}`);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [alphabet]);
+  }, [alphabet, language]);
 
   useEffect(() => {
     if (Platform.OS !== "web") {
@@ -338,16 +344,14 @@ export default function LiveTranslatorScreen({
             drawHandSkeleton(ctx, canvas!, landmarks);
           }
 
-          let flat: number[] = [];
-          for (const lm of landmarks) {
-            flat.push(lm.x, lm.y, lm.z);
-          }
           // Model was trained on right-handed signing - a left hand signing
           // the same letter produces mirrored landmarks (see
           // HandednessPicker.tsx), so undo that mirror before classifying.
-          if (handednessRef.current === "left") {
-            flat = mirrorFlatLandmarks(flat);
-          }
+          const flat = handshapeInput(landmarks, {
+            format: inputFormatRef.current,
+            aspect: frameAspect(video),
+            mirror: handednessRef.current === "left",
+          });
 
           const inputTensor = tf.tensor2d([flat], [1, 63]);
           const outputTensor = modelRef.current.predict(inputTensor);

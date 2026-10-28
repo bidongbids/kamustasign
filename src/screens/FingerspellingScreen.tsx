@@ -8,6 +8,9 @@
 // being spelled, which is what makes the distinction recoverable at all.
 // See modelLoader.ts for the loading side.
 //
+// ASL and FSL each have their own letters and numbers models; the language
+// toggle picks the pair, the same way WordsScreen picks the word model.
+//
 // Switching here does NOT restart the camera: LiveTranslatorScreen keeps its
 // stream and MediaPipe graph and only swaps the classifier behind them.
 
@@ -15,7 +18,12 @@ import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import LiveTranslatorScreen from "./LiveTranslatorScreen";
 import SegmentedToggle from "../components/SegmentedToggle";
-import type { Alphabet } from "../ml/modelLoader";
+import type { Alphabet, SignLanguage } from "../ml/modelLoader";
+
+const LANGUAGES: { key: SignLanguage; label: string }[] = [
+  { key: "asl", label: "ASL" },
+  { key: "fsl", label: "FSL" },
+];
 
 const ALPHABETS: { key: Alphabet; label: string }[] = [
   { key: "letters", label: "Letters" },
@@ -36,10 +44,14 @@ export default function FingerspellingScreen({
   releaseLandmarker,
 }: Props) {
   const [alphabet, setAlphabet] = useState<Alphabet>("letters");
+  const [language, setLanguage] = useState<SignLanguage>("asl");
 
   return (
     <View style={styles.root}>
-      <SegmentedToggle options={ALPHABETS} value={alphabet} onChange={setAlphabet} />
+      <View style={styles.toggles}>
+        <SegmentedToggle options={LANGUAGES} value={language} onChange={setLanguage} />
+        <SegmentedToggle options={ALPHABETS} value={alphabet} onChange={setAlphabet} />
+      </View>
 
       <View style={styles.body}>
         <LiveTranslatorScreen
@@ -48,6 +60,7 @@ export default function FingerspellingScreen({
           createHandLandmarker={createHandLandmarker}
           releaseLandmarker={releaseLandmarker}
           alphabet={alphabet}
+          language={language}
         />
       </View>
     </View>
@@ -58,6 +71,13 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     minHeight: 0,
+  },
+  // As WordsScreen's language + mode toggles.
+  toggles: {
+    flexDirection: "row",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    columnGap: 12,
   },
   body: {
     flex: 1,

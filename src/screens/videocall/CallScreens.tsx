@@ -39,7 +39,7 @@ export function notesText(n: NotesData, selfName: string, peerName: string, isTe
     lines.push("Practised:");
     for (const p of n.practice) {
       lines.push(
-        `  - ${p.sign} (${p.language.toUpperCase()} ${p.group === "words" ? "word" : "letter"}): ${p.passed ? "passed" : "not yet"}${
+        `  - ${p.sign} (${p.language.toUpperCase()} ${p.group === "words" ? "word" : p.group === "numbers" ? "number" : "letter"}): ${p.passed ? "passed" : "not yet"}${
           p.confidence > 0 ? `, best ${pct(p.confidence)}` : ""
         }, ${tries(p.tries)}`
       );
@@ -293,7 +293,7 @@ export function TeacherSummary({
                       {tries(p.tries)}
                     </Text>
                     <Text style={styles.practModel}>
-                      {p.language.toUpperCase()} {p.group === "words" ? "Words" : "Letters"}
+                      {p.language.toUpperCase()} {p.group === "words" ? "Words" : p.group === "numbers" ? "Numbers" : "Letters"}
                     </Text>
                   </View>
                 ))}

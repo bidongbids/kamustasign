@@ -17,7 +17,7 @@ import { MASTERY_PASSES } from "../../lib/curriculum";
 import { callModelScope, summarizePractice } from "../../lib/callPractice";
 import type { CallModelKey, CallSettings, PracticeResult } from "../../lib/callSignaling";
 import { CallPill } from "./CallParts";
-import { MODEL_HINTS, MODEL_NAMES, firstName, pct, tries, type ReadFrom } from "./callUi";
+import { CALL_MODEL_ORDER, MODEL_HINTS, MODEL_NAMES, firstName, pct, tries, type ReadFrom } from "./callUi";
 
 export type ToolsTab = "practice" | "reading";
 
@@ -97,7 +97,7 @@ export default function CallToolsPanel(props: Props) {
 function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk, reading, phone }: Props) {
   const first = firstName(peer.name);
   const scope = callModelScope(modelKey);
-  const letters = scope.group === "letters";
+  const letters = scope.group !== "words"; // letters and numbers: one still handshape each, shown as a grid
   const [search, setSearch] = useState("");
   // Seven letters to a row (design C2): the tiles shrink a little in a narrow drawer.
   const [gridW, setGridW] = useState(0);
@@ -298,12 +298,7 @@ function Earlier({ entries }: { entries: ReturnType<typeof summarizePractice> })
 
 function ReadingTab({ peer, modelKey, onModel, readFrom, onReadFrom, autoSpeak }: Props) {
   const first = firstName(peer.name);
-  const models: { key: CallModelKey | "asl-numbers"; name: string; hint: string; soon?: boolean }[] = [
-    { key: "asl-letters", name: MODEL_NAMES["asl-letters"], hint: MODEL_HINTS["asl-letters"] },
-    { key: "asl-words", name: MODEL_NAMES["asl-words"], hint: MODEL_HINTS["asl-words"] },
-    { key: "fsl-words", name: MODEL_NAMES["fsl-words"], hint: MODEL_HINTS["fsl-words"] },
-    { key: "asl-numbers", name: "ASL Numbers", hint: "Soon · no model yet", soon: true },
-  ];
+  const models = CALL_MODEL_ORDER.map((key) => ({ key, name: MODEL_NAMES[key], hint: MODEL_HINTS[key] }));
   return (
     <View style={styles.section}>
       <Text style={styles.subTitle}>Which signs to read</Text>
@@ -313,12 +308,11 @@ function ReadingTab({ peer, modelKey, onModel, readFrom, onReadFrom, autoSpeak }
           return (
             <Pressable
               key={m.key}
-              disabled={m.soon}
-              onPress={() => !m.soon && onModel(m.key as CallModelKey)}
+              onPress={() => onModel(m.key)}
               accessibilityRole="radio"
-              accessibilityState={{ checked: selected, disabled: !!m.soon }}
+              accessibilityState={{ checked: selected }}
               accessibilityLabel={`${m.name}. ${m.hint}`}
-              style={[styles.radio, selected ? neuRaised("sm") : styles.radioIdle, m.soon && styles.radioSoon]}
+              style={[styles.radio, selected ? neuRaised("sm") : styles.radioIdle]}
             >
               <View style={[styles.radioDot, selected && styles.radioDotOn]}>{selected ? <View style={styles.radioDotInner} /> : null}</View>
               <View style={styles.flex}>
@@ -408,7 +402,6 @@ const styles = StyleSheet.create({
   radioList: { gap: 8 },
   radio: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.neuBase, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
   radioIdle: { backgroundColor: "transparent" },
-  radioSoon: { opacity: 0.55 },
   radioDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.textOnGlass, alignItems: "center", justifyContent: "center" },
   radioDotOn: { borderColor: colors.primaryTealLight },
   radioDotInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primaryTealLight },

@@ -33,8 +33,10 @@ describe("starReference", () => {
     }
   });
 
-  it("is null for groups without a model", () => {
-    expect(starReference("asl", "numbers", "1")).toBeNull();
+  it("has references for the handshape groups added in 2026-10", () => {
+    expect(starReference("asl", "numbers", "0")).not.toBeNull();
+    expect(starReference("fsl", "letters", "A")).not.toBeNull();
+    expect(starReference("fsl", "numbers", "10")).not.toBeNull();
   });
 });
 

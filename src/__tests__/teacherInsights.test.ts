@@ -52,10 +52,15 @@ describe("dates", () => {
   });
 });
 
-const student = (id: string, name: string, letters: number) => ({ id, full_name: name, mastered: { "asl:letters": letters } });
+const student = (id: string, name: string, letters: number, numbers = 0) => ({
+  id,
+  full_name: name,
+  mastered: { "asl:letters": letters, "asl:numbers": numbers },
+});
 
 describe("roster", () => {
-  const students = [student("a", "Ana", 26), student("b", "Ben", 0), student("c", "Cy", 3)];
+  // Ana: every ASL letter and number = 2 of the 6 groups, above the 25% line.
+  const students = [student("a", "Ana", 26, 10), student("b", "Ben", 0), student("c", "Cy", 3)];
   const presence = { a: "available" as const, c: "busy" as const };
 
   it("counts each filter with the same overall figure", () => {
@@ -145,13 +150,13 @@ describe("words", () => {
     expect(nameList(["A", "B", "C", "D", "E"])).toBe("A, B, C and 2 more");
   });
 
-  it("names the groups with no model", () => {
-    expect(soonGroupsText()).toBe("ASL Numbers, FSL Letters and FSL Numbers");
+  it("names no groups once every group has a model", () => {
+    expect(soonGroupsText()).toBe("");
   });
 
   it("averages each available group over the plan", () => {
     const avg = classGroupAverages([{ mastered: { "asl:letters": 13 } }, { mastered: {} }], {});
     expect(avg.find((g) => g.key === "asl:letters")?.value).toBeCloseTo(0.25);
-    expect(avg.map((g) => g.key)).not.toContain("asl:numbers");
+    expect(avg.map((g) => g.key)).toEqual(["asl:letters", "asl:numbers", "asl:words", "fsl:letters", "fsl:numbers", "fsl:words"]);
   });
 });

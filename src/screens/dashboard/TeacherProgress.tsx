@@ -263,7 +263,7 @@ export default function TeacherProgress(props: Props) {
                 <Text style={styles.groupPct}>{Math.round(g.value * 100)}%</Text>
               </View>
             ))}
-            <Text style={[styles.muted, styles.mt]}>{soonGroupsText()}: soon.</Text>
+            {soonGroupsText() ? <Text style={[styles.muted, styles.mt]}>{soonGroupsText()}: soon.</Text> : null}
           </View>
         </View>
       </View>

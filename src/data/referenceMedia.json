@@ -155,6 +155,66 @@
     "credit": "asl-alphabet",
     "source": "Z/Z1890.jpg"
   },
+  "asl/numbers/0": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/0.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/O/P10_O_993.jpg"
+  },
+  "asl/numbers/1": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/1.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/1/P10_1_972.jpg"
+  },
+  "asl/numbers/2": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/2.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/2/P10_2_984.jpg"
+  },
+  "asl/numbers/3": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/3.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/3/P10_3_972.jpg"
+  },
+  "asl/numbers/4": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/4.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/4/P10_4_924.jpg"
+  },
+  "asl/numbers/5": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/5.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/5/P10_5_1000.jpg"
+  },
+  "asl/numbers/6": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/6.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/6/P10_6_971.jpg"
+  },
+  "asl/numbers/7": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/7.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/7/P10_7_1000.jpg"
+  },
+  "asl/numbers/8": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/8.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/8/P10_8_972.jpg"
+  },
+  "asl/numbers/9": {
+    "type": "image",
+    "uri": "/reference/asl-numbers/9.jpg",
+    "credit": "asl-hg",
+    "source": "asl_hg/asl_dataset/9/P10_9_972.jpg"
+  },
   "asl/words/TV": {
     "type": "video",
     "uri": "/reference/asl-words/tv.mp4",
@@ -2122,6 +2182,222 @@
     "uri": "/reference/asl-words/zipper.mp4",
     "credit": "asl-citizen",
     "source": "zipper/citizen_0980294359113636-ZIPPER.mp4"
+  },
+  "fsl/letters/A": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/A.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/A/Image_1667018666.8806608.jpg"
+  },
+  "fsl/letters/B": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/B.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/B/285.jpg"
+  },
+  "fsl/letters/C": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/C.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/C/Image_1667018774.4610693.jpg"
+  },
+  "fsl/letters/D": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/D.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/D/Image_1667034384.9833322.jpg"
+  },
+  "fsl/letters/E": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/E.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/E/E_1 (2).jpg"
+  },
+  "fsl/letters/F": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/F.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/F/F_125 (2).jpg"
+  },
+  "fsl/letters/G": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/G.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/G/G_27 (2).jpg"
+  },
+  "fsl/letters/H": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/H.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/H/H_95 (2).jpg"
+  },
+  "fsl/letters/I": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/I.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/I/I_97 (2).jpg"
+  },
+  "fsl/letters/J": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/J.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/J/J_20.jpg"
+  },
+  "fsl/letters/K": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/K.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/K/K152.jpg"
+  },
+  "fsl/letters/L": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/L.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/L/2155.jpg"
+  },
+  "fsl/letters/M": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/M.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/M/M_4.jpg"
+  },
+  "fsl/letters/N": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/N.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/N/N_54.jpg"
+  },
+  "fsl/letters/O": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/O.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/O/O_82.jpg"
+  },
+  "fsl/letters/P": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/P.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/P/Image_1667019433.6996953.jpg"
+  },
+  "fsl/letters/Q": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/Q.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/Q/Q_24 (3).jpg"
+  },
+  "fsl/letters/R": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/R.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/R/3596.jpg"
+  },
+  "fsl/letters/S": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/S.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/S/S_117.jpg"
+  },
+  "fsl/letters/T": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/T.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/T/T_1 - Copy.jpg"
+  },
+  "fsl/letters/U": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/U.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/U/4381.jpg"
+  },
+  "fsl/letters/V": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/V.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/V/Image_1667019586.4791164.jpg"
+  },
+  "fsl/letters/W": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/W.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/W/Image_1667019794.9634788.jpg"
+  },
+  "fsl/letters/X": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/X.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/X/Image_1667019834.1833298.jpg"
+  },
+  "fsl/letters/Y": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/Y.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/Y/Image_1667019862.0213187.jpg"
+  },
+  "fsl/letters/Z": {
+    "type": "image",
+    "uri": "/reference/fsl-letters/Z.jpg",
+    "credit": "fsl-alphabet",
+    "source": "new_fsl_dataset/Kaggle japortonfsl-dataset/Collated/Z/Z_125.jpg"
+  },
+  "fsl/numbers/1": {
+    "type": "video",
+    "uri": "/reference/fsl-words/20.mp4",
+    "credit": "fsl-105",
+    "source": "clips/20/15.MOV"
+  },
+  "fsl/numbers/10": {
+    "type": "video",
+    "uri": "/reference/fsl-words/29.mp4",
+    "credit": "fsl-105",
+    "source": "clips/29/15.MOV"
+  },
+  "fsl/numbers/2": {
+    "type": "video",
+    "uri": "/reference/fsl-words/21.mp4",
+    "credit": "fsl-105",
+    "source": "clips/21/15.MOV"
+  },
+  "fsl/numbers/3": {
+    "type": "video",
+    "uri": "/reference/fsl-words/22.mp4",
+    "credit": "fsl-105",
+    "source": "clips/22/15.MOV"
+  },
+  "fsl/numbers/4": {
+    "type": "video",
+    "uri": "/reference/fsl-words/23.mp4",
+    "credit": "fsl-105",
+    "source": "clips/23/15.MOV"
+  },
+  "fsl/numbers/5": {
+    "type": "video",
+    "uri": "/reference/fsl-words/24.mp4",
+    "credit": "fsl-105",
+    "source": "clips/24/15.MOV"
+  },
+  "fsl/numbers/6": {
+    "type": "video",
+    "uri": "/reference/fsl-words/25.mp4",
+    "credit": "fsl-105",
+    "source": "clips/25/15.MOV"
+  },
+  "fsl/numbers/7": {
+    "type": "video",
+    "uri": "/reference/fsl-words/26.mp4",
+    "credit": "fsl-105",
+    "source": "clips/26/16.MOV"
+  },
+  "fsl/numbers/8": {
+    "type": "video",
+    "uri": "/reference/fsl-words/27.mp4",
+    "credit": "fsl-105",
+    "source": "clips/27/16.MOV"
+  },
+  "fsl/numbers/9": {
+    "type": "video",
+    "uri": "/reference/fsl-words/28.mp4",
+    "credit": "fsl-105",
+    "source": "clips/28/15.MOV"
   },
   "fsl/words/april": {
     "type": "video",

@@ -67,12 +67,18 @@ describe("mastery", () => {
     expect(groupFraction("asl", "letters", {})).toBe(0);
   });
 
-  it("computeOverall averages available groups equally and skips unavailable ones", () => {
+  it("computeOverall averages available groups equally", () => {
     const letters = getGroup("asl", "letters").signs.length;
     const available = CURRICULUM.flatMap((l) => l.groups).filter((g) => g.available).length;
-    // All ASL letters mastered, nothing else; unavailable ASL numbers must not count.
-    const overall = computeOverall({ "asl:letters": letters, "asl:numbers": 10 });
+    expect(available).toBe(6);
+    const overall = computeOverall({ "asl:letters": letters });
     expect(overall).toBeCloseTo(1 / available, 10);
+  });
+
+  it("FSL numbers are 1-10 (FSL-105 has no zero) and ASL numbers 0-9", () => {
+    expect(getGroup("fsl", "numbers").signs).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
+    expect(getGroup("asl", "numbers").signs).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+    expect(getGroup("fsl", "letters").signs).toHaveLength(26);
   });
 
   it("reaches 100% when every available group is complete", () => {
@@ -150,7 +156,9 @@ describe("class learning plan", () => {
     for (const l of CURRICULUM) for (const g of l.groups) counts[groupKey(l.language, g.group)] = g.signs.length;
     expect(computeOverall(counts, { fsl: [] })).toBeCloseTo(1, 10);
     const withoutFsl = computeOverall({ [groupKey("asl", "letters")]: getGroup("asl", "letters").signs.length }, { fsl: [] });
-    expect(withoutFsl).toBeCloseTo(1 / 2, 10); // ASL letters done, ASL words not; FSL words not counted
+    // ASL letters done; ASL numbers, ASL words, FSL letters, FSL numbers not. The
+    // plan only picks words, so FSL letters and numbers still count.
+    expect(withoutFsl).toBeCloseTo(1 / 5, 10);
   });
 });
 

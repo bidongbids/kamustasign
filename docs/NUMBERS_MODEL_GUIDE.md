@@ -1,5 +1,12 @@
 # Training the numbers model from ASL-HG
 
+> **Done (2026-10-28), differently from this plan.** The ASL numbers, FSL
+> letters and FSL numbers models are built by
+> `ml/scripts/extract_handshape_landmarks.py` + `ml/scripts/train_handshape_classifier.py`,
+> which normalise the hand inside the model graph (the "bigger win" below) and
+> train 0 on ASL-HG's O photos because its "0" is two-handed. Results:
+> docs/EVALUATION.md section 3b. The rest of this guide is the original plan.
+
 A separate fingerspelling model for the digits 0–9, to sit alongside the
 existing letters model behind the Letters/Numbers toggle.
 

@@ -327,7 +327,7 @@ function WhereCard({ groups, compact }: { groups: Props["groups"]; compact?: boo
           </View>
         ))}
       </View>
-      {!compact ? <Text style={[styles.empty, styles.mt]}>{soonGroupsText()}: soon. No model yet.</Text> : null}
+      {!compact && soonGroupsText() ? <Text style={[styles.empty, styles.mt]}>{soonGroupsText()}: soon. No model yet.</Text> : null}
     </View>
   );
 }

@@ -19,7 +19,7 @@ import { computeOverall, getGroup, groupKey, planSigns, type ClassPlan, type Sig
 import { moduleSigns, type CallNoteRow, type ClassRow, type ModuleRow, type ProgressEmbed, type StudentProgressSummary } from "../../lib/queries";
 import { starReference, starsText } from "../../lib/starReference";
 import { starsFor, tileStatus, type ProgressLike } from "../../lib/practiceFlow";
-import { availableGroups, dueInfo, firstNameOf } from "../../lib/teacherInsights";
+import { availableGroups, dueInfo, firstNameOf, soonGroupsText } from "../../lib/teacherInsights";
 import type { PresenceStatus } from "../../lib/callSignaling";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
@@ -100,7 +100,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
 
   const groupLine = [
     ...groups.map((g) => `${g.label} ${student.mastered[groupKey(g.language, g.group)] ?? 0}/${planSigns(g.language, g.group, plan).length}`),
-    "Numbers: soon",
+    ...(soonGroupsText() ? [`${soonGroupsText()}: soon`] : []),
   ].join(" · ");
 
   // ---- tiles for the chosen group ----
@@ -281,7 +281,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
               </View>
             );
           })}
-          <Text style={styles.caption}>Numbers and FSL Letters: soon</Text>
+          {soonGroupsText() ? <Text style={styles.caption}>{soonGroupsText()}: soon</Text> : null}
         </View>
         {modulesBlock}
         <Pressable

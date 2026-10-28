@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 import * as tf from "@tensorflow/tfjs";
 import { bundleResourceIO } from "@tensorflow/tfjs-react-native";
+import type { HandshapeInputFormat } from "./handshapeInput";
 
 // Fingerspelling has two alphabets, and they need SEPARATE models rather than
 // one 38-class model. Several ASL digits are the same handshape as a letter -
@@ -13,41 +14,49 @@ import { bundleResourceIO } from "@tensorflow/tfjs-react-native";
 
 export type Alphabet = "letters" | "numbers";
 
-type LoadedAlphabet = { model: any; classes: string[] };
+type LoadedAlphabet = { model: any; classes: string[]; input: HandshapeInputFormat };
 
-const alphabetCache: Partial<Record<Alphabet, LoadedAlphabet>> = {};
+const alphabetCache: Partial<Record<string, LoadedAlphabet>> = {};
 
-const WEB_MODEL_DIR: Record<Alphabet, string> = {
-  letters: "/model",
-  numbers: "/number-model",
+// All four web models come from ml/scripts/train_handshape_classifier.py
+// and say in meta.json that they take the "aspect" input (handshapeInput.ts).
+// A folder without meta.json gets "raw", the input of the ASL letters model
+// before 2026-10-28 - still the one bundled for native in assets/model.
+const WEB_MODEL_DIR: Record<SignLanguage, Record<Alphabet, string>> = {
+  asl: { letters: "/model", numbers: "/number-model" },
+  fsl: { letters: "/fsl-letter-model", numbers: "/fsl-number-model" },
 };
 
-export async function loadAlphabet(alphabet: Alphabet = "letters"): Promise<LoadedAlphabet> {
-  const cached = alphabetCache[alphabet];
+export async function loadAlphabet(alphabet: Alphabet = "letters", language: SignLanguage = "asl"): Promise<LoadedAlphabet> {
+  const key = `${language}-${alphabet}`;
+  const cached = alphabetCache[key];
   if (cached) return cached;
   await tf.ready();
 
   let loaded: LoadedAlphabet;
 
   if (Platform.OS === "web") {
-    const dir = WEB_MODEL_DIR[alphabet];
-    const model = await tf.loadGraphModel(`${dir}/model.json`);
-    const res = await fetch(`${dir}/label_classes.json`);
+    const dir = WEB_MODEL_DIR[language][alphabet];
+    const [model, res, meta] = await Promise.all([
+      tf.loadGraphModel(`${dir}/model.json`),
+      fetch(`${dir}/label_classes.json`),
+      fetch(`${dir}/meta.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
     if (!res.ok) {
       throw new Error(
-        `Could not load ${dir}/label_classes.json - is the ${alphabet} model ` +
+        `Could not load ${dir}/label_classes.json - is the ${language} ${alphabet} model ` +
           `deployed under public${dir}/?`
       );
     }
-    loaded = { model, classes: await res.json() };
+    loaded = { model, classes: await res.json(), input: meta?.input === "aspect" ? "aspect" : "raw" };
   } else {
-    // require() paths must be static for the native bundler, so the numbers
-    // model cannot be referenced until its assets actually exist. Add
-    // assets/number-model/ and a matching branch here to enable it on native.
-    if (alphabet !== "letters") {
+    // require() paths must be static for the native bundler, so only the ASL
+    // letters model is bundled for native. Add the others' files under
+    // assets/ and a matching branch here to enable them there.
+    if (alphabet !== "letters" || language !== "asl") {
       throw new Error(
-        `The "${alphabet}" model is not bundled for native yet. Add its files under ` +
-          `assets/number-model/ and mirror the letters require() calls in modelLoader.ts.`
+        `The ${language} ${alphabet} model is not bundled for native yet. Add its files under ` +
+          `assets/ and mirror the letters require() calls in modelLoader.ts.`
       );
     }
     const modelJson = require("../../assets/model/model.json");
@@ -56,19 +65,20 @@ export async function loadAlphabet(alphabet: Alphabet = "letters"): Promise<Load
     loaded = {
       model: await tf.loadGraphModel(bundleResourceIO(modelJson, modelWeights)),
       classes,
+      input: "raw",
     };
   }
 
-  alphabetCache[alphabet] = loaded;
+  alphabetCache[key] = loaded;
   return loaded;
 }
 
 export function getLabelForIndex(index: number) {
-  return alphabetCache.letters?.classes?.[index] ?? "?";
+  return alphabetCache["asl-letters"]?.classes?.[index] ?? "?";
 }
 
 export function getLabelCount() {
-  return alphabetCache.letters?.classes?.length ?? 0;
+  return alphabetCache["asl-letters"]?.classes?.length ?? 0;
 }
 
 // --- Word-level sequence model (fused ensemble) ---------------------------

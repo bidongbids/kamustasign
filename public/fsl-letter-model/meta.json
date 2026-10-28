@@ -1,0 +1,4 @@
+{
+  "input": "aspect",
+  "note": "x and z times the frame width/height; see src/ml/handshapeInput.ts and ml/scripts/train_handshape_classifier.py"
+}

@@ -4,20 +4,32 @@ import { colors } from "../../theme/theme";
 import type { CallModel, ReaderPhase } from "../../hooks/useCallSignReader";
 import type { CallModelKey, CallSettings } from "../../lib/callSignaling";
 
+/** The Reading tab's order: ASL first, then FSL; letters, numbers, words. */
+export const CALL_MODEL_ORDER: CallModelKey[] = ["asl-letters", "asl-numbers", "asl-words", "fsl-letters", "fsl-numbers", "fsl-words"];
+
 export const MODELS: Record<CallModelKey, CallModel> = {
-  "asl-letters": { kind: "letters" },
+  "asl-letters": { kind: "letters", language: "asl" },
+  "asl-numbers": { kind: "numbers", language: "asl" },
   "asl-words": { kind: "words", language: "asl" },
+  "fsl-letters": { kind: "letters", language: "fsl" },
+  "fsl-numbers": { kind: "numbers", language: "fsl" },
   "fsl-words": { kind: "words", language: "fsl" },
 };
 export const MODEL_NAMES: Record<CallModelKey, string> = {
   "asl-letters": "ASL Letters",
+  "asl-numbers": "ASL Numbers",
   "asl-words": "ASL Words",
+  "fsl-letters": "FSL Letters",
+  "fsl-numbers": "FSL Numbers",
   "fsl-words": "FSL Words",
 };
 /** One-line explanations for the Reading tab's model list. */
 export const MODEL_HINTS: Record<CallModelKey, string> = {
   "asl-letters": "Fingerspelling, one letter at a time",
+  "asl-numbers": "Digits 0-9, one at a time",
   "asl-words": "Whole signs, pause between them",
+  "fsl-letters": "Filipino fingerspelling, one letter at a time",
+  "fsl-numbers": "Filipino numbers 1-10, one at a time",
   "fsl-words": "Filipino Sign Language words",
 };
 

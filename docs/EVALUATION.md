@@ -1,16 +1,21 @@
 # LCSign — model evaluation
 
-All figures are for the models **deployed in `public/`** (as of 2026-10-21),
+All figures are for the models **deployed in `public/`** (as of 2026-10-21; numbers and FSL letters 2026-10-28),
 produced by the scripts named in each section. Re-run them after any retrain;
 numbers here go stale otherwise.
 
 | Model | Classes | Main test | Top-1 | Top-5 |
 |---|---|---|---|---|
-| ASL letters (1 model) | 26 + del/space | Held-out photos, same dataset | 97.6% | 99.5% (top-3) |
-| ASL letters | | **10 other signers** (5,197 photos) | **71.5%** | 82.8% (top-3) |
+| ASL letters (since 2026-10-28) | 26 + del/space | **ASL-HG signers held out**, 2 per fold (25,983 photos) | **93.9%** | 100% (top-3) |
+| ASL letters | | **105 WLASL webcam clips** of 21 letters | **64.8%** per clip | 56.0% per frame |
+| *ASL letters before 2026-10-28* | | *10 ASL-HG signers / the same WLASL clips* | *71.5% / 34.3% per clip* | |
 | ASL words (4-seed ensemble) | 344 | Test split + 2 held-out GISLR signers (9,579 clips) | 58.6% | 82.7% |
 | ASL words | | **Held-out webcam clips** (3,113) | **31.5%** | 53.4% |
 | FSL-105 words (4-seed ensemble) | 105 | **Signer D, never seen in training** (534 clips) | **75.3%** | 94.9% |
+| ASL numbers (2026-10-28) | 0–9 | **Webcam clips of ASL Citizen / WLASL / MS-ASL signers** (338 clips) | **97.9%** per clip | 83.1% per frame |
+| ASL numbers | | ASL-HG, 2 signers held out per fold (10,000 photos) | 100% | |
+| FSL numbers (2026-10-28) | 1–10 | **FSL-105, one signer held out per fold** (202 clips) | **97.0%** per clip | 90.6% per frame |
+| FSL letters (2026-10-28) | 26 | Held-out photos, same dataset (10,765) | 98.9% | 99.6% (top-3) |
 
 The bold rows are the ones to quote: they test people and cameras the model
 never saw, which is how the app is actually used. Same-distribution test
@@ -18,6 +23,34 @@ accuracy (97.6% letters, 98.1% FSL "provided" split) mostly measures how well
 the model memorises the training signers.
 
 ## 1. ASL letters
+
+**Replaced 2026-10-28.** The model below (the original) was swapped for one
+from `ml/scripts/train_handshape_classifier.py asl-letters`: the same
+in-graph hand normalisation as the numbers models (section 3b), trained on
+1,000 ASL Alphabet photos per class **plus** ASL-HG's A–Z from the other
+signers. Measured on things neither model trained on:
+
+| Test | Old model | New model |
+|---|---|---|
+| ASL-HG, 2 signers held out per fold (new model) / all 10 (old) | 71.5% | **93.9%** (folds 92.1–95.8%) |
+| 105 WLASL webcam clips of 21 letters, per clip | 34.3% | **64.8%** |
+| … reaching the 80% pass on the right letter at least once | 18.1% | **70.5%** |
+
+How much is the normalisation and how much the extra signers: trained on the
+ASL Alphabet photos only, the new features score 75.3% on the 10 ASL-HG
+signers (old 71.5%). Most of the gain is the extra people. The single
+ASL Alphabet signer makes N, T and D in a way new people don't (0–10% for
+them before ASL-HG was added).
+
+Still weak on webcam clips: **G, H, P, Q** (0 of 5 each, for both models:
+sideways and downward handshapes), **J** (moves). On held-out ASL-HG
+signers: J 72% (as I), N 78% (as M), I 80%, Z 83%. Per-letter figures:
+`models/diagnostics/asl-letters_per_sign.csv`. The star reference for ASL
+letters now comes from that file.
+
+The rest of this section describes the original model, kept for the record.
+`letter_model_diagnostics.py` still scores that one
+(`models/asl_landmark_classifier.keras`, raw input).
 
 `ml/scripts/letter_model_diagnostics.py` → `ml/models/diagnostics/letters_summary.json`, `letters_per_class.csv`
 
@@ -90,6 +123,47 @@ gives 98.1%. That is the number *not* to quote.
 Most-confused: good evening→good afternoon, two→one, wednesday→six,
 friday→nine, pink→red, october→september. Several FSL day names are built on
 number handshapes.
+
+## 3b. ASL numbers, FSL letters and FSL numbers (2026-10-28)
+
+`ml/scripts/train_handshape_classifier.py <model>` → `ml/models/diagnostics/<model>_summary.json`, `<model>_per_sign.csv`.
+Landmarks: `ml/scripts/extract_handshape_landmarks.py` (MediaPipe hand landmarker on every photo, or on every 2nd frame of the middle 60% of a clip).
+
+These three groups said "soon" until now. They are still-handshape models like
+ASL letters, with one difference that matters: the letters model reads raw
+MediaPipe coordinates (fractions of the frame), so it is partly learning *where
+in the frame* the hand is. These models are fed x and z scaled by the frame's
+width/height and, inside the graph, centre the hand on its wrist, divide by the
+palm's size and add all 210 point-to-point distances. Training adds small
+rotations, aspect stretches and jitter. The app side is `src/ml/handshapeInput.ts`;
+each model folder's `meta.json` says which input it takes.
+
+| Model | Data | Test | Top-1 | Pass rate* |
+|---|---|---|---|---|
+| ASL numbers | ASL-HG digits, 10 signers (CC BY 4.0) | 5-fold, 2 signers held out | 100% | 100% |
+| ASL numbers (deployed, trained on all 10) | | **338 webcam clips** of ZERO…NINE (ASL Citizen / WLASL / MS-ASL), never used for training | **97.9%** of clips (83.1% of frames) | 99.7% of clips reach 80% on the right digit |
+| FSL numbers | FSL-105 ONE…TEN clips, 4 signers | leave one signer out (A 92.8%, B 84.2%, C 91.1%, D 93.4%) | 90.6% of frames, **97.0% of clips** | 84.6% of frames |
+| FSL letters | FSL Dataset (J. G. Porton, CC0), 450 photos per letter | 5-fold over original photos | 98.9% | 98.5% |
+
+* right **and** at least 80% confident (PASS_CONFIDENCE).
+
+- **ASL 0.** ASL-HG's "0" is an O handshape held against the other palm; the
+  app tracks one hand, so 0 is trained on ASL-HG's "O" photos (ASL's 0 is the
+  O handshape). On the webcam clips ZERO scores 100%.
+- **ASL numbers' weakest** on webcam clips: 6 (89%, read as 3/4/5) and 8 (92%, as 5).
+- **FSL numbers' weakest:** 7 (72% of frames, read as 4), 4 (as 5). There is no
+  FSL zero in FSL-105, so the group is 1–10. TEN moves; a still frame sees its handshape.
+- **FSL letters: read the 98.9% with care.** The dataset has no signer ids, so
+  the same people are on both sides of the split (an original photo and its
+  Roboflow copies are kept together). As a check on new people, the model was
+  run on ASL-HG's A–Z photos (10 signers it never saw). ASL and FSL share most
+  fingerspelling handshapes: B F I L O Q U V W Z agree 100%, Y 96%, A 91%,
+  N 90%, C 78%. G H J K P T never agree. That fits those letters being made
+  differently in FSL, but can't separate that from model error; FSL photos of
+  other people are what's missing.
+- **In the app:** with a fake camera playing an ASL Citizen SEVEN clip, an
+  FSL-105 THREE clip and an FSL L photo, the translator read 7, 3 and L
+  (production build, headless Chrome).
 
 ## 4. Out-of-vocabulary rejection
 

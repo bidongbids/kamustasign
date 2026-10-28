@@ -22,6 +22,26 @@ FSL words  (public/reference/fsl-words/*.mp4)
   cropped to 4:3, re-encoded to H.264 at 30 fps, audio removed.
   File names are the dataset's class folder numbers.
 
+ASL numbers  (public/reference/asl-numbers/*.jpg)
+  "ASL-HG: American Sign Language Hand Gesture Image Dataset" by Md. Famidul
+  Islam Pranto, Md. Rifatul Islam, Md. Ali Akbor, Nabonita Ghosh, Md. Rahatun
+  Alam, Sudipto Chaki and Md Masudul Islam (2025). Mendeley Data, V1.
+  https://data.mendeley.com/datasets/j4y5w2c8w9/1
+  License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+  Changes: one photo per digit, all from signer P10, picked by
+  ml/scripts/export_handshape_references.py. "0" is the dataset's "O" photo
+  (ASL's 0 is the O handshape; the dataset's own "0" is two-handed).
+
+FSL letters  (public/reference/fsl-letters/*.jpg)
+  "FSL Dataset" by John Gabriel Porton (2023), Kaggle.
+  https://www.kaggle.com/datasets/japorton/fsl-dataset
+  License: CC0 1.0 (public domain dedication)
+  Changes: one photo per letter picked by export_handshape_references.py;
+  small photos scaled up to 300 px.
+
+FSL numbers
+  The FSL-105 clip of each number word (see "FSL words" above); no new files.
+
 ASL words  (public/reference/asl-words/*.mp4)
   One clip per word, from:
   - "ASL Citizen" by Desai, Berger, Minakov et al., Microsoft Research (2023).

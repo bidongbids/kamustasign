@@ -219,7 +219,7 @@ export default function TeacherStudents(props: Props) {
           onChange={onFilter}
         />
         <View style={styles.flex} />
-        <Text style={styles.soon}>Numbers and FSL Letters: soon</Text>
+        {soonGroupsText() ? <Text style={styles.soon}>{soonGroupsText()}: soon</Text> : null}
       </View>
 
       <View style={[styles.card, styles.tableCard]}>

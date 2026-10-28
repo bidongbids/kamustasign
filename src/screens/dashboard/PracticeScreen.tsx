@@ -339,6 +339,7 @@ export default function PracticeScreen({
       createHandLandmarker={createHandLandmarker}
       releaseLandmarker={releaseLandmarker}
       alphabet={group === "numbers" ? "numbers" : "letters"}
+      language={language}
       targetSign={sign}
       onPracticeResult={handleLiveResult}
       onHoldProgress={setHold}

@@ -23,7 +23,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export type CallPeer = { id: string; name: string };
 
-export type CallModelKey = "asl-letters" | "asl-words" | "fsl-words";
+export type CallModelKey = "asl-letters" | "asl-numbers" | "asl-words" | "fsl-letters" | "fsl-numbers" | "fsl-words";
 
 // What the teacher has chosen for the call. The teacher is the only side
 // that can change it; the student's screen follows. `read` names whose

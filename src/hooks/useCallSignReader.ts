@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import * as tf from "@tensorflow/tfjs";
-import { loadAlphabet, loadWordModels, type SignLanguage } from "../ml/modelLoader";
+import { loadAlphabet, loadWordModels, type Alphabet, type SignLanguage } from "../ml/modelLoader";
 import {
   landmarksToVector,
   normalizeSequence,
@@ -31,12 +31,12 @@ import {
   SEQUENCE_LENGTH,
 } from "../ml/wordLandmarks";
 import { SignSegmenter } from "../ml/signSegmenter";
-import { mirrorFlatLandmarks } from "../components/HandednessPicker";
+import { frameAspect, handshapeInput } from "../ml/handshapeInput";
 import { loadTasksVision, getVisionFileset } from "../lib/mediapipeVision";
 import { UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
 import { createFrameGate } from "./useFpsMeter";
 
-export type CallModel = { kind: "letters" } | { kind: "words"; language: SignLanguage };
+export type CallModel = { kind: "letters" | "numbers" | "words"; language: SignLanguage };
 
 /** One reading. `confidence` is 0-1; a words `label` is null for the unknown-sign class. */
 export type SignReading =
@@ -71,7 +71,7 @@ export function useCallSignReader(
   onReadingRef.current = options.onReading;
   const lastCommittedRef = useRef("");
 
-  const modelKey = model.kind === "words" ? `words:${model.language}` : model.kind;
+  const modelKey = `${model.kind}:${model.language}`;
 
   useEffect(() => {
     if (!active || Platform.OS !== "web") {
@@ -98,8 +98,8 @@ export function useCallSignReader(
       setLastAdded({ token, at: Date.now() });
     };
 
-    async function runLetters() {
-      const [{ model: clf, classes }, mp] = await Promise.all([loadAlphabet("letters"), loadTasksVision()]);
+    async function runLetters(alphabet: Alphabet, language: SignLanguage) {
+      const [{ model: clf, classes, input: format }, mp] = await Promise.all([loadAlphabet(alphabet, language), loadTasksVision()]);
       const fileset = await getVisionFileset();
       const lm = await mp.HandLandmarker.createFromOptions(fileset, {
         baseOptions: { modelAssetPath: "/mediapipe/hand_landmarker.task" },
@@ -120,9 +120,7 @@ export function useCallSignReader(
           const now = performance.now();
           const result = lm.detectForVideo(video, now);
           if (result.landmarks?.length) {
-            let flat: number[] = [];
-            for (const p of result.landmarks[0]) flat.push(p.x, p.y, p.z);
-            if (mirrorRef.current) flat = mirrorFlatLandmarks(flat);
+            const flat = handshapeInput(result.landmarks[0], { format, aspect: frameAspect(video), mirror: mirrorRef.current });
             busy = true;
             const input = tf.tensor2d([flat], [1, 63]);
             const out = clf.predict(input) as tf.Tensor;
@@ -246,7 +244,7 @@ export function useCallSignReader(
       loop();
     }
 
-    (model.kind === "words" ? runWords(model.language) : runLetters()).catch(() => {
+    (model.kind === "words" ? runWords(model.language) : runLetters(model.kind, model.language)).catch(() => {
       // Best-effort during a call: a failed load means no captions for this
       // feed, never a dropped call.
       if (!stopped) setPhase("error");

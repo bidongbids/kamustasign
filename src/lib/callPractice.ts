@@ -11,9 +11,8 @@ import type { CallPracticeEntry } from "./queries";
 import type { SignReading } from "../hooks/useCallSignReader";
 
 export function callModelScope(key: CallModelKey): { language: SignLanguage; group: SignGroup } {
-  return key === "asl-letters"
-    ? { language: "asl", group: "letters" }
-    : { language: key === "fsl-words" ? "fsl" : "asl", group: "words" };
+  const [language, group] = key.split("-") as [SignLanguage, SignGroup];
+  return { language, group };
 }
 
 /** The signs a teacher can ask for with this model: the class plan's words, or every letter. */
