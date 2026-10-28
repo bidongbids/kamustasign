@@ -77,6 +77,7 @@ import {
 } from "../../lib/curriculum";
 import { nextPracticeSign, starsFor } from "../../lib/practiceFlow";
 import { starReference } from "../../lib/starReference";
+import { signName } from "../../lib/signNames";
 import { useVideoCall } from "../../hooks/useVideoCall";
 import VideoCallScreen from "../videocall/VideoCallScreen";
 import { MissedCallsCard, PresenceDot } from "./CallHistory";
@@ -461,7 +462,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
         <View style={styles.grid} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {groupDef.signs.map((sign) => (
             <View key={sign} style={styles.ghostTile}>
-              <Text style={styles.ghostText}>{sign}</Text>
+              <Text style={styles.ghostText}>{signName(language, sign)}</Text>
             </View>
           ))}
         </View>

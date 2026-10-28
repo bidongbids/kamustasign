@@ -19,6 +19,7 @@ import { colors, fonts, radii } from "../../theme/theme";
 import { neuRaised } from "../../theme/shadows";
 import { computeOverall, getGroup, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { signsToReview, type SignInsight } from "../../lib/classInsights";
+import { signName } from "../../lib/signNames";
 import { shareLearned, signGrid, soonGroupsText, type Cell, type classGroupAverages } from "../../lib/teacherInsights";
 import type { ProgressEmbed, StudentProgressSummary } from "../../lib/queries";
 
@@ -90,6 +91,7 @@ export default function TeacherProgress(props: Props) {
         <ReviewSignRow
           key={s.sign}
           insight={s}
+          name={signName(language, s.sign)}
           classSize={students.length}
           first={i === 0}
           phone={phone}
@@ -229,7 +231,7 @@ export default function TeacherProgress(props: Props) {
                     {signs.map((s) => (
                       <View key={s} style={[styles.labelCell, { width: pitch }, words && styles.labelCellWords]}>
                         <Text style={[styles.label, words && styles.labelWord]} numberOfLines={1}>
-                          {s}
+                          {signName(language, s)}
                         </Text>
                       </View>
                     ))}
@@ -307,6 +309,7 @@ function CellView({ cell, size = CELL }: { cell: Cell; size?: number }) {
 
 function ReviewSignRow({
   insight,
+  name,
   classSize,
   first,
   phone,
@@ -314,6 +317,8 @@ function ReviewSignRow({
   onPractise,
 }: {
   insight: SignInsight;
+  /** The sign as shown (Tagalog for FSL words). */
+  name: string;
   classSize: number;
   first: boolean;
   phone: boolean;
@@ -329,11 +334,11 @@ function ReviewSignRow({
   return (
     <View style={[styles.reviewRow, !first && styles.rule]}>
       <View style={[styles.reviewTile, neuRaised("sm")]}>
-        <Text style={[styles.reviewGlyph, insight.sign.length > 2 && styles.reviewWord]} numberOfLines={1} adjustsFontSizeToFit>
-          {insight.sign}
+        <Text style={[styles.reviewGlyph, name.length > 2 && styles.reviewWord]} numberOfLines={1} adjustsFontSizeToFit>
+          {name}
         </Text>
       </View>
-      <View style={styles.flex} accessible accessibilityLabel={`${insight.sign}: ${words}. ${notTried} haven't tried it.`}>
+      <View style={styles.flex} accessible accessibilityLabel={`${name}: ${words}. ${notTried} haven't tried it.`}>
         <Strip learned={learned / total} stuck={stuck / total} />
         <Text style={styles.reviewText} numberOfLines={phone ? 1 : 2}>
           {phone ? `${learned} of ${classSize} learned` : words}
@@ -341,7 +346,7 @@ function ReviewSignRow({
       </View>
       {!phone ? (
         <RowMenu
-          label={`More for ${insight.sign}`}
+          label={`More for ${name}`}
           items={[
             { key: "module", label: "Make a module from these", icon: (c) => <GridIcon size={16} color={c} />, onPress: onMakeModule },
             { key: "call", label: "Practise in a call", icon: (c) => <VideoIcon size={16} color={c} />, onPress: onPractise },

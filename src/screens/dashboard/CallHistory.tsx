@@ -10,6 +10,7 @@ import { CheckIcon, PhoneIcon, TrashIcon, VideoIcon } from "../../components/ico
 import { colors, fonts, spacing } from "../../theme/theme";
 import type { CallNoteRow, MissedCallRow } from "../../lib/queries";
 import type { PresenceStatus } from "../../lib/callSignaling";
+import { signName } from "../../lib/signNames";
 
 export function presenceLabel(status: PresenceStatus | undefined): string {
   return status === "busy" ? "On a call" : status === "available" ? "Online" : "Offline";
@@ -153,7 +154,7 @@ export function CallNotesCard({
                 <View style={styles.detail}>
                   {n.practice.map((p, j) => (
                     <Text key={j} style={styles.detailText}>
-                      {p.passed ? "✓" : "·"} {p.sign} - {p.passed ? "passed" : "not yet"}
+                      {p.passed ? "✓" : "·"} {signName(p.language, p.sign)} - {p.passed ? "passed" : "not yet"}
                       {p.confidence > 0 ? `, best ${Math.round(p.confidence * 100)}%` : ""} ({p.tries} {p.tries === 1 ? "try" : "tries"})
                     </Text>
                   ))}

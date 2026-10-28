@@ -27,6 +27,7 @@ import type { CallNoteRow, ClassRow } from "../../lib/queries";
 import type { PresenceStatus } from "../../lib/callSignaling";
 import { dayWords, firstNameOf, nameList, soonGroupsText, type NeedsYouItem, type classGroupAverages } from "../../lib/teacherInsights";
 import { getGroup } from "../../lib/curriculum";
+import { signName } from "../../lib/signNames";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
 
@@ -192,19 +193,20 @@ function NeedsRow({ item, first, ...p }: { item: NeedsYouItem; first: boolean } 
     const noun = item.group === "letters" ? (item.signs.length === 1 ? "letter" : "letters") : item.group === "numbers" ? "numbers" : item.signs.length === 1 ? "word" : "words";
     title = `The class is stuck on ${item.signs.length} ${noun}`;
     const top = item.signs[0];
+    const name = (sign: string) => signName(item.language, sign);
     sub = (
       <View style={styles.subRow}>
         {item.signs.map((s) => (
           <View key={s.sign} style={[styles.signChip, neuRaised("sm")]}>
-            <Text style={styles.signChipText}>{s.sign}</Text>
+            <Text style={styles.signChipText}>{name(s.sign)}</Text>
           </View>
         ))}
         <Text style={styles.sub} numberOfLines={1}>
-          {top.sign}: {top.learned} of {p.classSize} learned · {top.attempts} tries
+          {name(top.sign)}: {top.learned} of {p.classSize} learned · {top.attempts} tries
         </Text>
       </View>
     );
-    label = `${title} in ${g.label}: ${item.signs.map((s) => s.sign).join(", ")}. ${top.sign}: ${top.learned} of ${p.classSize} learned, ${top.attempts} tries`;
+    label = `${title} in ${g.label}: ${item.signs.map((s) => name(s.sign)).join(", ")}. ${name(top.sign)}: ${top.learned} of ${p.classSize} learned, ${top.attempts} tries`;
     actions = <ActionButton label="Make a module" size="md" onPress={() => p.onMakeModule(item)} />;
   } else if (item.kind === "due") {
     const day = dayWords(item.date);

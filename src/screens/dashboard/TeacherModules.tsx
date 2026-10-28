@@ -51,6 +51,7 @@ import {
 } from "../../lib/queries";
 import { CURRICULUM, getGroup, getLanguage, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { WORD_CATEGORIES, categoriesIn, evenChunks, filterByCategory, getWordCategory, type WordCategory } from "../../lib/wordCategories";
+import { signName, signMatches } from "../../lib/signNames";
 import { dueInfo, moduleCompletion, parseDay } from "../../lib/teacherInsights";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
@@ -304,7 +305,7 @@ function ModuleCard({
           <View style={styles.signs}>
             {signs.slice(0, 14).map((s) => (
               <View key={s} style={[styles.signPill, m.sign_group !== "words" && styles.signRound]}>
-                <Text style={styles.signPillText}>{s}</Text>
+                <Text style={styles.signPillText}>{signName(m.language, s)}</Text>
               </View>
             ))}
             {signs.length > 14 ? <Text style={styles.muted}>+{signs.length - 14} more</Text> : null}
@@ -467,8 +468,7 @@ function ModuleForm({
   const source = isWords && inPlanOnly ? groupDef.signs.filter((s) => planned.has(s)) : groupDef.signs;
   const categories = isWords ? categoriesIn(language, source) : [];
   const pickedSet = new Set(picked);
-  const q = search.trim().toLowerCase();
-  const visible = filterByCategory(language, source, isWords ? category : null).filter((s) => !q || s.toLowerCase().includes(q));
+  const visible = filterByCategory(language, source, isWords ? category : null).filter((s) => signMatches(language, s, search));
   const notInPlan = isWords ? picked.filter((s) => !planned.has(s)) : [];
   const titleMissing = !title.trim();
   const signsMissing = picked.length === 0;
@@ -629,11 +629,11 @@ function ModuleForm({
                 onPress={() => toggle(s)}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: on }}
-                accessibilityLabel={s}
+                accessibilityLabel={signName(language, s)}
                 style={[styles.signChip, on ? styles.signChipOn : styles.signChipOff, webCursor]}
               >
                 {on ? <CheckIcon size={13} color="#FFFFFF" strokeWidth={3} /> : <PlusIcon size={13} color={colors.textOnFrosted} />}
-                <Text style={[styles.signChipText, on && styles.signChipTextOn]}>{s}</Text>
+                <Text style={[styles.signChipText, on && styles.signChipTextOn]}>{signName(language, s)}</Text>
               </Pressable>
             );
           })}
@@ -645,7 +645,7 @@ function ModuleForm({
           <View key={w} style={styles.planWarn}>
             <AlertCircleIcon size={15} color={colors.textOnFrosted} />
             <Text style={[styles.formMuted, styles.flex]}>
-              ‘{w}’ isn't in the plan. Students can practise it in this module, but it won't count toward their overall until you add it.
+              ‘{signName(language, w)}’ isn't in the plan. Students can practise it in this module, but it won't count toward their overall until you add it.
             </Text>
             <ActionButton label="Add to plan" size="sm" loading={addingToPlan === w} onPress={() => void addToPlan(w)} />
           </View>

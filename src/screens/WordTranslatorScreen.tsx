@@ -33,6 +33,7 @@ import ClipLengthControl, { useClipLength } from "../components/ClipLengthContro
 import TranslatorPanel from "../components/TranslatorPanel";
 import { SpeakerIcon } from "../components/icons/UiIcons";
 import { findLanguage } from "../lib/languages";
+import { signName } from "../lib/signNames";
 import { PASS_CONFIDENCE, UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
 import { drawHandSkeleton } from "../lib/handSkeleton";
 import PracticeCameraOverlay from "../components/learn/PracticeCameraOverlay";
@@ -679,7 +680,7 @@ export default function WordTranslatorScreen({
     : recording ? "Recording" : classifying ? "Classifying" : "Ready to record";
   const visibleRanks = isDesktop ? predictions : predictions.slice(0, 4);
   const top = predictions[0];
-  const spokenLine = speechStatus === "translating" ? "Translating..." : translatedText || top?.word;
+  const spokenLine = speechStatus === "translating" ? "Translating..." : translatedText || (top ? signName(language, top.word) : undefined);
 
   const recordButtonSize = isDesktop ? 74 : 88;
   const recordCapSize = isDesktop ? 56 : 66;
@@ -711,7 +712,7 @@ export default function WordTranslatorScreen({
           >
             <View style={styles.rankOneRow}>
               <Text style={[typography.h1, { fontSize: isDesktop ? 32 : 26, color: colors.textPrimary }]} numberOfLines={1}>
-                {top.word}
+                {signName(language, top.word)}
               </Text>
               <Text style={[typography.h3, { fontSize: isDesktop ? 20 : 17, color: colors.success }]}>
                 {top.confidence.toFixed(0)}%
@@ -751,7 +752,7 @@ export default function WordTranslatorScreen({
               return (
                 <View key={p.word + rank} style={styles.rankRow}>
                   <View style={styles.rankLabelRow}>
-                    <Text style={[typography.label, { color: dim ? "#8F98A6" : colors.textPrimary }]}>{p.word}</Text>
+                    <Text style={[typography.label, { color: dim ? "#8F98A6" : colors.textPrimary }]}>{signName(language, p.word)}</Text>
                     <Text style={[typography.labelSm, { color: dim ? "#8F98A6" : colors.textSecondary }]}>
                       {p.confidence.toFixed(0)}%
                     </Text>
@@ -915,7 +916,7 @@ export default function WordTranslatorScreen({
             onPress={() => speak(top.word)}
             style={styles.speakPill}
             accessibilityRole="button"
-            accessibilityLabel={`Speak ${top.word}`}
+            accessibilityLabel={`Speak ${signName(language, top.word)}`}
           >
             <SpeakerIcon size={16} color={colors.textOnAccent} />
           </Pressable>
@@ -1005,7 +1006,7 @@ export default function WordTranslatorScreen({
             <View style={[styles.rankOneSlab, { borderRadius: 18, padding: 18 }, neuRaised("md")]}>
               <View style={styles.rankOneRow}>
                 <Text style={[typography.h1, { fontSize: 32, color: colors.textPrimary }]} numberOfLines={1}>
-                  {top.word}
+                  {signName(language, top.word)}
                 </Text>
                 <Text style={[typography.h3, { fontSize: 20, color: colors.success }]}>
                   {top.confidence.toFixed(0)}%
@@ -1045,7 +1046,7 @@ export default function WordTranslatorScreen({
                 return (
                   <View key={p.word + rank} style={styles.rankRow}>
                     <View style={styles.rankLabelRow}>
-                      <Text style={[typography.label, { color: dim ? "#8F98A6" : colors.textPrimary }]}>{p.word}</Text>
+                      <Text style={[typography.label, { color: dim ? "#8F98A6" : colors.textPrimary }]}>{signName(language, p.word)}</Text>
                       <Text style={[typography.labelSm, { color: dim ? "#8F98A6" : colors.textSecondary }]}>
                         {p.confidence.toFixed(0)}%
                       </Text>

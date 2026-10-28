@@ -11,6 +11,7 @@ import { StarRow } from "../../components/learn/Stars";
 import { AlertCircleIcon, CheckIcon, EyeIcon, HandIcon, VideoIcon } from "../../components/icons/UiIcons";
 import { colors, fonts, kidTypography } from "../../theme/theme";
 import { getMotionHint, getSignMedia } from "../../lib/referenceMedia";
+import { signName } from "../../lib/signNames";
 import { accuracyStars, starReference, starsText } from "../../lib/starReference";
 import type { SignGroup, SignLanguage } from "../../lib/curriculum";
 import type { PracticeResult } from "../../lib/callSignaling";
@@ -41,6 +42,7 @@ export default function StudentAskPanel({ phone, sign, language, group, results,
   const passed = results.find((r) => r.passed);
   const last = results[results.length - 1];
   const letters = group !== "words";
+  const name = signName(language, sign);
 
   if (passed) {
     const stars = accuracyStars(passed.confidence, starReference(language, group, sign));
@@ -50,7 +52,7 @@ export default function StudentAskPanel({ phone, sign, language, group, results,
           <CheckIcon size={phone ? 40 : 52} color={colors.successText} strokeWidth={3.4} />
         </View>
         <Text style={styles.headline}>Great signing!</Text>
-        <Text style={styles.body}>That counts. {sign} is learned.</Text>
+        <Text style={styles.body}>That counts. {name} is learned.</Text>
         <View accessibilityLabel={starsText(stars)}>
           <StarRow filled={stars} size={phone ? 26 : 30} gap={6} />
         </View>
@@ -65,7 +67,7 @@ export default function StudentAskPanel({ phone, sign, language, group, results,
       <ScrollView style={[styles.card, phone && styles.cardPhone]} contentContainerStyle={styles.cardContent}>
         <View style={styles.slab}>
           <Text style={[styles.slabGlyph, !letters && styles.slabWord]} numberOfLines={1} adjustsFontSizeToFit>
-            {sign}
+            {name}
           </Text>
         </View>
         <Text style={styles.headline}>Almost! Try again.</Text>
@@ -98,7 +100,7 @@ export default function StudentAskPanel({ phone, sign, language, group, results,
         <HoldRing
           size={phone ? 108 : 150}
           progress={holdingTarget ? hold : 0}
-          glyph={sign}
+          glyph={name}
           glyphSize={letters ? (phone ? 44 : kidTypography.kidTarget.fontSize * 0.62) : phone ? 18 : 22}
         />
         <View style={styles.flex}>
@@ -138,12 +140,12 @@ function HowTo({
       <CallPill
         size="lg"
         label={show ? "Hide how to make it" : "Show me how"}
-        accessibilityLabel={show ? "Hide how to make it" : `Show me how to make ${sign}`}
+        accessibilityLabel={show ? "Hide how to make it" : `Show me how to make ${signName(language, sign)}`}
         onPress={onToggle}
         icon={(c) => <EyeIcon size={18} color={c} />}
         style={styles.howButton}
       />
-      {show ? <SignReference sign={sign} media={media} motionHint={getMotionHint(language, group, sign)} reduceMotion={reduceMotion} /> : null}
+      {show ? <SignReference sign={signName(language, sign)} media={media} motionHint={getMotionHint(language, group, sign)} reduceMotion={reduceMotion} /> : null}
     </View>
   );
 }

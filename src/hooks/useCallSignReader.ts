@@ -35,6 +35,7 @@ import { frameAspect, handshapeInput } from "../ml/handshapeInput";
 import { loadTasksVision, getVisionFileset } from "../lib/mediapipeVision";
 import { UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
 import { createFrameGate } from "./useFpsMeter";
+import { signName } from "../lib/signNames";
 
 export type CallModel = { kind: "letters" | "numbers" | "words"; language: SignLanguage };
 
@@ -212,8 +213,10 @@ export function useCallSignReader(
             at: performance.now(),
           });
           if (pct >= WORD_MIN_PCT && classes[i] !== UNKNOWN_SIGN_LABEL) {
-            setGuess({ label: classes[i] ?? "?", confidence: pct });
-            add(classes[i] ?? "?", true);
+            // Captions are read by people: FSL words go in as their Tagalog names.
+            const word = signName(language, classes[i] ?? "?");
+            setGuess({ label: word, confidence: pct });
+            add(word, true);
             setPhase("added");
           } else {
             setGuess({ label: "", confidence: pct });

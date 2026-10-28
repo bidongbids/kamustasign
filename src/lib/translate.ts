@@ -20,17 +20,17 @@ const TRANSLATE_URL = "https://api.mymemory.translated.net/get";
 
 export class TranslateError extends Error {}
 
-// Source is always "en" - the recognized sign is displayed/spoken as English
-// text upstream of this call. Pass the ISO 639-1 target language code (see
-// ./languages.ts).
-export async function translateText(text: string, targetLanguageCode: string): Promise<string> {
-  if (targetLanguageCode === "en") {
+// Source is "en" for recognized signs, except FSL word captions, which are
+// Tagalog ("fil", see signNames.ts). Pass the ISO 639-1 target language code
+// (see ./languages.ts).
+export async function translateText(text: string, targetLanguageCode: string, sourceLanguageCode = "en"): Promise<string> {
+  if (targetLanguageCode === sourceLanguageCode) {
     return text;
   }
 
   const params = new URLSearchParams({
     q: text,
-    langpair: `en|${targetLanguageCode}`,
+    langpair: `${sourceLanguageCode}|${targetLanguageCode}`,
   });
   if (contactEmail) params.set("de", contactEmail);
 

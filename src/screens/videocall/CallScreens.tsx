@@ -23,6 +23,7 @@ import type { CallPracticeEntry } from "../../lib/queries";
 import type { PresenceStatus } from "../../lib/callSignaling";
 import { CallAvatar, CallPill, QualityBars, RingingAvatar } from "./CallParts";
 import { clock, firstName, pct, tries } from "./callUi";
+import { signName } from "../../lib/signNames";
 
 export type NotesData = {
   startedAt: number;
@@ -39,7 +40,7 @@ export function notesText(n: NotesData, selfName: string, peerName: string, isTe
     lines.push("Practised:");
     for (const p of n.practice) {
       lines.push(
-        `  - ${p.sign} (${p.language.toUpperCase()} ${p.group === "words" ? "word" : p.group === "numbers" ? "number" : "letter"}): ${p.passed ? "passed" : "not yet"}${
+        `  - ${signName(p.language, p.sign)} (${p.language.toUpperCase()} ${p.group === "words" ? "word" : p.group === "numbers" ? "number" : "letter"}): ${p.passed ? "passed" : "not yet"}${
           p.confidence > 0 ? `, best ${pct(p.confidence)}` : ""
         }, ${tries(p.tries)}`
       );
@@ -283,7 +284,7 @@ export function TeacherSummary({
                   <View key={`${p.sign}-${i}`} style={[styles.practRow, i > 0 && styles.rowRule]}>
                     <View style={[styles.signChip, neuRaised("sm")]}>
                       <Text style={styles.signChipText} numberOfLines={1}>
-                        {p.sign}
+                        {signName(p.language, p.sign)}
                       </Text>
                     </View>
                     {p.passed ? <CheckIcon size={15} color={colors.successText} /> : <RetryIcon size={15} color={colors.accentCoral} />}
@@ -379,7 +380,7 @@ export function StudentEnded({
             {practised.map((p, i) => (
               <View key={`${p.sign}-${i}`} style={[styles.learnedTile, p.passed ? styles.learnedTileOn : styles.learnedTileOff]}>
                 <Text style={[styles.learnedText, !p.passed && { color: colors.textTertiary }]} numberOfLines={1}>
-                  {p.sign}
+                  {signName(p.language, p.sign)}
                 </Text>
               </View>
             ))}

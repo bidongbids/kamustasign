@@ -18,6 +18,7 @@ import { neuInset, neuRaised } from "../../theme/shadows";
 import { computeOverall, getGroup, groupKey, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { moduleSigns, type CallNoteRow, type ClassRow, type ModuleRow, type ProgressEmbed, type StudentProgressSummary } from "../../lib/queries";
 import { starReference, starsText } from "../../lib/starReference";
+import { signName } from "../../lib/signNames";
 import { starsFor, tileStatus, type ProgressLike } from "../../lib/practiceFlow";
 import { availableGroups, dueInfo, firstNameOf, soonGroupsText } from "../../lib/teacherInsights";
 import type { PresenceStatus } from "../../lib/callSignaling";
@@ -195,7 +196,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
         const passed = n.practice.filter((p) => p.passed);
         const date = new Date(n.started_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
         const line = n.practice.length
-          ? `Practised ${n.practice.map((p) => p.sign).join(", ")}${passed.length ? ` · got ${passed.map((p) => `${p.sign} (${Math.round(p.confidence * 100)}%)`).join(", ")}` : ""}`
+          ? `Practised ${n.practice.map((p) => signName(p.language, p.sign)).join(", ")}${passed.length ? ` · got ${passed.map((p) => `${signName(p.language, p.sign)} (${Math.round(p.confidence * 100)}%)`).join(", ")}` : ""}`
           : "No practice";
         const open = openNote === n.id;
         return (
@@ -347,8 +348,9 @@ function TeacherTile({ sign, language, group, row }: { sign: string; language: S
   const status = tileStatus(row);
   const stars = starsFor(row, starReference(language, group, sign));
   const words = group === "words";
+  const name = signName(language, sign);
   const label =
-    status === "learned" ? `${sign}, learned, ${starsText(stars)}` : status === "tried" ? `${sign}, tried, ${starsText(stars)}, not learned yet` : `${sign}, not tried yet`;
+    status === "learned" ? `${name}, learned, ${starsText(stars)}` : status === "tried" ? `${name}, tried, ${starsText(stars)}, not learned yet` : `${name}, not tried yet`;
   return (
     <View
       style={[
@@ -361,7 +363,7 @@ function TeacherTile({ sign, language, group, row }: { sign: string; language: S
       accessibilityLabel={label}
     >
       <Text style={[words ? styles.wordText : styles.glyph, status === "not-started" && styles.glyphDim]} numberOfLines={1}>
-        {sign}
+        {name}
       </Text>
       {status === "not-started" ? <Text style={styles.notYet}>not yet</Text> : <StarRow filled={stars} size={words ? 9 : 10} gap={1} />}
       {status === "learned" ? (

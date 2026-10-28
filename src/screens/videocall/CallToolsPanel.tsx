@@ -15,6 +15,7 @@ import { neuInset, neuRaised } from "../../theme/shadows";
 import { getLessonProgress } from "../../lib/queries";
 import { MASTERY_PASSES } from "../../lib/curriculum";
 import { callModelScope, summarizePractice } from "../../lib/callPractice";
+import { signMatches, signName } from "../../lib/signNames";
 import type { CallModelKey, CallSettings, PracticeResult } from "../../lib/callSignaling";
 import { CallPill } from "./CallParts";
 import { CALL_MODEL_ORDER, MODEL_HINTS, MODEL_NAMES, firstName, pct, tries, type ReadFrom } from "./callUi";
@@ -98,6 +99,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
   const first = firstName(peer.name);
   const scope = callModelScope(modelKey);
   const letters = scope.group !== "words"; // letters and numbers: one still handshape each, shown as a grid
+  const name = (s: string) => signName(scope.language, s);
   const [search, setSearch] = useState("");
   // Seven letters to a row (design C2): the tiles shrink a little in a narrow drawer.
   const [gridW, setGridW] = useState(0);
@@ -134,7 +136,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
         <View style={styles.askRow} accessibilityLiveRegion="polite">
           <View style={[styles.askTile, neuRaised("sm"), { borderColor: ringColor }]}>
             <Text style={[styles.askGlyph, practice.sign.length > 2 && styles.askGlyphWord]} numberOfLines={1} adjustsFontSizeToFit>
-              {practice.sign}
+              {name(practice.sign)}
             </Text>
           </View>
           <View style={styles.flex}>
@@ -164,7 +166,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
                   <Text style={[styles.statusTitle, { color: colors.accentCoral }]}>Not yet</Text>
                 </View>
                 <Text style={styles.statusMain}>
-                  {last!.seen && last!.seen !== practice.sign ? `The computer saw “${last!.seen}”` : "Not clear enough yet"}
+                  {last!.seen && last!.seen !== practice.sign ? `The computer saw “${name(last!.seen)}”` : "Not clear enough yet"}
                 </Text>
                 <Text style={styles.small}>Best so far {pct(best)} · needs 80%</Text>
               </>
@@ -187,7 +189,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
                     {TRY_WORDS[k]}
                   </Text>
                   <Text style={styles.tryDetail} numberOfLines={1}>
-                    {k === "notYet" ? `saw “${r.seen}”${r.confidence > 0 ? ` · ${pct(r.confidence)}` : ""}` : k === "unsure" ? "—" : `${r.sign} · ${pct(r.confidence)}`}
+                    {k === "notYet" ? `saw “${name(r.seen ?? "")}”${r.confidence > 0 ? ` · ${pct(r.confidence)}` : ""}` : k === "unsure" ? "—" : `${name(r.sign)} · ${pct(r.confidence)}`}
                   </Text>
                 </View>
               );
@@ -198,11 +200,11 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
           <CallPill label="Ask again" variant={state === "notYet" ? "gold" : "raised"} onPress={() => onAsk(practice.sign)} />
           {next && next !== practice.sign ? (
             <CallPill
-              label={`Next: ${next}`}
+              label={`Next: ${name(next)}`}
               variant={state === "passed" ? "gold" : "raised"}
               onPress={() => onAsk(next)}
               icon={undefined}
-              accessibilityLabel={`Ask for the next sign, ${next}`}
+              accessibilityLabel={`Ask for the next sign, ${name(next)}`}
             />
           ) : null}
           {phone ? <CallPill label="Stop" variant="ghost" onPress={() => onAsk(null)} icon={(c) => <CloseIcon size={13} color={c} />} /> : null}
@@ -212,8 +214,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
     );
   }
 
-  const q = search.trim().toLowerCase();
-  const shown = letters ? signs : (q ? signs.filter((s) => s.toLowerCase().includes(q)) : signs).slice(0, 40);
+  const shown = letters ? signs : signs.filter((s) => signMatches(scope.language, s, search)).slice(0, 40);
   return (
     <View style={styles.section}>
       <Text style={styles.title}>Ask {first} to sign</Text>
@@ -262,10 +263,10 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
                 key={s}
                 onPress={() => onAsk(s)}
                 accessibilityRole="button"
-                accessibilityLabel={`Ask ${peer.name} to sign ${s}`}
+                accessibilityLabel={`Ask ${peer.name} to sign ${name(s)}`}
                 style={({ pressed }) => [styles.chip, neuRaised("sm"), tried.has(s) && styles.letterTried, pressed && styles.letterPressed]}
               >
-                <Text style={styles.chipText}>{s}</Text>
+                <Text style={styles.chipText}>{name(s)}</Text>
               </Pressable>
             ))}
             {shown.length === 0 ? <Text style={styles.small}>No signs match.</Text> : null}
@@ -283,7 +284,7 @@ function Earlier({ entries }: { entries: ReturnType<typeof summarizePractice> })
       <Text style={styles.eyebrow}>EARLIER IN THIS CALL</Text>
       {entries.map((e, i) => (
         <View key={`${e.sign}-${i}`} style={[styles.tryRow, neuInset("sm")]}>
-          <Text style={styles.earlierSign}>{e.sign}</Text>
+          <Text style={styles.earlierSign}>{signName(e.language, e.sign)}</Text>
           {e.passed ? <CheckIcon size={14} color={colors.successText} /> : <RetryIcon size={14} color={colors.accentCoral} />}
           <Text style={[styles.tryWord, { color: e.passed ? colors.successText : colors.accentCoral }]}>{e.passed ? "Got it" : "Not yet"}</Text>
           <Text style={styles.tryDetail} numberOfLines={1}>

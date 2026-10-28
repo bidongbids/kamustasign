@@ -44,6 +44,7 @@ import { MASTERY_PASSES, getGroup, getLanguage, type SignGroup, type SignLanguag
 import { nextPracticeSign } from "../../lib/practiceFlow";
 import { accuracyStars, starReference } from "../../lib/starReference";
 import { getMotionHint, getSignMedia } from "../../lib/referenceMedia";
+import { signName } from "../../lib/signNames";
 import { buildFeedback, type PracticeFeedbackState } from "../../lib/learnCopy";
 import { colors, fonts, kidTypography, radii, spacing } from "../../theme/theme";
 import { neuInset } from "../../theme/shadows";
@@ -151,6 +152,8 @@ export default function PracticeScreen({
   // Rises live as soon as this session beats the stored best.
   const stars = accuracyStars(Math.max(storedBest, best), starReference(language, group, sign));
   const nextSign = nextPracticeSign(signs, rows, sign);
+  const shownSign = signName(language, sign);
+  const shownNext = nextSign ? signName(language, nextSign) : null;
 
   /** Feedback setter that also rotates the tip on each new "not yet" moment. */
   function setFeedbackState(next: PracticeFeedbackState) {
@@ -282,9 +285,9 @@ export default function PracticeScreen({
   }
 
   const feedbackModel = buildFeedback({
-    state: feedback,
+    state: feedback.kind === "retry" && feedback.predicted ? { ...feedback, predicted: signName(language, feedback.predicted) } : feedback,
     isLive,
-    sign,
+    sign: shownSign,
     passes,
     holding: isLive && hold > 0 && hold < 1,
     saveError,
@@ -317,8 +320,8 @@ export default function PracticeScreen({
   const compactTarget = !isDesktop || windowHeight < 900;
   const nextActions = showNextActions ? (
     <NextSignActions
-      sign={sign}
-      nextSign={nextSign}
+      sign={shownSign}
+      nextSign={shownNext}
       groupWord={GROUP_WORD[group]}
       onNext={() => nextSign && goToSign(nextSign)}
       onRepeat={practiseAgain}
@@ -411,11 +414,11 @@ export default function PracticeScreen({
           <View style={isDesktop ? [styles.leftDesktop, { width: leftW, height: rightH }] : styles.leftMobile}>
             <GlassCard radius={radii.lg} padding={isDesktop ? 22 : 14}>
               <View style={styles.targetRow}>
-                <TargetCard sign={sign} showRing={isLive} holdProgress={hold} compact={compactTarget} reduceMotion={reduceMotion} />
+                <TargetCard sign={shownSign} showRing={isLive} holdProgress={hold} compact={compactTarget} reduceMotion={reduceMotion} />
                 <View style={styles.targetInfo}>
                   <Text style={styles.instruction}>
                     {isLive ? (isDesktop ? "Make the sign for " : "Sign ") : "Sign "}
-                    <Text style={{ color: colors.accentCoral }}>{isLive ? sign : `“${sign}”`}</Text>
+                    <Text style={{ color: colors.accentCoral }}>{isLive ? shownSign : `“${shownSign}”`}</Text>
                   </Text>
                   <StarMeter stars={stars} passes={passes} size={isDesktop ? 30 : 26} reduceMotion={reduceMotion} />
                 </View>
@@ -448,7 +451,7 @@ export default function PracticeScreen({
             </GlassCard>
             {(isDesktop || showReference) && (
               <SignReference
-                sign={sign}
+                sign={shownSign}
                 media={getSignMedia(language, group, sign)}
                 motionHint={getMotionHint(language, group, sign)}
                 reduceMotion={reduceMotion}
@@ -507,9 +510,9 @@ export default function PracticeScreen({
 
       {celebrate && (
         <MasteryCelebration
-          sign={sign}
+          sign={shownSign}
           stars={stars}
-          nextSign={nextSign}
+          nextSign={shownNext}
           groupLabel={groupLabel}
           reduceMotion={reduceMotion}
           onNext={() => {

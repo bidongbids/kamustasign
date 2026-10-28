@@ -246,8 +246,10 @@ export default function VideoCallScreen({ role, call, self, classId, className, 
     mirrorLandmarks: handedness === "left",
     onReading: onLocalReading,
   });
-  const remoteSpeech = useTranslateAndSpeak(speechLang);
-  const localSpeech = useTranslateAndSpeak(speechLang);
+  // FSL word captions are Tagalog (signNames.ts); everything else reads as English.
+  const captionLang = model.kind === "words" && model.language === "fsl" ? "fil" : "en";
+  const remoteSpeech = useTranslateAndSpeak(speechLang, captionLang);
+  const localSpeech = useTranslateAndSpeak(speechLang, captionLang);
 
   // Words model: optionally speak each new word the other person signs.
   useEffect(() => {

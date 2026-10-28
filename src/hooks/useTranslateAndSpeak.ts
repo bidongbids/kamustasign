@@ -17,7 +17,8 @@ type Status = "idle" | "translating" | "speaking" | "error";
 // flaky connection gets retried on the next press.
 const translationCache = new Map<string, string>();
 
-export function useTranslateAndSpeak(targetLanguageCode: string) {
+/** `sourceLanguageCode`: what the text to speak is written in ("en" unless it's FSL word captions). */
+export function useTranslateAndSpeak(targetLanguageCode: string, sourceLanguageCode = "en") {
   const [status, setStatus] = useState<Status>("idle");
   const [translatedText, setTranslatedText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,11 +41,11 @@ export function useTranslateAndSpeak(targetLanguageCode: string) {
       setError(null);
       setStatus("translating");
 
-      const cacheKey = `${targetLanguageCode}|${text}`;
+      const cacheKey = `${sourceLanguageCode}>${targetLanguageCode}|${text}`;
       let toSpeak = translationCache.get(cacheKey);
       if (toSpeak === undefined) {
         try {
-          toSpeak = await translateText(text, targetLanguageCode);
+          toSpeak = await translateText(text, targetLanguageCode, sourceLanguageCode);
           translationCache.set(cacheKey, toSpeak);
         } catch (err: any) {
           toSpeak = text;
@@ -73,7 +74,7 @@ export function useTranslateAndSpeak(targetLanguageCode: string) {
         onStopped: finish,
       });
     },
-    [targetLanguageCode]
+    [targetLanguageCode, sourceLanguageCode]
   );
 
   const reset = useCallback(() => {

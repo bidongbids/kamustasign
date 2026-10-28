@@ -23,6 +23,7 @@ import { neuInset } from "../../theme/shadows";
 import { saveClassPlan, type ClassRow } from "../../lib/queries";
 import { CURRICULUM, getGroup, planSigns, type ClassPlan, type SignLanguage } from "../../lib/curriculum";
 import { WORD_CATEGORIES, getWordCategory, type WordCategory } from "../../lib/wordCategories";
+import { signName, signMatches } from "../../lib/signNames";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
 const STARTER_PER_CATEGORY = 10;
@@ -80,10 +81,10 @@ export default function ClassPlanEditor({
   const added = [...chosen].filter((s) => !saved.has(s)).length;
   const removed = [...saved].filter((s) => !chosen.has(s)).length;
 
-  const q = search.trim().toLowerCase();
+  const q = search.trim();
   const categories = WORD_CATEGORIES.map((c) => {
     const signs = all.filter((s) => getWordCategory(language, s) === c.key);
-    return { ...c, signs, shown: q ? signs.filter((s) => s.toLowerCase().includes(q)) : signs };
+    return { ...c, signs, shown: q ? signs.filter((s) => signMatches(language, s, q)) : signs };
   }).filter((c) => c.signs.length > 0 && c.shown.length > 0);
 
   const update = (fn: (set: Set<string>) => void) =>
@@ -245,11 +246,11 @@ export default function ClassPlanEditor({
                         onPress={() => toggleSign(s)}
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: on }}
-                        accessibilityLabel={`${s}${changed ? ", not saved yet" : ""}`}
+                        accessibilityLabel={`${signName(language, s)}${changed ? ", not saved yet" : ""}`}
                         style={[styles.chip, on ? styles.chipOn : styles.chipOff, changed && styles.chipChanged, webCursor]}
                       >
                         {on ? <CheckIcon size={12} color="#FFFFFF" strokeWidth={3} /> : <PlusIcon size={12} color={colors.textOnGlass} />}
-                        <Text style={[styles.chipText, { color: on ? "#FFFFFF" : colors.textOnGlass }]}>{s}</Text>
+                        <Text style={[styles.chipText, { color: on ? "#FFFFFF" : colors.textOnGlass }]}>{signName(language, s)}</Text>
                       </Pressable>
                     );
                   })}

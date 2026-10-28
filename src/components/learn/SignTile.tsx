@@ -10,6 +10,7 @@ import { CheckIcon } from "../icons/UiIcons";
 import { colors, fonts, kidTypography, radii, sizes } from "../../theme/theme";
 import { neuRaised } from "../../theme/shadows";
 import { type SignGroup, type SignLanguage } from "../../lib/curriculum";
+import { signName } from "../../lib/signNames";
 import { starReference, starsText } from "../../lib/starReference";
 import { starsFor, tileStatus, type ProgressLike } from "../../lib/practiceFlow";
 
@@ -33,6 +34,7 @@ export default function SignTile({ sign, language, group, word, row, isNext, onP
   const status = tileStatus(row);
   const stars = starsFor(row, starReference(language, group, sign));
   const learned = status === "learned";
+  const name = signName(language, sign);
 
   const stateWords =
     status === "not-started"
@@ -45,7 +47,7 @@ export default function SignTile({ sign, language, group, word, row, isNext, onP
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Practise ${sign}, ${stateWords}${isNext ? ", next up" : ""}`}
+      accessibilityLabel={`Practise ${name}, ${stateWords}${isNext ? ", next up" : ""}`}
       style={(state: any) => [
         styles.tile,
         word ? [styles.word, width ? { width, maxWidth: width, justifyContent: "space-between" } : null] : [styles.glyph, { width: edge, height: edge }],
@@ -72,7 +74,7 @@ export default function SignTile({ sign, language, group, word, row, isNext, onP
         ]}
         numberOfLines={1}
       >
-        {sign}
+        {name}
       </Text>
       {status !== "not-started" && (
         <StarRow filled={stars} size={word ? sizes.starSm : Math.round(sizes.starSm * Math.min(glyphScale, 1.3))} />
