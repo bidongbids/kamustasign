@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LCSign · Classroom home, light/dark and colour schemes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* handoff canvas chrome (same format as the other LCSign handoffs) */
+body{margin:0;background:#e9e7e4;font-family:Inter,system-ui,sans-serif}
+.dv-turn{padding:40px 44px 32px;border-bottom:2px solid rgba(0,0,0,.12)}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+.dv-tid{font:600 10px JetBrains Mono,monospace;padding:3px 7px;background:#201e1d;color:#fff;text-decoration:none}
+.dv-tname{font:600 15px/1.2 Inter;color:#201e1d}
+.dv-tsub{font:400 12px/1.6 Inter;color:rgba(0,0,0,.62);max-width:1100px;margin:0 0 24px}
+.dv-opts{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 12px/1.3 Inter;color:rgba(0,0,0,.65)}
+.dv-oid{font:500 10.5px JetBrains Mono,monospace;padding:3px 7px;background:rgba(0,0,0,.09);color:#201e1d;text-decoration:none}
+.note{font:400 12px/1.6 Inter;color:#3a3836;max-width:1440px}.note ol{margin:4px 0 0;padding-left:22px}.note b{color:#201e1d}
+.prop{display:inline-block;font:600 9.5px/1 JetBrains Mono,monospace;letter-spacing:.06em;padding:3px 6px;background:#ec3013;color:#fff;vertical-align:1px}
+.pin{position:absolute;z-index:50;width:22px;height:22px;border-radius:50%;background:#ec3013;color:#fff;font:600 11px/22px JetBrains Mono,monospace;text-align:center;box-shadow:0 0 0 2px #fff}
+.toc{display:flex;flex-wrap:wrap;gap:6px 14px;font:12px/1.6 Inter;margin-top:10px}.toc a{color:#3A2CA8;text-decoration:none}
+.thumbs{display:grid;grid-template-columns:repeat(4,432px);gap:18px}
+.thumb{width:432px;height:270px;overflow:hidden;position:relative;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.thumb>.frame{transform:scale(.3);transform-origin:0 0;position:absolute;left:0;top:0}
+.tlabel{font:600 12px Inter;color:#201e1d;margin-top:6px}
+</style>
+<style id="themecss">
+.t-graphite-dark{--bg:#1A1E26;--bgEnd:#171A21;--surface:#252B37;--raised:#2C3340;--well:#1D222B;--border:#343B49;--t1:#EDEFF4;--t2:#B0B8C8;--t3:#949DB0;--pri:#7C6CF5;--priFill:#5A50A8;--priText:#B3A8FF;--onPri:#FFFFFF;--acc:#F2B23E;--accText:#F2B23E;--onAcc:#2A1E05;--ok:#3FB56A;--okText:#5FD08A;--bad:#E0525F;--badText:#FF7A85;--star:#F2B23E;--starEmpty:#7D8799;--focus:#F2B23E;--onStatus:#12151B;--shR:5px 5px 12px rgba(0,0,0,.45),-4px -4px 10px rgba(255,255,255,.045);--shRs:3px 3px 8px rgba(0,0,0,.42),-2px -2px 6px rgba(255,255,255,.04);--shI:inset 3px 3px 7px rgba(0,0,0,.45),inset -2px -2px 6px rgba(255,255,255,.05);--shCard:0 10px 30px rgba(0,0,0,.28);--cardBorder:rgba(255,255,255,.08);--tint:rgba(255,255,255,.06);color-scheme:dark}
+.t-graphite-light{--bg:#EEF1F6;--bgEnd:#E7EBF2;--surface:#FFFFFF;--raised:#FFFFFF;--well:#E6E9F1;--border:#D5DAE5;--t1:#1B1F2A;--t2:#454D60;--t3:#5A6276;--pri:#6352E6;--priFill:#5A49D6;--priText:#4F3FC4;--onPri:#FFFFFF;--acc:#F2B23E;--accText:#8A5A00;--onAcc:#3A2A00;--ok:#237F48;--okText:#1B713D;--bad:#C73A4C;--badText:#B3303D;--star:#B57B0A;--starEmpty:#8A93A6;--focus:#4F3FD0;--onStatus:#FFFFFF;--shR:4px 6px 14px rgba(102,114,146,.22),-4px -4px 10px rgba(255,255,255,.9),0 0 0 1px var(--border);--shRs:2px 3px 7px rgba(102,114,146,.2),-2px -2px 5px rgba(255,255,255,.9),0 0 0 1px var(--border);--shI:inset 2px 2px 5px rgba(102,114,146,.2),inset -2px -2px 5px rgba(255,255,255,.85);--shCard:0 1px 2px rgba(27,31,42,.05),0 8px 22px rgba(102,114,146,.12);--cardBorder:var(--border);--tint:rgba(27,31,42,.04);color-scheme:light}
+.t-ocean-dark{--bg:#111A24;--bgEnd:#0E151E;--surface:#1A2634;--raised:#20303F;--well:#132030;--border:#2A3A4C;--t1:#EDEFF4;--t2:#B0B8C8;--t3:#949DB0;--pri:#4C9AFF;--priFill:#2563C9;--priText:#8CC0FF;--onPri:#FFFFFF;--acc:#2EC4B6;--accText:#5FE0D3;--onAcc:#04221E;--ok:#3FB56A;--okText:#5FD08A;--bad:#E0525F;--badText:#FF7A85;--star:#F2B23E;--starEmpty:#7D8799;--focus:#5FE0D3;--onStatus:#12151B;--shR:5px 5px 12px rgba(0,0,0,.45),-4px -4px 10px rgba(255,255,255,.045);--shRs:3px 3px 8px rgba(0,0,0,.42),-2px -2px 6px rgba(255,255,255,.04);--shI:inset 3px 3px 7px rgba(0,0,0,.45),inset -2px -2px 6px rgba(255,255,255,.05);--shCard:0 10px 30px rgba(0,0,0,.28);--cardBorder:rgba(255,255,255,.08);--tint:rgba(255,255,255,.06);color-scheme:dark}
+.t-ocean-light{--bg:#EDF3F9;--bgEnd:#E5EDF6;--surface:#FFFFFF;--raised:#FFFFFF;--well:#E1EAF3;--border:#CFDCEA;--t1:#1B1F2A;--t2:#454D60;--t3:#5A6276;--pri:#2563C9;--priFill:#2563C9;--priText:#1D53AD;--onPri:#FFFFFF;--acc:#14A698;--accText:#0B6F65;--onAcc:#022420;--ok:#237F48;--okText:#1B713D;--bad:#C73A4C;--badText:#B3303D;--star:#B57B0A;--starEmpty:#8A93A6;--focus:#1D53AD;--onStatus:#FFFFFF;--shR:4px 6px 14px rgba(102,114,146,.22),-4px -4px 10px rgba(255,255,255,.9),0 0 0 1px var(--border);--shRs:2px 3px 7px rgba(102,114,146,.2),-2px -2px 5px rgba(255,255,255,.9),0 0 0 1px var(--border);--shI:inset 2px 2px 5px rgba(102,114,146,.2),inset -2px -2px 5px rgba(255,255,255,.85);--shCard:0 1px 2px rgba(27,31,42,.05),0 8px 22px rgba(102,114,146,.12);--cardBorder:var(--border);--tint:rgba(27,31,42,.04);color-scheme:light}
+.t-forest-dark{--bg:#131B18;--bgEnd:#101714;--surface:#1D2823;--raised:#24312B;--well:#16201C;--border:#2C3A33;--t1:#EDEFF4;--t2:#B0B8C8;--t3:#949DB0;--pri:#4DB08F;--priFill:#23735C;--priText:#86D4B8;--onPri:#FFFFFF;--acc:#E8A33D;--accText:#F0B45A;--onAcc:#2A1B03;--ok:#3FB56A;--okText:#5FD08A;--bad:#E0525F;--badText:#FF7A85;--star:#F2B23E;--starEmpty:#7D8799;--focus:#F0B45A;--onStatus:#12151B;--shR:5px 5px 12px rgba(0,0,0,.45),-4px -4px 10px rgba(255,255,255,.045);--shRs:3px 3px 8px rgba(0,0,0,.42),-2px -2px 6px rgba(255,255,255,.04);--shI:inset 3px 3px 7px rgba(0,0,0,.45),inset -2px -2px 6px rgba(255,255,255,.05);--shCard:0 10px 30px rgba(0,0,0,.28);--cardBorder:rgba(255,255,255,.08);--tint:rgba(255,255,255,.06);color-scheme:dark}
+.t-forest-light{--bg:#EEF3EF;--bgEnd:#E6EDE8;--surface:#FFFFFF;--raised:#FFFFFF;--well:#E1EAE4;--border:#CEDCD3;--t1:#1B1F2A;--t2:#454D60;--t3:#5A6276;--pri:#1F7A60;--priFill:#1F7A60;--priText:#1A6A53;--onPri:#FFFFFF;--acc:#E8A33D;--accText:#8A5300;--onAcc:#2A1B03;--ok:#237F48;--okText:#1B713D;--bad:#C73A4C;--badText:#B3303D;--star:#B57B0A;--starEmpty:#8A93A6;--focus:#1A6A53;--onStatus:#FFFFFF;--shR:4px 6px 14px rgba(102,114,146,.22),-4px -4px 10px rgba(255,255,255,.9),0 0 0 1px var(--border);--shRs:2px 3px 7px rgba(102,114,146,.2),-2px -2px 5px rgba(255,255,255,.9),0 0 0 1px var(--border);--shI:inset 2px 2px 5px rgba(102,114,146,.2),inset -2px -2px 5px rgba(255,255,255,.85);--shCard:0 1px 2px rgba(27,31,42,.05),0 8px 22px rgba(102,114,146,.12);--cardBorder:var(--border);--tint:rgba(27,31,42,.04);color-scheme:light}
+.t-sunset-dark{--bg:#1E1820;--bgEnd:#19141B;--surface:#2A222D;--raised:#322938;--well:#211A24;--border:#3C3141;--t1:#EDEFF4;--t2:#B0B8C8;--t3:#949DB0;--pri:#E07AAE;--priFill:#A8407A;--priText:#F3A8CC;--onPri:#FFFFFF;--acc:#F5A65B;--accText:#F7B57A;--onAcc:#2E1704;--ok:#3FB56A;--okText:#5FD08A;--bad:#E0525F;--badText:#FF7A85;--star:#F2B23E;--starEmpty:#7D8799;--focus:#F7B57A;--onStatus:#12151B;--shR:5px 5px 12px rgba(0,0,0,.45),-4px -4px 10px rgba(255,255,255,.045);--shRs:3px 3px 8px rgba(0,0,0,.42),-2px -2px 6px rgba(255,255,255,.04);--shI:inset 3px 3px 7px rgba(0,0,0,.45),inset -2px -2px 6px rgba(255,255,255,.05);--shCard:0 10px 30px rgba(0,0,0,.28);--cardBorder:rgba(255,255,255,.08);--tint:rgba(255,255,255,.06);color-scheme:dark}
+.t-sunset-light{--bg:#F7F0F1;--bgEnd:#F1E7E9;--surface:#FFFFFF;--raised:#FFFFFF;--well:#F0E4E7;--border:#E3D2D7;--t1:#1B1F2A;--t2:#454D60;--t3:#5A6276;--pri:#B03A78;--priFill:#A8376F;--priText:#962F64;--onPri:#FFFFFF;--acc:#F5A65B;--accText:#99500B;--onAcc:#2E1704;--ok:#237F48;--okText:#1B713D;--bad:#C73A4C;--badText:#B3303D;--star:#B57B0A;--starEmpty:#8A93A6;--focus:#962F64;--onStatus:#FFFFFF;--shR:4px 6px 14px rgba(102,114,146,.22),-4px -4px 10px rgba(255,255,255,.9),0 0 0 1px var(--border);--shRs:2px 3px 7px rgba(102,114,146,.2),-2px -2px 5px rgba(255,255,255,.9),0 0 0 1px var(--border);--shI:inset 2px 2px 5px rgba(102,114,146,.2),inset -2px -2px 5px rgba(255,255,255,.85);--shCard:0 1px 2px rgba(27,31,42,.05),0 8px 22px rgba(102,114,146,.12);--cardBorder:var(--border);--tint:rgba(27,31,42,.04);color-scheme:light}
+</style>
+<style>
+/* themed product styles: every colour is a CSS variable set by .t-<scheme>-<mode> */
+.frame{position:relative;overflow:hidden;flex:none;color:var(--t1);font:400 14px/1.5 Inter,sans-serif;background:linear-gradient(160deg,var(--bg),var(--bgEnd))}
+.frame *{box-sizing:border-box}
+.row{display:flex;align-items:center}.col{display:flex;flex-direction:column}.f1{flex:1;min-width:0}.wrap{flex-wrap:wrap}.between{justify-content:space-between}.center{justify-content:center;align-items:center}.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.h1{font:700 30px/1.1 'Baloo 2',sans-serif}.h2{font:700 21px/1.15 'Baloo 2',sans-serif}.h3{font:700 17px/1.2 'Baloo 2',sans-serif}
+.kidH{font:700 30px/1.1 'Baloo 2',sans-serif}
+.bodySm{font:400 13.5px/1.55 Inter}.caption{font:400 12.5px/1.5 Inter}.meta{font:500 10.5px/1 Inter;letter-spacing:.11em;text-transform:uppercase;color:var(--t3)}
+.c2{color:var(--t2)}.c3{color:var(--t3)}.cp{color:var(--priText)}.ca{color:var(--accText)}.cok{color:var(--okText)}.cbad{color:var(--badText)}
+.card{background:var(--surface);border:1px solid var(--cardBorder);border-radius:22px;box-shadow:var(--shCard)}
+.raised{background:var(--raised);box-shadow:var(--shR)}.raisedSm{background:var(--raised);box-shadow:var(--shRs)}
+.inset{background:var(--well);box-shadow:var(--shI)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:999px;font:600 14px/1 Inter;white-space:nowrap;flex:none;color:var(--t1)}
+.btn.lg{height:52px;padding:0 24px;font-size:16px}.btn.sm{height:38px;padding:0 14px;font-size:13px}
+.btn.pri{background:var(--priFill);color:var(--onPri)}
+.btn.acc{background:var(--acc);color:var(--onAcc)}
+.btn.neu{background:var(--raised);box-shadow:var(--shRs)}
+.btn.ghost{border:1px solid var(--border);background:transparent}
+.btn.icon{width:44px;padding:0}
+.ico{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.seg{display:inline-flex;padding:4px;border-radius:999px;gap:2px;background:var(--well);box-shadow:var(--shI)}
+.seg>span{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border-radius:999px;font:600 14px/1 Inter;color:var(--t2);white-space:nowrap}
+.seg>span.on{background:var(--raised);color:var(--t1);box-shadow:var(--shRs)}
+.seg>span small{font:600 11.5px Inter;color:var(--t3)}.seg>span.on small{color:var(--t2)}
+.soonb{font:600 9.5px/1 Inter;letter-spacing:.06em;border:1px solid var(--t3);color:var(--t3);border-radius:999px;padding:2px 6px}
+.pb{height:10px;border-radius:999px;background:var(--well);box-shadow:var(--shI);overflow:hidden;flex:1 1 auto}
+.pb>i{display:block;height:100%;border-radius:999px;background:var(--pri)}
+.pb.ok>i{background:var(--ok)}.pb.acc>i{background:var(--acc)}.pb.sm{height:7px}
+.av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--well);border:1.5px solid var(--border);color:var(--priText);font:700 13px/1 'Baloo 2';flex:none}
+.pres{display:inline-flex;align-items:center;gap:6px;font:500 13px/1 Inter}
+.pres i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.p-on{color:var(--okText)}.p-on i{background:var(--ok)}.p-off{color:var(--t3)}.p-off i{border:1.5px solid var(--t3)}
+.hdr{height:68px;display:flex;align-items:center;gap:14px;padding:0 24px;border-bottom:1px solid var(--cardBorder);background:var(--surface)}
+.back{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 14px 0 10px;border-radius:999px;font:600 14px Inter;color:var(--t1);background:var(--raised);box-shadow:var(--shRs)}
+.tile{position:relative;width:76px;height:84px;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.tile .g{font:700 30px/1 'Baloo 2'}
+.tile.l{background:var(--raised);box-shadow:var(--shRs)}
+.tile.l .chk{position:absolute;top:7px;right:7px;width:18px;height:18px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center}
+.tile.t{background:var(--raised);box-shadow:var(--shRs)}
+.tile.n{background:transparent;border:1.5px dashed var(--border)}.tile.n .g{color:var(--t3)}
+.tile.next{background:var(--raised);box-shadow:0 0 0 2.5px var(--accText),var(--shRs)}
+.tile .nx{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font:700 10px/1 Inter;letter-spacing:.06em;padding:4px 7px;border-radius:999px;background:var(--acc);color:var(--onAcc)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;font:600 12.5px/1 Inter;white-space:nowrap}
+.statusbar{height:47px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font:600 15px Inter;color:var(--t1)}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--t1);opacity:.6}
+.scrim{position:absolute;inset:0;background:rgba(10,12,16,.45)}
+.swatch{display:flex;height:34px;border-radius:10px;overflow:hidden}.swatch i{flex:1}
+</style>
+</head>
+<body>
+<script>window.PALETTES={"graphite": {"name": "Graphite Aurora", "dark": {"textPrimary": "#EDEFF4", "textSecondary": "#B0B8C8", "textTertiary": "#949DB0", "success": "#3FB56A", "successText": "#5FD08A", "danger": "#E0525F", "dangerText": "#FF7A85", "star": "#F2B23E", "starEmpty": "#7D8799", "onStatus": "#12151B", "background": "#1A1E26", "backgroundEnd": "#171A21", "surface": "#252B37", "surfaceRaised": "#2C3340", "well": "#1D222B", "border": "#343B49", "primary": "#7C6CF5", "primaryFill": "#5A50A8", "primaryText": "#B3A8FF", "onPrimary": "#FFFFFF", "accent": "#F2B23E", "accentText": "#F2B23E", "onAccent": "#2A1E05", "focusRing": "#F2B23E"}, "light": {"textPrimary": "#1B1F2A", "textSecondary": "#454D60", "textTertiary": "#5A6276", "success": "#237F48", "successText": "#1B713D", "danger": "#C73A4C", "dangerText": "#B3303D", "star": "#B57B0A", "starEmpty": "#8A93A6", "onStatus": "#FFFFFF", "background": "#EEF1F6", "backgroundEnd": "#E7EBF2", "surface": "#FFFFFF", "surfaceRaised": "#FFFFFF", "well": "#E6E9F1", "border": "#D5DAE5", "primary": "#6352E6", "primaryFill": "#5A49D6", "primaryText": "#4F3FC4", "onPrimary": "#FFFFFF", "accent": "#F2B23E", "accentText": "#8A5A00", "onAccent": "#3A2A00", "focusRing": "#4F3FD0"}}, "ocean": {"name": "Ocean", "dark": {"textPrimary": "#EDEFF4", "textSecondary": "#B0B8C8", "textTertiary": "#949DB0", "success": "#3FB56A", "successText": "#5FD08A", "danger": "#E0525F", "dangerText": "#FF7A85", "star": "#F2B23E", "starEmpty": "#7D8799", "onStatus": "#12151B", "background": "#111A24", "backgroundEnd": "#0E151E", "surface": "#1A2634", "surfaceRaised": "#20303F", "well": "#132030", "border": "#2A3A4C", "primary": "#4C9AFF", "primaryFill": "#2563C9", "primaryText": "#8CC0FF", "onPrimary": "#FFFFFF", "accent": "#2EC4B6", "accentText": "#5FE0D3", "onAccent": "#04221E", "focusRing": "#5FE0D3"}, "light": {"textPrimary": "#1B1F2A", "textSecondary": "#454D60", "textTertiary": "#5A6276", "success": "#237F48", "successText": "#1B713D", "danger": "#C73A4C", "dangerText": "#B3303D", "star": "#B57B0A", "starEmpty": "#8A93A6", "onStatus": "#FFFFFF", "background": "#EDF3F9", "backgroundEnd": "#E5EDF6", "surface": "#FFFFFF", "surfaceRaised": "#FFFFFF", "well": "#E1EAF3", "border": "#CFDCEA", "primary": "#2563C9", "primaryFill": "#2563C9", "primaryText": "#1D53AD", "onPrimary": "#FFFFFF", "accent": "#14A698", "accentText": "#0B6F65", "onAccent": "#022420", "focusRing": "#1D53AD"}}, "forest": {"name": "Forest", "dark": {"textPrimary": "#EDEFF4", "textSecondary": "#B0B8C8", "textTertiary": "#949DB0", "success": "#3FB56A", "successText": "#5FD08A", "danger": "#E0525F", "dangerText": "#FF7A85", "star": "#F2B23E", "starEmpty": "#7D8799", "onStatus": "#12151B", "background": "#131B18", "backgroundEnd": "#101714", "surface": "#1D2823", "surfaceRaised": "#24312B", "well": "#16201C", "border": "#2C3A33", "primary": "#4DB08F", "primaryFill": "#23735C", "primaryText": "#86D4B8", "onPrimary": "#FFFFFF", "accent": "#E8A33D", "accentText": "#F0B45A", "onAccent": "#2A1B03", "focusRing": "#F0B45A"}, "light": {"textPrimary": "#1B1F2A", "textSecondary": "#454D60", "textTertiary": "#5A6276", "success": "#237F48", "successText": "#1B713D", "danger": "#C73A4C", "dangerText": "#B3303D", "star": "#B57B0A", "starEmpty": "#8A93A6", "onStatus": "#FFFFFF", "background": "#EEF3EF", "backgroundEnd": "#E6EDE8", "surface": "#FFFFFF", "surfaceRaised": "#FFFFFF", "well": "#E1EAE4", "border": "#CEDCD3", "primary": "#1F7A60", "primaryFill": "#1F7A60", "primaryText": "#1A6A53", "onPrimary": "#FFFFFF", "accent": "#E8A33D", "accentText": "#8A5300", "onAccent": "#2A1B03", "focusRing": "#1A6A53"}}, "sunset": {"name": "Sunset", "dark": {"textPrimary": "#EDEFF4", "textSecondary": "#B0B8C8", "textTertiary": "#949DB0", "success": "#3FB56A", "successText": "#5FD08A", "danger": "#E0525F", "dangerText": "#FF7A85", "star": "#F2B23E", "starEmpty": "#7D8799", "onStatus": "#12151B", "background": "#1E1820", "backgroundEnd": "#19141B", "surface": "#2A222D", "surfaceRaised": "#322938", "well": "#211A24", "border": "#3C3141", "primary": "#E07AAE", "primaryFill": "#A8407A", "primaryText": "#F3A8CC", "onPrimary": "#FFFFFF", "accent": "#F5A65B", "accentText": "#F7B57A", "onAccent": "#2E1704", "focusRing": "#F7B57A"}, "light": {"textPrimary": "#1B1F2A", "textSecondary": "#454D60", "textTertiary": "#5A6276", "success": "#237F48", "successText": "#1B713D", "danger": "#C73A4C", "dangerText": "#B3303D", "star": "#B57B0A", "starEmpty": "#8A93A6", "onStatus": "#FFFFFF", "background": "#F7F0F1", "backgroundEnd": "#F1E7E9", "surface": "#FFFFFF", "surfaceRaised": "#FFFFFF", "well": "#F0E4E7", "border": "#E3D2D7", "primary": "#B03A78", "primaryFill": "#A8376F", "primaryText": "#962F64", "onPrimary": "#FFFFFF", "accent": "#F5A65B", "accentText": "#99500B", "onAccent": "#2E1704", "focusRing": "#962F64"}}};</script>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></symbol>
+<symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+<symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 1 10-10c0 3-2.5 4-4.5 4H15a2 2 0 0 0-1.5 3.3A1.6 1.6 0 0 1 12 22z"/><circle cx="7.5" cy="10.5" r="1.2"/><circle cx="11" cy="7" r="1.2"/><circle cx="16" cy="8.5" r="1.2"/></symbol>
+<symbol id="i-video" viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8z"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></symbol>
+<symbol id="i-signout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18M8 17v-5M13 17V8M18 17v-9"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+<symbol id="i-mark" viewBox="0 0 24 24"><circle cx="12" cy="20" r="1.6"/><circle cx="6" cy="13" r="1.3"/><circle cx="8" cy="7" r="1.3"/><circle cx="12" cy="5" r="1.3"/><circle cx="16" cy="6.5" r="1.3"/><circle cx="19" cy="10" r="1.3"/><path d="M12 20 6 13M12 20 8 7M12 20V5M12 20l4-13.5M12 20l7-10"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 7L12 17.5 5.8 21l1.4-7L2 9.3l7-.8z"/></symbol>
+<symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></symbol>
+</defs></svg>
+<script>
+const I=(n,s=18,c='currentColor',sw=2)=>`<svg class="ico" style="width:${s}px;height:${s}px;color:${c};stroke-width:${sw}"><use href="#i-${n}"/></svg>`;
+const put=(id,html)=>{document.getElementById(id).innerHTML=html};
+const AV=(t,s=36)=>`<span class="av" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.38)}px">${t}</span>`;
+const STARS=(v,s=11)=>{let h='<span class="row" style="gap:2px">';for(let k=1;k<=3;k++){const f=Math.max(0,Math.min(1,v-(k-1)));h+=`<span style="position:relative;width:${s}px;height:${s}px;display:inline-block"><svg viewBox="0 0 24 24" style="position:absolute;inset:0;width:${s}px;height:${s}px"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 7L12 17.5 5.8 21l1.4-7L2 9.3l7-.8z" fill="none" stroke="var(--starEmpty)" stroke-width="2.2"/></svg><span style="position:absolute;inset:0;width:${f*100}%;overflow:hidden"><svg viewBox="0 0 24 24" style="width:${s}px;height:${s}px"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 7L12 17.5 5.8 21l1.4-7L2 9.3l7-.8z" fill="var(--star)"/></svg></span></span>`}return h+'</span>'};
+const PB=(p,c='')=>`<div class="pb ${c}"><i style="width:${p}%"></i></div>`;
+const LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const ANA=[3,3,2.5,3,3,2.75,3,3,2.5,3,2.25,3,3,3,3,2.5,3,2,3,3,2.75,-1,0,0,0,1.25]; // -1 = next, 0 = not yet, Z tried (1.25 stars, not learned)
+const tileHTML=(l,v,size=76)=>{const learned=v>0&&l!='Z';const tried=l=='Z';const next=v==-1;const cls=learned?'l':tried?'t':next?'next':'n';const g=size>=70?30:22;
+ return `<div class="tile ${cls}" style="width:${size}px;height:${Math.round(size*1.1)}px" aria-label="${l}: ${learned?'learned, '+v+' stars':tried?'tried, not learned yet':next?'next to practise':'not started'}">${next?'<span class="nx">NEXT</span>':''}<span class="g" style="font-size:${g}px">${l}</span>${learned||tried?STARS(v,size>=70?12:9):`<span class="caption c3" style="font-size:${size>=70?11:9.5}px">${next?'start':'not yet'}</span>`}${learned?`<span class="chk" style="${size<70?'width:14px;height:14px;top:5px;right:5px':''}">${I('check',size<70?9:12,'var(--onStatus)',3.5)}</span>`:''}</div>`};
+const MODES={dark:'Dark',light:'Light'};
+const SCHEMES={graphite:'Graphite Aurora',ocean:'Ocean',forest:'Forest',sunset:'Sunset'};
+</script>
+<section class="dv-turn" id="top">
+<div class="dv-thd"><a class="dv-tid" href="#top">0</a><span class="dv-tname">LCSign · Classroom home redesign, back button, light/dark mode and 4 colour schemes for every screen</span></div>
+<div class="dv-tsub">HTML design reference, not production code. Each frame is drawn with one of 8 palettes (4 schemes × light/dark), applied through the same token names, so the same screen can be shown in any scheme. Desktop 1440×900, phone 390×844, laptop 1366×768. Red pins match the notes. See README.md beside this file for the token tables, the component change list and the copy.</div>
+<div class="toc"><a href="#H1">H1 Today tab</a><a href="#H2">H2 My signs tab</a><a href="#H3">H3 From my teacher tab</a><a href="#H3b">H3b All letters learned</a><a href="#H4">H4 Appearance panel</a><a href="#H5">H5 8 palettes</a><a href="#H6">H6 Phone</a><a href="#B">B Back button rules</a><a href="#TA">TA Teacher + Admin themed</a><a href="#P">P Palette sheet</a></div>
+</section>
+<script>
+const PAL=window.PALETTES;
+function hdr({role='Student',name='Ana Santos',ini='AS',mode='dark',appearanceOn=false}){
+ return `<div class="hdr"><span class="back" aria-label="Back to the start screen">${I('left',18)}Back</span>
+  <span class="row" style="gap:8px;margin-left:6px">${I('mark',22,'var(--priText)',1.6)}<span style="font:700 20px/1 'Baloo 2';color:var(--priText)">LCSign</span></span>
+  <div class="f1"></div>
+  <span class="btn neu" style="${appearanceOn?'box-shadow:var(--shI);background:var(--well);color:var(--accText)':''}" aria-label="Appearance: ${mode} mode">${I(mode=='dark'?'moon':'sun',17)}${I('palette',17)}<span>Appearance</span></span>
+  <span class="row" style="gap:10px;height:48px;padding:0 14px 0 6px;border-radius:999px;border:1px solid var(--border)">${AV(ini,36)}<span class="col" style="gap:3px"><span style="font:600 14px/1 Inter">${name}</span><span style="font:500 12px/1 Inter;color:var(--accText)">${role}</span></span>${I('down',15,'var(--t2)')}</span>
+ </div>`;
+}
+// Page tabs: the one new control. Big pills with icon + label + count, role=tablist.
+const PTABS=[['home','today','Today',''],['hand','signs','My signs','65'],['book','teacher','From my teacher','3']];
+function pageTabs(on,phone=false){
+ return `<div class="row" role="tablist" style="gap:6px;padding:5px;border-radius:999px;background:var(--well);box-shadow:var(--shI);${phone?'':'align-self:flex-start'}">${PTABS.map(([ic,k,l,c])=>`<span role="tab" aria-selected="${k==on}" class="row" style="gap:9px;height:48px;padding:0 20px;border-radius:999px;font:600 15px Inter;${k==on?'background:var(--raised);box-shadow:var(--shRs);color:var(--t1)':'color:var(--t2)'}">${I(ic,18,k==on?'var(--priText)':'var(--t2)')}${l}${c?`<span style="font:600 12px Inter;padding:3px 8px;border-radius:999px;background:${k==on?'var(--well)':'transparent'};color:var(--t2)">${c}</span>`:''}</span>`).join('')}</div>`;
+}
+// Strip above the tabs: hello + total, and the teacher (always one tap from Call).
+function topStrip(){
+ return `<div class="row" style="gap:20px">
+  <div class="col f1" style="gap:8px"><span class="kidH">Hi, Ana!</span><div class="row" style="gap:14px;max-width:460px"><span style="font:600 15px Inter;white-space:nowrap">65 signs learned</span>${PB(32,'acc')}</div></div>
+  <div class="card row" style="padding:10px 12px 10px 14px;gap:12px;border-radius:999px">${AV('LM',40)}<div class="col" style="gap:4px"><span style="font:600 14.5px/1 Inter">Liza Mendoza</span><span class="pres p-on"><i></i>Your teacher · Online</span></div><span class="btn pri">${I('video',16,'var(--onPri)')}Call</span></div>
+ </div>`;
+}
+const page=(tab,body,mode='dark',appearanceOn=false)=>hdr({mode,appearanceOn})+`<div style="max-width:1200px;margin:0 auto;padding:22px 24px;display:flex;flex-direction:column;gap:18px">${topStrip()}${pageTabs(tab)}${body}</div>`;
+
+// TAB 1 · Today
+function todayTab(){
+ return `<div class="row" style="gap:18px;align-items:stretch">
+  <div class="card f1 row" style="padding:26px 28px;gap:28px">
+   <span class="row center raised" style="width:150px;height:150px;border-radius:34px;font:700 92px/1 'Baloo 2';color:var(--accText);flex:none">V</span>
+   <div class="col f1" style="gap:10px"><span class="meta">Next up · ASL Letters</span><span class="kidH" style="font-size:34px">Practise the letter V</span>
+    <span style="font:500 16px/1.5 Inter" class="c2">You've learned 21 of 26 letters. Only 5 to go!</span>
+    <div class="row" style="gap:10px;margin-top:6px"><span class="btn acc lg">Practise V ${I('arrow',17,'var(--onAcc)')}</span><span class="btn ghost lg">Pick another sign</span></div></div>
+  </div>
+  <div class="card col" style="width:340px;padding:20px;gap:12px"><div class="row between"><span class="meta">Due soon</span><span class="chip" style="height:26px;border:1px solid var(--accText);color:var(--accText)">${I('cal',13)}Sun, Nov 1</span></div>
+   <span class="h2">Family words</span><span class="bodySm c2">From Liza Mendoza · ASL Words</span>
+   <div class="row" style="gap:10px">${PB(14,'acc')}<span style="font:600 13px Inter">1 of 7</span></div>
+   <div class="f1"></div><span class="btn neu" style="width:100%">Continue ${I('arrow',15)}</span></div>
+ </div>
+ <div class="col" style="gap:10px"><span class="h3">How you're doing</span>
+  <div class="row" style="gap:14px">${[['ASL Letters',21,26,81],['ASL Words',34,80,43],['FSL Words',10,105,10]].map(([g,a,b,v])=>`<div class="card f1 col" style="padding:16px 18px;gap:10px;border-radius:18px"><div class="row between"><span style="font:600 15px Inter">${g}</span>${I('right',16,'var(--t2)')}</div><span><span style="font:700 26px/1 'Baloo 2'">${a}</span><span class="c2" style="font:500 14px Inter"> of ${b} learned</span></span>${PB(v,'ok')}</div>`).join('')}
+   <div class="card col center" style="width:180px;padding:16px;gap:8px;border-radius:18px;border-style:dashed;box-shadow:none;background:transparent"><span class="soonb">SOON</span><span class="caption c2" style="text-align:center">ASL Numbers, FSL Letters and FSL Numbers</span></div></div></div>`;
+}
+// TAB 2 · My signs
+function signsTab({allDone=false}={}){
+ const vals=allDone?LETTERS.map(()=>3):ANA;const learned=allDone?26:21;
+ return `<div class="card" style="padding:20px 24px 24px;display:flex;flex-direction:column;gap:18px">
+  <div class="row" style="gap:12px"><div class="seg"><span class="on">ASL</span><span>FSL</span></div><div class="seg"><span class="on">Letters <small>${learned}/26</small></span><span>Numbers <span class="soonb">SOON</span></span><span>Words <small>34/80</small></span></div><div class="f1"></div>
+   <span class="row caption c2" style="gap:14px"><span class="row" style="gap:6px"><span style="width:16px;height:16px;border-radius:50%;background:var(--ok);display:inline-flex;align-items:center;justify-content:center">${I('check',10,'var(--onStatus)',3.5)}</span>Learned</span><span class="row" style="gap:6px">${STARS(3,12)}How well you sign it</span></span></div>
+  ${allDone?`<div class="row" style="gap:14px;padding:12px 16px;border-radius:16px;background:var(--well)"><span style="width:36px;height:36px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center">${I('check',20,'var(--onStatus)',3)}</span><div class="col f1"><span style="font:700 19px 'Baloo 2'">All 26 letters learned. Great work!</span><span class="caption c2">Practise any letter again to earn more stars.</span></div><span class="btn neu">Go to Words ${I('arrow',15)}</span></div>`
+  :`<div class="row" style="gap:14px"><span style="font:600 16px Inter;white-space:nowrap">${learned} of 26 letters learned</span>${PB(learned/26*100,'ok')}</div>`}
+  <div class="row wrap" style="gap:14px 9px">${LETTERS.map((l,i)=>tileHTML(l,vals[i])).join('')}</div>
+  <span class="caption c2">Tap a letter to practise it.</span>
+ </div>`;
+}
+// TAB 3 · From my teacher
+function teacherTab(){
+ const mods=[['Family words','ASL Words',['mother','brother','grandma','grandpa','family','uncle','aunt'],1,'Due Sun, Nov 1 · in 5 days','soon'],['Greetings','ASL Words',['hello','thank you','please','yes','no'],0,'',''],['Letters A to J','ASL Letters','ABCDEFGHIJ'.split(''),10,'','done']];
+ return `<div class="row" style="gap:18px;align-items:flex-start">
+  <div class="col f1" style="gap:12px">${mods.map(([t,g,s,n,d,st])=>`<div class="card" style="padding:16px 20px;display:flex;gap:18px;align-items:center;border-radius:20px">
+    <div class="col f1" style="gap:9px"><div class="row" style="gap:10px"><span class="h2">${t}</span><span class="caption c2">${g} · ${s.length} signs</span>${st=='done'?`<span class="chip" style="height:24px;background:var(--ok);color:var(--onStatus)">${I('check',12,'var(--onStatus)',3.2)}Done</span>`:d?`<span class="chip" style="height:24px;border:1px solid var(--accText);color:var(--accText)">${I('cal',12)}${d}</span>`:''}</div>
+     <div class="row wrap" style="gap:6px">${s.map((x,i)=>`<span class="chip" style="height:28px;${i<n?'background:var(--well);color:var(--t1)':'border:1px dashed var(--border);color:var(--t2)'}">${i<n?I('check',11,'var(--okText)',3):''}${x}</span>`).join('')}</div>
+     <div class="row" style="gap:10px;max-width:520px">${PB(n/s.length*100,st=='done'?'sm ok':'sm acc')}<span style="font:600 13px Inter;white-space:nowrap">${n} of ${s.length} learned</span></div></div>
+    ${st=='done'?`<span class="btn neu">Practise again</span>`:`<span class="btn acc">${n?'Continue':'Start'} ${I('arrow',15,'var(--onAcc)')}</span>`}</div>`).join('')}</div>
+  <div class="card col" style="width:330px;padding:20px;gap:14px"><span class="meta">Your teacher</span>
+   <div class="row" style="gap:12px">${AV('LM',52)}<div class="col" style="gap:5px"><span class="h3">Liza Mendoza</span><span class="pres p-on"><i></i>Online</span></div></div>
+   <span class="bodySm c2">Call to practise signs together. Your teacher can ask you to sign and help you.</span>
+   <span class="btn pri lg" style="width:100%">${I('video',18,'var(--onPri)')}Call Liza</span>
+   <div class="row" style="gap:10px;padding:10px 12px;border-radius:14px;background:var(--well)">${I('phone',16,'var(--accText)')}<span class="caption f1">You missed a call from Liza · Today, 9:34 PM</span></div></div>
+ </div>`;
+}
+</script>
+
+<section class="dv-turn" id="t-home">
+<div class="dv-thd"><a class="dv-tid" href="#t-home">H</a><span class="dv-tname">Classroom home (student), organised into three tabs</span></div>
+<div class="dv-tsub">The classroom home now shows <b>one thing at a time</b>. A slim strip stays on top of every tab: hello + total signs learned, plus your teacher with a <b>Call</b> button, so calling is always one tap away. Under it, three tabs: <b>Today</b> (what to do next), <b>My signs</b> (the letter/word tiles) and <b>From my teacher</b> (modules + calling). The Back button, the Appearance panel and all 8 palettes are unchanged from the previous version.</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="H1"><div class="dv-olabel"><a class="dv-oid" href="#H1">H1</a>Tab 1 · Today (opens by default) · Graphite Aurora · dark · desktop 1440×900</div>
+<div class="frame t-graphite-dark" id="f-H1" style="width:1440px;height:900px"></div>
+<script>put('f-H1',page('today',todayTab())+`<span class="pin" style="left:150px;top:118px">1</span><span class="pin" style="left:1290px;top:108px">2</span><span class="pin" style="left:150px;top:196px">3</span><span class="pin" style="left:820px;top:300px">4</span><span class="pin" style="left:1290px;top:290px">5</span><span class="pin" style="left:150px;top:510px">6</span>`)</script>
+<div class="note"><ol>
+<li><b>Top strip</b> (on every tab): "Hi, Ana!" + total signs learned + the overall bar (same <code>computeOverall</code> value).</li>
+<li><b>Your teacher</b> pill: avatar, name, presence (dot + words) and a 44px <b>Call</b> button. It's always visible, so calling never depends on which tab is open. Busy: "Call (they're on a call)". No teacher yet: the pill reads "No teacher yet" and has no button.</li>
+<li><b>Page tabs</b> (new <code>PageTabs</code>): three 48px pills with icon, label and count, <code>role="tablist"</code>. Today opens by default. The last tab used is remembered on the device. Arrow keys move between tabs on web.</li>
+<li><b>Next up</b> is the hero of Today: a 150px sign slab, one sentence of encouragement from real counts, and <b>Practise V</b>. "Pick another sign" jumps to the My signs tab.</li>
+<li><b>Due soon</b>: the nearest module with a due date (or the first unfinished one if none has a due date). "Continue" practises its next unlearned sign. Hidden when there are no modules.</li>
+<li><b>How you're doing</b>: one card per available group with "21 of 26 learned" and a bar. Tapping a card opens My signs on that group. Groups with no model yet sit together in one dashed "SOON" card instead of being repeated.</li></ol></div></div>
+
+<div class="dv-opt" id="H2"><div class="dv-olabel"><a class="dv-oid" href="#H2">H2</a>Tab 2 · My signs · Graphite Aurora · light</div>
+<div class="frame t-graphite-light" id="f-H2" style="width:1440px;height:900px"></div>
+<script>put('f-H2',page('signs',signsTab(),'light')+`<span class="pin" style="left:150px;top:310px">1</span><span class="pin" style="left:150px;top:420px">2</span><span class="pin" style="left:150px;top:810px">3</span>`)</script>
+<div class="note"><ol>
+<li>The tile grid gets the whole tab. ASL|FSL and Letters / Numbers / Words stay as the existing <code>SegmentedToggle</code> + <code>CurriculumTabs</code>, with counts inside. They're second-level tabs inside the page tab, styled smaller and on the card so the two levels don't compete.</li>
+<li>Tiles keep the calm style: small check inside the corner, stars, a dashed outline for not yet, an accent ring + "NEXT" for the next sign. 13 per row on desktop.</li>
+<li>A one-line hint replaces the long rules paragraph. The legend is two items.</li></ol></div></div>
+
+<div class="dv-opt" id="H3"><div class="dv-olabel"><a class="dv-oid" href="#H3">H3</a>Tab 3 · From my teacher · Forest · dark</div>
+<div class="frame t-forest-dark" id="f-H3" style="width:1440px;height:900px"></div>
+<script>put('f-H3',page('teacher',teacherTab())+`<span class="pin" style="left:150px;top:310px">1</span><span class="pin" style="left:870px;top:320px">2</span><span class="pin" style="left:1290px;top:300px">3</span>`)</script>
+<div class="note"><ol>
+<li>One card per module, in the teacher's order: name, group + size, a due chip ("Due Sun, Nov 1 · in 5 days") or a <b>Done</b> chip, the module's signs as chips (learned ones get a check, the rest are dashed) and "1 of 7 learned".</li>
+<li>One action per module: <b>Continue</b> / <b>Start</b> (accent) practises the next unlearned sign in the module, and <b>Practise again</b> appears when it's done.</li>
+<li><b>Your teacher</b> card: a bigger version of the strip's call pill with a one-line explanation, and the missed-call notice when there is one (existing missed-call data).</li></ol>
+No modules yet: "Your teacher hasn't added any modules yet. You can still practise everything in My signs." with a button to that tab.</div></div>
+
+<div class="dv-opt" id="H3b"><div class="dv-olabel"><a class="dv-oid" href="#H3b">H3b</a>My signs · every letter learned (the state in your screenshot) · Sunset · light</div>
+<div class="frame t-sunset-light" id="f-H3b" style="width:1440px;height:900px"></div>
+<script>put('f-H3b',page('signs',signsTab({allDone:true}),'light'))</script></div>
+
+<div class="dv-opt" id="H4"><div class="dv-olabel"><a class="dv-oid" href="#H4">H4</a>Appearance panel open · Ocean · light · desktop</div>
+<div class="frame t-ocean-light" id="f-H4" style="width:1440px;height:900px"></div>
+<script>
+function appearancePanel(sel='ocean',mode='light',phone=false){
+ const card=(k)=>{const p=PAL[k][mode];return `<div class="col" style="gap:8px;padding:10px;border-radius:16px;${k==sel?'box-shadow:0 0 0 2.5px var(--priText);background:var(--surface)':'border:1px solid var(--border)'}" role="radio" aria-checked="${k==sel}">
+   <div style="border-radius:10px;overflow:hidden;border:1px solid ${p.border};background:${p.background};padding:8px;display:flex;flex-direction:column;gap:6px">
+    <div style="height:10px;border-radius:4px;background:${p.surface};width:70%"></div>
+    <div class="row" style="gap:5px"><i style="width:30px;height:14px;border-radius:7px;background:${p.primaryFill};display:block"></i><i style="width:30px;height:14px;border-radius:7px;background:${p.accent};display:block"></i><i style="width:14px;height:14px;border-radius:50%;background:${p.success};display:block"></i></div></div>
+   <div class="row between"><span style="font:600 13.5px Inter">${SCHEMES[k]}</span>${k==sel?`<span style="width:20px;height:20px;border-radius:50%;background:var(--priFill);display:inline-flex;align-items:center;justify-content:center">${I('check',12,'var(--onPri)',3.5)}</span>`:''}</div></div>`};
+ return `<div class="card" style="${phone?'':'width:420px;'}padding:20px;display:flex;flex-direction:column;gap:16px;box-shadow:0 18px 44px rgba(0,0,0,.28)">
+  <div class="row between"><span class="h2">Appearance</span><span class="btn icon ghost" aria-label="Close">${I('x',17)}</span></div>
+  <div class="col" style="gap:8px"><span class="meta">Mode</span><div class="seg" style="width:100%">${[['sun','Light','light'],['moon','Dark','dark'],['monitor','Match device','system']].map(([i,l,k])=>`<span class="${k==mode?'on':''}" style="flex:1;justify-content:center;padding:0 8px">${I(i,15)}${l}</span>`).join('')}</div></div>
+  <div class="col" style="gap:8px"><span class="meta">Colour scheme</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${Object.keys(SCHEMES).map(card).join('')}</div></div>
+  <span class="caption c2">Changes every screen on this device straight away. Ticks, stars and warnings keep the same meaning in every scheme.</span>
+  <span class="btn ghost sm" style="align-self:flex-start">Reset to default</span></div>`;
+}
+put('f-H4',page('today',todayTab(),'light',true)+`<div class="scrim" style="background:rgba(10,12,16,.18)"></div><div style="position:absolute;right:190px;top:76px">${appearancePanel()}</div><span class="pin" style="left:820px;top:130px">1</span><span class="pin" style="left:820px;top:230px">2</span><span class="pin" style="left:820px;top:560px">3</span>`);
+</script>
+<div class="note"><ol>
+<li><b>Mode</b>: Light · Dark · Match device.</li>
+<li><b>Colour scheme</b>: 4 preview cards (radio group, ring + check).</li>
+<li>The choice applies to every screen straight away and is saved on this device. Unchanged from the previous version.</li></ol></div></div>
+
+<div class="dv-opt" id="H5"><div class="dv-olabel"><a class="dv-oid" href="#H5">H5</a>The Today tab in all 8 palettes (scaled to 30%)</div>
+<div class="thumbs" id="thumbs"></div>
+<script>
+(function(){let h='';['dark','light'].forEach(m=>Object.keys(SCHEMES).forEach(k=>{h+=`<div><div class="thumb"><div class="frame t-${k}-${m}" style="width:1440px;height:900px">${page('today',todayTab(),m)}</div></div><div class="tlabel">${SCHEMES[k]} · ${MODES[m]}</div></div>`}));document.getElementById('thumbs').innerHTML=h})();
+</script></div>
+
+<div class="dv-opt" id="H6"><div class="dv-olabel"><a class="dv-oid" href="#H6">H6</a>Phone 390×844 · the three tabs become a bottom tab bar · Today (Graphite dark) · My signs (Ocean light) · From my teacher (Forest light) · Appearance sheet (Sunset light)</div>
+<div class="row" style="gap:24px;align-items:flex-start">
+<div class="frame t-graphite-dark" id="f-H6a" style="width:390px;height:844px"></div>
+<div class="frame t-ocean-light" id="f-H6b" style="width:390px;height:844px"></div>
+<div class="frame t-forest-light" id="f-H6c" style="width:390px;height:844px"></div>
+<div class="frame t-sunset-light" id="f-H6d" style="width:390px;height:844px"></div>
+</div>
+<script>
+const phHead=(mode)=>`<div class="statusbar"><span>9:41</span><span>●●●</span></div>
+ <div class="row" style="padding:2px 14px 10px;gap:8px"><span class="btn icon neu" aria-label="Back to the start screen">${I('left',20)}</span><span class="row" style="gap:6px">${I('mark',20,'var(--priText)',1.6)}<span style="font:700 18px 'Baloo 2';color:var(--priText)">LCSign</span></span><div class="f1"></div><span class="btn icon neu" aria-label="Appearance">${I(mode=='dark'?'moon':'sun',18)}</span><span class="btn icon neu" aria-label="Account">${AV('AS',30)}</span></div>
+ <div class="row" style="padding:0 14px 12px;gap:10px"><div class="col f1" style="gap:6px"><span class="kidH" style="font-size:24px">Hi, Ana!</span><div class="row" style="gap:8px"><span style="font:600 13px Inter;white-space:nowrap">65 learned</span>${PB(32,'acc sm')}</div></div>
+  <span class="row card" style="padding:5px 6px 5px 5px;gap:6px;border-radius:999px">${AV('LM',34)}<span class="btn pri sm" style="height:40px">${I('video',15,'var(--onPri)')}Call</span></span></div>`;
+const phTabs=(on)=>`<div class="row" role="tablist" style="position:absolute;left:0;right:0;bottom:0;height:84px;padding:6px 10px 28px;justify-content:space-around;background:var(--surface);border-top:1px solid var(--border)">${PTABS.map(([i,k,l])=>`<div role="tab" class="col center" style="width:112px;height:50px;gap:4px;border-radius:14px;${k==on?'background:var(--raised);box-shadow:var(--shRs)':''}">${I(i,20,k==on?'var(--priText)':'var(--t2)')}<span style="font:600 11.5px Inter;color:${k==on?'var(--t1)':'var(--t2)'}">${l}</span></div>`).join('')}</div><div class="homebar"></div>`;
+const phToday=`<div style="padding:0 14px;display:flex;flex-direction:column;gap:12px">
+ <div class="card col" style="padding:18px;gap:12px;align-items:center;text-align:center"><span class="meta">Next up · ASL Letters</span><span class="row center raised" style="width:110px;height:110px;border-radius:28px;font:700 66px/1 'Baloo 2';color:var(--accText)">V</span><span class="c2" style="font:500 14.5px/1.4 Inter">21 of 26 letters learned. Only 5 to go!</span><span class="btn acc lg" style="width:100%">Practise V ${I('arrow',17,'var(--onAcc)')}</span></div>
+ <div class="card row" style="padding:14px;gap:12px">${I('cal',18,'var(--accText)')}<div class="col f1"><span style="font:600 14.5px Inter">Family words</span><span class="caption c2">1 of 7 · due Sun, Nov 1</span></div><span class="btn neu sm">Continue</span></div>
+ <div class="card" style="padding:12px 14px">${[['ASL Letters','21/26',81],['ASL Words','34/80',43],['FSL Words','10/105',10]].map(([g,s,v])=>`<div class="col" style="gap:6px;padding:7px 0"><div class="row between"><span style="font:600 13.5px Inter">${g}</span><span class="caption c2">${s}</span></div>${PB(v,'sm ok')}</div>`).join('')}</div></div>`;
+const phSigns=`<div style="padding:0 14px;display:flex;flex-direction:column;gap:12px">
+ <div class="row" style="gap:8px"><div class="seg"><span class="on">ASL</span><span>FSL</span></div><div class="seg"><span class="on">Letters</span><span>Words</span></div></div>
+ <div class="card" style="padding:14px;display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:10px"><span style="font:600 14px Inter;white-space:nowrap">21 of 26 learned</span>${PB(81,'ok')}</div>
+  <div class="row wrap" style="gap:12px 9px">${LETTERS.slice(0,20).map((l,i)=>tileHTML(l,ANA[i],58)).join('')}</div></div></div>`;
+const phTeacher=`<div style="padding:0 14px;display:flex;flex-direction:column;gap:12px">
+ <div class="row" style="gap:10px;padding:10px 12px;border-radius:14px;background:var(--well)">${I('phone',16,'var(--accText)')}<span class="caption f1">You missed a call from Liza · 9:34 PM</span></div>
+ ${[['Family words','ASL Words · 1 of 7 learned',14,'Due Sun, Nov 1','Continue'],['Greetings','ASL Words · 0 of 5 learned',0,'','Start'],['Letters A to J','ASL Letters · 10 of 10',100,'done','Practise again']].map(([t,s,v,d,a])=>`<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px"><div class="row between"><span class="h3">${t}</span>${d=='done'?`<span class="chip" style="height:24px;background:var(--ok);color:var(--onStatus)">${I('check',12,'var(--onStatus)',3.2)}Done</span>`:d?`<span class="chip" style="height:24px;border:1px solid var(--accText);color:var(--accText)">${d}</span>`:''}</div><span class="caption c2">${s}</span>${PB(v,d=='done'?'sm ok':'sm acc')}<span class="btn ${d=='done'?'neu':'acc'}" style="width:100%">${a}</span></div>`).join('')}</div>`;
+put('f-H6a',phHead('dark')+phToday+phTabs('today'));
+put('f-H6b',phHead('light')+phSigns+phTabs('signs'));
+put('f-H6c',phHead('light')+phTeacher+phTabs('teacher'));
+put('f-H6d',phHead('light')+phToday+phTabs('today')+`<div class="scrim"></div><div style="position:absolute;left:0;right:0;bottom:0">${appearancePanel('sunset','light',true).replace('border-radius:22px','border-radius:24px 24px 0 0')}</div><div class="homebar"></div>`);
+</script>
+<div class="note">On phones the same three tabs move to a <b>bottom tab bar</b> (112×50 targets, safe-area padded), the same pattern as the teacher's phone layout. The top strip shrinks to hello + total + a compact teacher pill with Call. Today stacks Next up, Due soon and the group bars. My signs shows the tiles at 58px, 5 per row (children's targets stay ≥ 48). From my teacher lists the modules with one full-width action each, with the missed-call notice on top.</div></div>
+
+</div></section>
+<section class="dv-turn" id="B">
+<div class="dv-thd"><a class="dv-tid" href="#B">B</a><span class="dv-tname">The back button: one rule for every screen</span></div>
+<div class="dv-tsub">Always top-left, always the same pill with an arrow and a word. It goes to the screen you came from in the app's own hierarchy, not the browser history, so it behaves the same in the desktop app, the web app and on phones. The browser and Android back buttons do the same thing.</div>
+<div class="dv-opts">
+<div class="dv-opt" id="B1"><div class="dv-olabel"><a class="dv-oid" href="#B1">B1</a>Where Back goes (header strips, Graphite light)</div>
+<div class="frame t-graphite-light" id="f-B1" style="width:1440px;height:560px"></div>
+<script>
+const strip=(label,title,target,extra='')=>`<div class="row" style="gap:14px;height:76px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--surface)"><span class="back">${I('left',18)}${label}</span><span class="h3">${title}</span><div class="f1"></div>${extra}<span class="caption c2" style="width:430px">${target}</span></div>`;
+put('f-B1',`<div class="col">
+ ${strip('Back','Classroom home (student)','→ Start screen (role picker). You stay signed in. Same as tapping the logo today.')}
+ ${strip('My signs','Practise “V”','→ Classroom home. The label names where it goes. During a check, Back stops the camera first.')}
+ ${strip('Back','Teacher · Today / Students / Progress','→ Start screen. The rail sections are tabs, not steps, so Back does not walk through them.')}
+ ${strip('Students','Student detail (phone page)','→ Students. On desktop the detail is a drawer with ✕ Close instead of Back.')}
+ ${strip('Back','What they learn · unsaved plan','→ asks first: “Leave without saving? Your changes to the ASL plan will be lost.” [Keep editing] [Leave]','<span class="chip" style="background:var(--well);color:var(--accText)">unsaved</span>')}
+ ${strip('Back','Admin · Accounts','→ Start screen. The account drawer uses ✕ Close, not Back.')}
+ <div class="row" style="gap:14px;height:76px;padding:0 20px;background:var(--surface)"><span class="btn" style="background:#C23A47;color:#fff">Leave</span><span class="h3">Video call</span><div class="f1"></div><span class="caption c2" style="width:430px">No Back button during a call. Leave is the only way out, so a call can't be dropped by accident. The browser back button asks: “Leave the call?”</span></div>
+</div>`);
+</script>
+<div class="note">RN: one <code>BackButton</code> component (<code>label</code>, <code>onPress</code>, <code>accessibilityLabel</code> = "Back to {destination}"). <code>DashboardShell</code> gets <code>onBack</code> + <code>backLabel</code> and wires the Android hardware back button (<code>BackHandler</code>) and the web <code>popstate</code> event to the same handler. Unsaved-changes guard: <code>ConfirmInline</code> in the sticky save bar, never <code>window.confirm</code>.</div></div>
+</div></section>
+
+<section class="dv-turn" id="TA">
+<div class="dv-thd"><a class="dv-tid" href="#TA">TA</a><span class="dv-tname">Teacher and Admin dashboards with Back, Appearance and the schemes</span></div>
+<div class="dv-tsub">Same layouts as the Teacher/Admin handoff, now drawn from the theme tokens, so they follow whatever the user picks. Role colours map onto the scheme: the <b>teacher</b> accent is the scheme's <code>primary</code>, the <b>student</b> accent is the scheme's <code>accent</code>, and <b>admin</b> stays neutral grey-blue in every scheme.</div>
+<div class="dv-opts">
+<script>
+function tHdr(name,ini,role,mode,roleColor='var(--priText)'){return `<div class="hdr"><span class="back">${I('left',18)}Back</span><span class="row" style="gap:8px;margin-left:6px">${I('mark',22,'var(--priText)',1.6)}<span style="font:700 20px/1 'Baloo 2';color:var(--priText)">LCSign</span></span><div class="f1"></div>
+ <span class="btn neu">${I(mode=='dark'?'moon':'sun',17)}${I('palette',17)}Appearance</span>
+ <span class="row" style="gap:10px;height:48px;padding:0 14px 0 6px;border-radius:999px;border:1px solid var(--border)">${AV(ini,36)}<span class="col" style="gap:3px"><span style="font:600 14px/1 Inter">${name}</span><span style="font:500 12px/1 Inter;color:${roleColor}">${role}</span></span>${I('down',15,'var(--t2)')}</span></div>`}
+function teacherToday(mode){
+ const nav=[['home','Today',5],['users','Students'],['book','What they learn'],['chart','Progress']];
+ return tHdr('Liza Mendoza','LM','Teacher',mode)+`<div class="row" style="align-items:stretch;height:832px">
+ <div class="col" style="width:248px;padding:20px 16px;gap:6px;border-right:1px solid var(--border);background:var(--surface)">
+  <span class="meta" style="padding:0 6px 8px">Class</span>
+  <div class="row raisedSm" style="height:52px;border-radius:14px;padding:0 12px;gap:10px"><i style="width:8px;height:8px;border-radius:50%;background:var(--pri)"></i><div class="col f1"><span style="font:600 14px/1.2 Inter">Grade 5 – Mabini</span><span class="caption c2">40 students</span></div>${I('down',16,'var(--t2)')}</div>
+  <div style="height:16px"></div>
+  ${nav.map(([ic,l,c],i)=>`<div class="row" style="gap:12px;height:44px;padding:0 14px;border-radius:14px;font:${i?500:600} 14px Inter;${i?'color:var(--t2)':'background:var(--raised);box-shadow:var(--shRs)'}">${I(ic,18,i?'var(--t2)':'var(--priText)')}${l}${c?`<span class="chip" style="margin-left:auto;height:22px;padding:0 8px;background:var(--acc);color:var(--onAcc)">${c}</span>`:''}</div>`).join('')}
+  <div class="f1"></div>
+  <div class="card" style="padding:14px;border-radius:16px"><span class="meta">Class code</span><div class="row between" style="margin-top:8px"><span style="font:700 24px/1 'Baloo 2';letter-spacing:.18em">KM7QXP</span><span class="btn icon neu" style="width:38px;height:38px">${I('copy',15)}</span></div></div>
+ </div>
+ <div class="f1" style="padding:26px 30px;display:flex;flex-direction:column;gap:20px">
+  <div class="row between"><div class="col" style="gap:6px"><span class="meta">Tuesday, October 27</span><span class="h1">Today in Grade 5 – Mabini</span></div>
+   <div class="inset row" style="border-radius:16px;padding:12px 16px;gap:14px;width:330px"><span style="font:700 26px/1 'Baloo 2'">32%</span><div class="col f1" style="gap:6px">${PB(32)}<span class="caption c2">Class average</span></div></div></div>
+  <div class="row" style="gap:22px;align-items:flex-start">
+   <div class="card f1" style="padding:6px 0">
+    <div class="row between" style="padding:14px 20px 8px"><span class="h3">Needs you · 5</span><span class="caption c2">Most urgent first</span></div>
+    ${[['phone','var(--accText)','You missed a call from Ben Reyes','Called today at 9:34 PM · Offline','<span class="btn sm pri">Call back</span><span class="btn sm ghost">Dismiss</span>'],['users','var(--badText)','13 students are under 25%','Migo Santos 0% · Nina Lagman 0% · Gina Ramos 3% · and 10 more','<span class="btn sm neu">See them</span>'],['flag','var(--accText)','The class is stuck on 4 letters','Z · R · M · N  ·  Z: 2 of 40 learned','<span class="btn sm neu">Make a module</span>'],['cal','var(--priText)','“Family words” is due Sunday, Nov 1','In 5 days · 3 of 40 students finished','<span class="btn sm neu">Open module</span>'],['inbox','var(--okText)','2 students are waiting for a class','Kyla Bautista and Leo Navarro','<span class="btn sm neu">Add both</span>']].map(([ic,c,t,s,a],i)=>`<div class="row" style="gap:14px;padding:13px 20px;${i?'border-top:1px solid var(--border)':''}"><div class="inset row center" style="width:44px;height:44px;border-radius:14px">${I(ic,20,c)}</div><div class="col f1" style="gap:4px"><span style="font:600 15px Inter">${t}</span><span class="bodySm c2">${s}</span></div><div class="row" style="gap:8px">${a}</div></div>`).join('')}
+   </div>
+   <div class="col" style="width:340px;gap:18px">
+    <div class="card" style="padding:16px 18px"><div class="row between"><span class="h3">Online now</span><span class="caption c2">3 of 40</span></div>
+     ${[['AS','Ana Santos'],['GR','Gina Ramos'],['VO','Vince Ocampo']].map(([a,n])=>`<div class="row" style="gap:12px;height:56px">${AV(a,36)}<div class="col f1" style="gap:4px"><span style="font:600 14px Inter">${n}</span><span class="pres p-on"><i></i>Online</span></div><span class="btn sm pri">${I('video',14,'var(--onPri)')}Call</span></div>`).join('')}</div>
+    <div class="card" style="padding:16px 18px"><span class="h3">Where the class is</span>${[['ASL Letters',45],['ASL Words',32],['FSL Words',18]].map(([l,v])=>`<div class="row" style="gap:10px;margin-top:12px"><span style="font:600 13px Inter;width:90px">${l}</span>${PB(v,'sm')}<span style="font:600 13px Inter">${v}%</span></div>`).join('')}</div>
+   </div></div></div></div>`;
+}
+function adminAccounts(mode){
+ const RB={s:['Student','var(--accText)'],t:['Teacher','var(--priText)'],a:['Admin','var(--t2)']};
+ const rows=[['LM','Liza Mendoza','t','liza@school.ph','Teaches Grade 5 – Mabini, Grade 6 – Rizal','Sep 2'],['PG','Paolo Garcia','t','new.teacher@school.ph','No classes yet','Oct 12'],['TG','Teresa Gomez (you)','a','admin@school.ph','—','Aug 30'],['AS','Ana Santos','s','ana@school.ph','Grade 5 – Mabini','Sep 4'],['BR','Ben Reyes','s','ben@school.ph','Grade 5 – Mabini','Sep 4'],['KB','Kyla Bautista','s','kyla@school.ph','No class','Oct 25']];
+ return tHdr('Teresa Gomez','TG','Admin',mode,'var(--t2)')+`<div style="max-width:1100px;margin:0 auto;padding:24px 0;display:flex;flex-direction:column;gap:16px">
+  <div class="col" style="gap:6px"><span class="h1">Accounts</span><span class="bodySm c2">Teachers make their own classes and invite students. Here you decide who has which kind of account.</span></div>
+  <div class="card" style="padding:16px 20px;box-shadow:0 0 0 2px var(--accText),var(--shCard)">
+   <div class="row" style="gap:10px">${I('inbox',20,'var(--accText)')}<span class="h3">Waiting for approval</span><span class="chip" style="height:22px;padding:0 8px;background:var(--acc);color:var(--onAcc)">1</span></div>
+   <div class="row" style="gap:14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">${AV('JR',40)}<div class="col f1" style="gap:3px"><span style="font:600 15px Inter">Jose Ramirez</span><span class="caption c2">jose@school.ph · signed up today, Oct 27, as a teacher</span></div><span class="btn pri">${I('check',16,'var(--onPri)',3)}Approve teacher</span><span class="btn ghost">Turn down…</span></div></div>
+  <div class="row" style="gap:12px"><div class="row inset" style="width:300px;height:44px;border-radius:999px;padding:0 16px;gap:10px;color:var(--t3)">${I('search',16)}Search by name or email</div><div class="seg"><span class="on">All 16</span><span>Students 12</span><span>Teachers 3</span><span>Admins 1</span></div><span class="btn neu">Class: All ${I('down',14)}</span></div>
+  <div class="card" style="overflow:hidden"><div class="row" style="height:42px;padding:0 18px;gap:14px;font:600 12px Inter;color:var(--t2);border-bottom:1px solid var(--border)"><span style="width:330px">Name</span><span style="width:110px">Role</span><span class="f1">Class</span><span style="width:90px">Joined</span><span style="width:44px"></span></div>
+   ${rows.map(([a,n,k,e,c,d])=>`<div class="row" style="height:60px;padding:0 18px;gap:14px;border-bottom:1px solid var(--border)"><span class="row" style="width:330px;gap:12px">${AV(a,34)}<span class="col"><span style="font:600 14px Inter">${n}</span><span class="caption c2">${e}</span></span></span><span style="width:110px"><span class="chip" style="height:22px;padding:0 9px;border:1px solid ${RB[k][1]};color:${RB[k][1]}">${RB[k][0]}</span></span><span class="f1 bodySm c2">${c}</span><span class="bodySm c2" style="width:90px">${d}</span><span class="btn icon neu" style="width:38px;height:38px">${I('edit',15)}</span></div>`).join('')}</div>
+ </div>`;
+}
+</script>
+<div class="dv-opt" id="TA1"><div class="dv-olabel"><a class="dv-oid" href="#TA1">TA1</a>Teacher · Today · Ocean · light · desktop 1440×900</div>
+<div class="frame t-ocean-light" id="f-TA1" style="width:1440px;height:900px"></div>
+<script>put('f-TA1',teacherToday('light'))</script></div>
+<div class="dv-opt" id="TA2"><div class="dv-olabel"><a class="dv-oid" href="#TA2">TA2</a>Teacher · Today · Sunset · dark</div>
+<div class="frame t-sunset-dark" id="f-TA2" style="width:1440px;height:900px"></div>
+<script>put('f-TA2',teacherToday('dark'))</script></div>
+<div class="dv-opt" id="TA3"><div class="dv-olabel"><a class="dv-oid" href="#TA3">TA3</a>Admin · Accounts · Forest · light</div>
+<div class="frame t-forest-light" id="f-TA3" style="width:1440px;height:900px"></div>
+<script>put('f-TA3',adminAccounts('light'))</script></div>
+<div class="dv-opt" id="TA4"><div class="dv-olabel"><a class="dv-oid" href="#TA4">TA4</a>Admin · Accounts · Graphite Aurora · dark</div>
+<div class="frame t-graphite-dark" id="f-TA4" style="width:1440px;height:900px"></div>
+<script>put('f-TA4',adminAccounts('dark'))</script>
+<div class="note">Admin has no colour of its own in any scheme: its badge and name label use neutral text (<code>textSecondary</code>), as <code>adminGray</code> does today. The approvals inbox keeps its urgency through the accent ring, the icon and the count. In light mode "Approve teacher" uses the scheme's primary fill. Every role badge is outlined text with ≥ 4.5:1 contrast in all 8 palettes.</div></div>
+<div class="dv-opt" id="TA5"><div class="dv-olabel"><a class="dv-oid" href="#TA5">TA5</a>Phone · Teacher Today (Forest light) · Admin (Sunset light) · 390×844</div>
+<div class="row" style="gap:24px">
+<div class="frame t-forest-light" id="f-TA5a" style="width:390px;height:844px"></div>
+<div class="frame t-sunset-light" id="f-TA5b" style="width:390px;height:844px"></div></div>
+<script>
+const phTop=(ini)=>`<div class="statusbar"><span>9:41</span><span>●●●</span></div><div class="row" style="padding:2px 14px 10px;gap:8px"><span class="btn icon neu" aria-label="Back">${I('left',20)}</span><div class="row raisedSm f1" style="height:44px;border-radius:14px;padding:0 12px;gap:8px"><i style="width:8px;height:8px;border-radius:50%;background:var(--pri)"></i><span class="f1 ell" style="font:600 14px Inter">Grade 5 – Mabini</span>${I('down',16,'var(--t2)')}</div><span class="btn icon neu" aria-label="Appearance">${I('sun',18)}</span><span class="btn icon neu">${AV(ini,30)}</span></div>`;
+const tabs=(on)=>`<div class="row" style="position:absolute;left:0;right:0;bottom:0;height:84px;padding:6px 10px 28px;justify-content:space-around;background:var(--surface);border-top:1px solid var(--border)">${[['home','Today'],['users','Students'],['book','Learn'],['chart','Progress']].map(([i,l])=>`<div class="col center" style="width:80px;height:50px;gap:4px;border-radius:14px;${l==on?'background:var(--raised);box-shadow:var(--shRs)':''}">${I(i,20,l==on?'var(--priText)':'var(--t2)')}<span style="font:600 11.5px Inter;color:${l==on?'var(--t1)':'var(--t2)'}">${l}</span></div>`).join('')}</div><div class="homebar"></div>`;
+put('f-TA5a',phTop('LM')+`<div style="padding:0 14px;display:flex;flex-direction:column;gap:12px"><span class="h2">Today</span>
+ <div class="card" style="padding:14px;box-shadow:0 0 0 2px var(--accText),var(--shCard)"><div class="row" style="gap:12px">${I('phone',20,'var(--accText)')}<div class="col f1"><span style="font:600 15px Inter">Ben Reyes called you</span><span class="caption c2">Today at 9:34 PM · Offline now</span></div></div><div class="row" style="gap:8px;margin-top:12px"><span class="btn pri f1">${I('video',16,'var(--onPri)')}Call back</span><span class="btn ghost">Dismiss</span></div></div>
+ <div class="card" style="padding:12px 14px"><span class="h3">Online now</span>${[['AS','Ana Santos'],['GR','Gina Ramos'],['VO','Vince Ocampo']].map(([a,n])=>`<div class="row" style="gap:12px;height:60px">${AV(a,38)}<div class="col f1" style="gap:3px"><span style="font:600 15px Inter">${n}</span><span class="pres p-on"><i></i>Online</span></div><span class="btn icon pri" style="width:48px;height:48px">${I('video',20,'var(--onPri)')}</span></div>`).join('')}</div>
+ <div class="card" style="padding:12px 14px"><div class="row between"><span class="h3">Needs help</span><span class="caption cp" style="font-weight:600">See all 13</span></div>${[['MS','Migo Santos','0%'],['NL','Nina Lagman','0%']].map(([a,n,p])=>`<div class="row" style="gap:12px;height:50px">${AV(a,32)}<span class="f1" style="font:600 14.5px Inter">${n}</span><span style="font:600 13px Inter;color:var(--badText)">${p}</span></div>`).join('')}</div>
+</div>`+tabs('Today'));
+put('f-TA5b',`<div class="statusbar"><span>9:41</span><span>●●●</span></div><div class="row" style="padding:2px 14px 10px;gap:8px"><span class="btn icon neu" aria-label="Back">${I('left',20)}</span><span class="row" style="gap:6px">${I('mark',20,'var(--priText)',1.6)}<span style="font:700 18px 'Baloo 2';color:var(--priText)">LCSign</span></span><div class="f1"></div><span class="btn icon neu">${I('sun',18)}</span><span class="btn icon neu">${AV('TG',30)}</span></div>
+ <div style="padding:0 14px;display:flex;flex-direction:column;gap:12px"><span class="h2">Accounts</span>
+ <div class="card" style="padding:14px;box-shadow:0 0 0 2px var(--accText),var(--shCard)"><div class="row" style="gap:8px">${I('inbox',18,'var(--accText)')}<span class="h3">Waiting for approval · 1</span></div><div class="row" style="gap:12px;margin-top:10px">${AV('JR',38)}<div class="col f1"><span style="font:600 15px Inter">Jose Ramirez</span><span class="caption c2">jose@school.ph</span></div></div><div class="row" style="gap:8px;margin-top:12px"><span class="btn pri f1">Approve teacher</span><span class="btn ghost">Turn down…</span></div></div>
+ <div class="row inset" style="height:44px;border-radius:999px;padding:0 16px;gap:10px;color:var(--t3)">${I('search',16)}Search by name or email</div>
+ <div class="card" style="padding:0 14px">${[['LM','Liza Mendoza','Teacher','var(--priText)','Teaches 2 classes'],['TG','Teresa Gomez (you)','Admin','var(--t2)','—'],['AS','Ana Santos','Student','var(--accText)','Grade 5 – Mabini'],['KB','Kyla Bautista','Student','var(--accText)','No class']].map(([a,n,r,c,s],i)=>`<div class="row" style="gap:12px;min-height:64px;${i?'border-top:1px solid var(--border)':''}">${AV(a,36)}<div class="col f1" style="gap:4px"><span class="row" style="gap:8px"><span style="font:600 15px Inter">${n}</span><span class="chip" style="height:20px;padding:0 8px;border:1px solid ${c};color:${c};font-size:11px">${r}</span></span><span class="caption c2">${s}</span></div>${I('right',18,'var(--t2)')}</div>`).join('')}</div></div><div class="homebar"></div>`);
+</script></div>
+</div></section>
+
+<section class="dv-turn" id="P">
+<div class="dv-thd"><a class="dv-tid" href="#P">P</a><span class="dv-tname">Palette sheet: the 8 palettes, all contrast-checked</span></div>
+<div class="dv-tsub">Every text token is ≥ 4.5:1 on background, surface and well. Every white or dark label sits on its fill at ≥ 4.5:1. Primary, stars, success, danger and the focus ring are ≥ 3:1 on the surface. Values are in README.md → Palettes.</div>
+<div class="dv-opts"><div class="frame t-graphite-dark" id="f-P" style="width:1440px;height:620px;background:#fff"></div>
+<script>
+(function(){const keys=[['background','Ground'],['surface','Card'],['well','Well'],['textPrimary','Text'],['textSecondary','Text 2'],['primary','Primary'],['primaryFill','Button'],['primaryText','Primary text'],['accent','Accent'],['accentText','Accent text'],['success','Success'],['danger','Danger'],['star','Star']];
+ let h='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:16px">';
+ ['dark','light'].forEach(m=>Object.keys(SCHEMES).forEach(k=>{const p=PAL[k][m];h+=`<div style="border-radius:16px;overflow:hidden;border:1px solid #ddd;background:${p.background};padding:12px"><div style="font:700 15px 'Baloo 2';color:${p.textPrimary};margin-bottom:8px">${SCHEMES[k]} · ${MODES[m]}</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">${keys.map(([t,l])=>`<div title="${t}"><div style="height:26px;border-radius:6px;background:${p[t]};border:1px solid ${p.border}"></div><div style="font:500 8.5px/1.2 Inter;color:${p.textSecondary};margin-top:3px">${l}<br>${p[t]}</div></div>`).join('')}</div>
+ <div style="display:flex;gap:8px;margin-top:10px;align-items:center"><span style="height:30px;padding:0 12px;border-radius:15px;background:${p.primaryFill};color:${p.onPrimary};font:600 12px/30px Inter">Call</span><span style="height:30px;padding:0 12px;border-radius:15px;background:${p.accent};color:${p.onAccent};font:600 12px/30px Inter">Practise</span><span style="font:600 12px Inter;color:${p.successText}">✓ Learned</span><span style="font:600 12px Inter;color:${p.dangerText}">Needs practice</span></div></div>`}));
+ document.getElementById('f-P').innerHTML=h+'</div>';})();
+</script></div></section>
+</body></html>
