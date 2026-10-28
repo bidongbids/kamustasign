@@ -28,7 +28,7 @@ export default function ThemeToggle() {
   const toLight = theme.name === "dark";
   return (
     <Pressable
-      onPress={() => theme.setPreference(toLight ? "light" : "dark")}
+      onPress={() => theme.setMode(toLight ? "light" : "dark")}
       accessibilityRole="switch"
       accessibilityState={{ checked: !toLight }}
       accessibilityLabel={toLight ? "Switch to light theme" : "Switch to dark theme"}

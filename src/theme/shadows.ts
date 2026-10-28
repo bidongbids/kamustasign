@@ -3,12 +3,13 @@
 // (shadow*), Android (elevation), and web (react-native-web maps shadow* to
 // box-shadow automatically).
 //
-// Every helper exists once per theme: makeShadows(name) builds the set, and
+// Every helper exists once per palette: makeShadows(name, colors) builds the
+// set (the light or dark geometry, with that palette's fills), and
 // useTheme().shadows (src/theme/ThemeProvider.tsx) hands a screen the set
-// for the active theme. The module-level exports below are the dark set,
-// unchanged, for screens that haven't moved to useTheme() yet.
+// for the active theme. The module-level exports below are the Graphite dark
+// set, unchanged, for screens that haven't moved to useTheme() yet.
 import { ViewStyle } from "react-native";
-import { darkColors, lightColors, ThemeName } from "./theme";
+import { darkColors, ThemeColors, ThemeName } from "./theme";
 
 type ShadowLevel = "sm" | "md" | "lg";
 
@@ -66,8 +67,7 @@ export type Shadows = {
   sheet: () => ViewStyle;
 };
 
-function makeDark(): Shadows {
-  const colors = darkColors;
+function makeDark(colors: ThemeColors): Shadows {
   return {
     shadow(level, tint = colors.primaryTealDark) {
       const p = presets[level];
@@ -110,8 +110,7 @@ function makeDark(): Shadows {
   };
 }
 
-function makeLight(): Shadows {
-  const colors = lightColors;
+function makeLight(colors: ThemeColors): Shadows {
   return {
     // Light cards: a tight contact shadow plus a soft lift, and a 1px border
     // (the "card" recipe); `tint` is ignored - tinted shadows read as dirt
@@ -167,12 +166,18 @@ function makeLight(): Shadows {
   };
 }
 
-const SETS: Record<ThemeName, Shadows> = { dark: makeDark(), light: makeLight() };
+const SETS = new WeakMap<ThemeColors, Shadows>();
 
-export function makeShadows(name: ThemeName): Shadows {
-  return SETS[name];
+export function makeShadows(name: ThemeName, colors: ThemeColors): Shadows {
+  let set = SETS.get(colors);
+  if (!set) {
+    set = name === "dark" ? makeDark(colors) : makeLight(colors);
+    SETS.set(colors, set);
+  }
+  return set;
 }
 
-export const shadow = SETS.dark.shadow;
-export const neuRaised = SETS.dark.neuRaised;
-export const neuInset = SETS.dark.neuInset;
+const GRAPHITE_DARK = makeShadows("dark", darkColors);
+export const shadow = GRAPHITE_DARK.shadow;
+export const neuRaised = GRAPHITE_DARK.neuRaised;
+export const neuInset = GRAPHITE_DARK.neuInset;
