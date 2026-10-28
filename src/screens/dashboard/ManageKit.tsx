@@ -219,9 +219,11 @@ export function ConfirmInline({
   onCancel,
   busy,
   details,
+  cancelLabel = "Cancel",
 }: {
   message: string;
   confirmLabel: string;
+  cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
   busy?: boolean;
@@ -242,7 +244,7 @@ export function ConfirmInline({
         </View>
       ) : null}
       <View style={styles.row8}>
-        <ActionButton label="Cancel" variant="ghost" onPress={onCancel} disabled={busy} />
+        <ActionButton label={cancelLabel} variant="ghost" onPress={onCancel} disabled={busy} />
         <ActionButton
           label={confirmLabel}
           variant="primary"

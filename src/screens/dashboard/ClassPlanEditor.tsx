@@ -37,7 +37,14 @@ const draftsFrom = (plan: ClassPlan): Drafts =>
     CURRICULUM.map((l) => [l.language, new Set(planSigns(l.language, "words", plan))])
   ) as Drafts;
 
-export type SaveBarState = { message: string; saving: boolean; onSave: () => void; onDiscard: () => void } | null;
+export type SaveBarState = {
+  message: string;
+  /** What Back asks before leaving the page (handoff B1). */
+  leaveMessage: string;
+  saving: boolean;
+  onSave: () => void;
+  onDiscard: () => void;
+} | null;
 
 export default function ClassPlanEditor({
   klass,
@@ -150,6 +157,7 @@ export default function ClassPlanEditor({
       dirty
         ? {
             message: `Unsaved changes to the ${dirtyText} plan${dirtyLanguages.length > 1 ? "s" : ""}`,
+            leaveMessage: `Leave without saving? Your changes to the ${dirtyText} plan${dirtyLanguages.length > 1 ? "s" : ""} will be lost.`,
             saving,
             onSave: () => void saveRef.current(),
             onDiscard: () => discardRef.current(),

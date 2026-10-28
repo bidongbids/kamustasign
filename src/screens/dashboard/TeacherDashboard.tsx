@@ -489,6 +489,7 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
       activeTab={section}
       onTab={(k) => setSection(k as TeacherSection)}
       footer={section === "learn" && learnStep === "plan" && saveBar ? <SaveBar bar={saveBar} /> : null}
+      leaveGuard={saveBar?.leaveMessage ?? null}
     >
       {!isDesktop ? (
         <View style={styles.switcherRow}>

@@ -19,7 +19,7 @@ import HandLandmarkMark from "../components/HandLandmarkMark";
 import Wordmark from "../components/Wordmark";
 import GradientBackground from "../components/GradientBackground";
 import RoleTile from "../components/RoleTile";
-import ThemeToggle from "../components/ThemeToggle";
+import { AppearanceButton } from "../components/AppearancePanel";
 import { GraduationCapIcon, ClipboardCheckIcon, GearIcon, VideoCameraIcon } from "../components/icons/RoleIcons";
 import { colors, typography, spacing, mobileTypography, ThemeColors } from "../theme/theme";
 import { neuRaised } from "../theme/shadows";
@@ -251,7 +251,7 @@ function PhoneRoleSelect(props: Props) {
             </View>
             <Wordmark style={styles.wordmark} accentColor={c.accentCoralText} />
           </View>
-          <ThemeToggle />
+          <AppearanceButton compact />
         </View>
 
         <View style={styles.greeting}>
@@ -347,6 +347,9 @@ function WideRoleSelect(props: Props) {
             <TranslatorGhostButtonDesktop onPress={onOpenTranslator} />
           </Animated.View>
         </ScrollView>
+        <View style={styles.appearanceCorner}>
+          <AppearanceButton />
+        </View>
       </GradientBackground>
     );
   }
@@ -394,11 +397,16 @@ function WideRoleSelect(props: Props) {
           <Text style={[typography.caption, styles.mobileHint]}>No account needed</Text>
         </View>
       </ScrollView>
+      <View style={styles.appearanceCorner}>
+        <AppearanceButton />
+      </View>
     </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  // Appearance before signing in (handoff §9: a child can pick dark mode first).
+  appearanceCorner: { position: "absolute", top: spacing.lg, right: spacing.lg },
   // ── desktop split layout ─────────────────────────────────────────────
   desktopRoot: {
     flexDirection: "row",
