@@ -231,7 +231,7 @@
     "type": "video",
     "uri": "/reference/asl-words/add.mp4",
     "credit": "asl-citizen",
-    "source": "add/citizen_19084923563279288-ADD.mp4"
+    "source": "add/citizen_038452238067189004-ADD.mp4"
   },
   "asl/words/after": {
     "type": "video",
@@ -255,7 +255,7 @@
     "type": "video",
     "uri": "/reference/asl-words/alligator.mp4",
     "credit": "wlasl",
-    "source": "alligator/02012.mp4"
+    "source": "alligator/02010.mp4"
   },
   "asl/words/alone": {
     "type": "video",
@@ -267,7 +267,7 @@
     "type": "video",
     "uri": "/reference/asl-words/animal.mp4",
     "credit": "asl-citizen",
-    "source": "animal/citizen_005921200582703401-ANIMAL.mp4"
+    "source": "animal/citizen_17509576385829706-ANIMAL.mp4"
   },
   "asl/words/another": {
     "type": "video",
@@ -279,13 +279,13 @@
     "type": "video",
     "uri": "/reference/asl-words/any.mp4",
     "credit": "asl-citizen",
-    "source": "any/citizen_00789791441529486-ANY.mp4"
+    "source": "any/citizen_11842735888140044-ANY.mp4"
   },
   "asl/words/apple": {
     "type": "video",
     "uri": "/reference/asl-words/apple.mp4",
     "credit": "asl-citizen",
-    "source": "apple/citizen_1242799684009872-APPLE.mp4"
+    "source": "apple/citizen_050694111976633094-APPLE.mp4"
   },
   "asl/words/appointment": {
     "type": "video",
@@ -315,7 +315,7 @@
     "type": "video",
     "uri": "/reference/asl-words/awake.mp4",
     "credit": "asl-citizen",
-    "source": "awake/citizen_12635484492259907-AWAKE.mp4"
+    "source": "awake/citizen_15186273515075-AWAKE.mp4"
   },
   "asl/words/backyard": {
     "type": "video",
@@ -327,7 +327,7 @@
     "type": "video",
     "uri": "/reference/asl-words/bad.mp4",
     "credit": "asl-citizen",
-    "source": "bad/citizen_09145990846220031-BAD.mp4"
+    "source": "bad/citizen_019466731254031755-BAD.mp4"
   },
   "asl/words/balance": {
     "type": "video",
@@ -339,7 +339,7 @@
     "type": "video",
     "uri": "/reference/asl-words/balloon.mp4",
     "credit": "asl-citizen",
-    "source": "balloon/citizen_0465740862413635-BALLOON.mp4"
+    "source": "balloon/citizen_1579489301535273-BALLOON.mp4"
   },
   "asl/words/bar": {
     "type": "video",
@@ -357,7 +357,7 @@
     "type": "video",
     "uri": "/reference/asl-words/bath.mp4",
     "credit": "asl-citizen",
-    "source": "bath/citizen_03931883221407073-BATH.mp4"
+    "source": "bath/citizen_15079784308073396-BATH.mp4"
   },
   "asl/words/because": {
     "type": "video",
@@ -381,55 +381,55 @@
     "type": "video",
     "uri": "/reference/asl-words/bee.mp4",
     "credit": "wlasl",
-    "source": "bee/05685.mp4"
+    "source": "bee/05682.mp4"
   },
   "asl/words/before": {
     "type": "video",
     "uri": "/reference/asl-words/before.mp4",
     "credit": "asl-citizen",
-    "source": "before/citizen_06131823386898638-BEFORE.mp4"
+    "source": "before/citizen_147667439674817-BEFORE.mp4"
   },
   "asl/words/beside": {
     "type": "video",
     "uri": "/reference/asl-words/beside.mp4",
     "credit": "wlasl",
-    "source": "beside/05999.mp4"
+    "source": "beside/06001.mp4"
   },
   "asl/words/better": {
     "type": "video",
     "uri": "/reference/asl-words/better.mp4",
     "credit": "asl-citizen",
-    "source": "better/citizen_13532136682203744-BETTER.mp4"
+    "source": "better/citizen_23314151865153954-BETTER.mp4"
   },
   "asl/words/big": {
     "type": "video",
     "uri": "/reference/asl-words/big.mp4",
     "credit": "asl-citizen",
-    "source": "big/citizen_0016996799439721322-BIG.mp4"
+    "source": "big/citizen_03884623593153802-BIG.mp4"
   },
   "asl/words/bird": {
     "type": "video",
     "uri": "/reference/asl-words/bird.mp4",
     "credit": "asl-citizen",
-    "source": "bird/citizen_058506224158483056-BIRD.mp4"
+    "source": "bird/citizen_07390110032238817-BIRD.mp4"
   },
   "asl/words/black": {
     "type": "video",
     "uri": "/reference/asl-words/black.mp4",
     "credit": "asl-citizen",
-    "source": "black/citizen_21793575059728565-BLACK.mp4"
+    "source": "black/citizen_12188761773493884-BLACK.mp4"
   },
   "asl/words/blanket": {
     "type": "video",
     "uri": "/reference/asl-words/blanket.mp4",
     "credit": "asl-citizen",
-    "source": "blanket/citizen_16434652304464614-BLANKET.mp4"
+    "source": "blanket/citizen_12628412517702903-BLANKET.mp4"
   },
   "asl/words/blow": {
     "type": "video",
     "uri": "/reference/asl-words/blow.mp4",
     "credit": "asl-citizen",
-    "source": "blow/citizen_10022786951441254-BLOW.mp4"
+    "source": "blow/citizen_2107334699112109-BLOW.mp4"
   },
   "asl/words/blue": {
     "type": "video",
@@ -441,19 +441,19 @@
     "type": "video",
     "uri": "/reference/asl-words/boat.mp4",
     "credit": "asl-citizen",
-    "source": "boat/citizen_40396831272987344-BOAT.mp4"
+    "source": "boat/citizen_3174824806333201-BOAT.mp4"
   },
   "asl/words/book": {
     "type": "video",
     "uri": "/reference/asl-words/book.mp4",
     "credit": "asl-citizen",
-    "source": "book/citizen_27449508901283615-BOOK.mp4"
+    "source": "book/citizen_14652404970670685-BOOK.mp4"
   },
   "asl/words/bowling": {
     "type": "video",
     "uri": "/reference/asl-words/bowling.mp4",
     "credit": "wlasl",
-    "source": "bowling/07392.mp4"
+    "source": "bowling/07389.mp4"
   },
   "asl/words/boy": {
     "type": "video",
@@ -465,7 +465,7 @@
     "type": "video",
     "uri": "/reference/asl-words/brother.mp4",
     "credit": "asl-citizen",
-    "source": "brother/citizen_010035178979511006-BROTHER.mp4"
+    "source": "brother/citizen_22666524686508982-BROTHER.mp4"
   },
   "asl/words/brown": {
     "type": "video",
@@ -477,7 +477,7 @@
     "type": "video",
     "uri": "/reference/asl-words/bug.mp4",
     "credit": "asl-citizen",
-    "source": "bug/citizen_05302661093854977-BUG.mp4"
+    "source": "bug/citizen_017609175316101178-BUG.mp4"
   },
   "asl/words/bye": {
     "type": "video",
@@ -495,7 +495,7 @@
     "type": "video",
     "uri": "/reference/asl-words/call-on-phone.mp4",
     "credit": "asl-citizen",
-    "source": "phone/citizen_26154372036264695-PHONE.mp4"
+    "source": "phone/citizen_20216167051822387-PHONE.mp4"
   },
   "asl/words/can": {
     "type": "video",
@@ -525,13 +525,13 @@
     "type": "video",
     "uri": "/reference/asl-words/cat.mp4",
     "credit": "wlasl",
-    "source": "cat/09528.mp4"
+    "source": "cat/65312.mp4"
   },
   "asl/words/catch": {
     "type": "video",
     "uri": "/reference/asl-words/catch.mp4",
     "credit": "wlasl",
-    "source": "catch/09459.mp4"
+    "source": "catch/09464.mp4"
   },
   "asl/words/cereal": {
     "type": "video",
@@ -543,13 +543,13 @@
     "type": "video",
     "uri": "/reference/asl-words/chair.mp4",
     "credit": "asl-citizen",
-    "source": "chair/citizen_19101165942054377-CHAIR.mp4"
+    "source": "chair/citizen_06332710786774087-CHAIR.mp4"
   },
   "asl/words/champion": {
     "type": "video",
     "uri": "/reference/asl-words/champion.mp4",
     "credit": "asl-citizen",
-    "source": "champion/citizen_15479734714825932-CHAMPION.mp4"
+    "source": "champion/citizen_06067548899251718-CHAMPION.mp4"
   },
   "asl/words/change": {
     "type": "video",
@@ -579,13 +579,13 @@
     "type": "video",
     "uri": "/reference/asl-words/child.mp4",
     "credit": "asl-citizen",
-    "source": "child/citizen_10387412267108864-CHILD.mp4"
+    "source": "child/citizen_06754700554069304-CHILD.mp4"
   },
   "asl/words/chin": {
     "type": "video",
     "uri": "/reference/asl-words/chin.mp4",
     "credit": "asl-citizen",
-    "source": "chin/citizen_09101309522440815-CHIN 2.mp4"
+    "source": "chin/citizen_17378200161913648-CHIN 2.mp4"
   },
   "asl/words/chocolate": {
     "type": "video",
@@ -597,19 +597,19 @@
     "type": "video",
     "uri": "/reference/asl-words/clean.mp4",
     "credit": "asl-citizen",
-    "source": "clean/citizen_25059267132129714-CLEAN.mp4"
+    "source": "clean/citizen_001775727155786777-CLEAN.mp4"
   },
   "asl/words/close": {
     "type": "video",
     "uri": "/reference/asl-words/close.mp4",
     "credit": "asl-citizen",
-    "source": "close/citizen_12796007887540362-CLOSE.mp4"
+    "source": "close/citizen_05472514438794285-CLOSE.mp4"
   },
   "asl/words/closet": {
     "type": "video",
     "uri": "/reference/asl-words/closet.mp4",
     "credit": "wlasl",
-    "source": "closet/11285.mp4"
+    "source": "closet/11287.mp4"
   },
   "asl/words/cloud": {
     "type": "video",
@@ -621,13 +621,13 @@
     "type": "video",
     "uri": "/reference/asl-words/clown.mp4",
     "credit": "asl-citizen",
-    "source": "clown/citizen_07454376301114118-CLOWN.mp4"
+    "source": "clown/citizen_2582934788796809-CLOWN.mp4"
   },
   "asl/words/cold": {
     "type": "video",
     "uri": "/reference/asl-words/cold.mp4",
     "credit": "asl-citizen",
-    "source": "cold/citizen_13808032394299397-COLD.mp4"
+    "source": "cold/citizen_01776429634261567-COLD.mp4"
   },
   "asl/words/computer": {
     "type": "video",
@@ -651,19 +651,19 @@
     "type": "video",
     "uri": "/reference/asl-words/corn.mp4",
     "credit": "wlasl",
-    "source": "corn/13325.mp4"
+    "source": "corn/13329.mp4"
   },
   "asl/words/country": {
     "type": "video",
     "uri": "/reference/asl-words/country.mp4",
     "credit": "asl-citizen",
-    "source": "country/citizen_036013257254642106-seedCOUNTRY.mp4"
+    "source": "country/citizen_16453891474644244-COUNTRY.mp4"
   },
   "asl/words/cousin": {
     "type": "video",
     "uri": "/reference/asl-words/cousin.mp4",
     "credit": "asl-citizen",
-    "source": "cousin/citizen_31044240171360915-COUSIN.mp4"
+    "source": "cousin/citizen_3514687608603999-COUSIN.mp4"
   },
   "asl/words/cow": {
     "type": "video",
@@ -699,7 +699,7 @@
     "type": "video",
     "uri": "/reference/asl-words/dad.mp4",
     "credit": "wlasl",
-    "source": "dad/69289.mp4"
+    "source": "dad/14572.mp4"
   },
   "asl/words/dance": {
     "type": "video",
@@ -717,7 +717,7 @@
     "type": "video",
     "uri": "/reference/asl-words/daughter.mp4",
     "credit": "asl-citizen",
-    "source": "daughter/citizen_24727432132547444-DAUGHTER.mp4"
+    "source": "daughter/citizen_26446280798620214-DAUGHTER.mp4"
   },
   "asl/words/deaf": {
     "type": "video",
@@ -729,7 +729,7 @@
     "type": "video",
     "uri": "/reference/asl-words/delay.mp4",
     "credit": "wlasl",
-    "source": "delay/15326.mp4"
+    "source": "delay/15327.mp4"
   },
   "asl/words/delicious": {
     "type": "video",
@@ -759,7 +759,7 @@
     "type": "video",
     "uri": "/reference/asl-words/dive.mp4",
     "credit": "asl-citizen",
-    "source": "dive/citizen_007182814979122876-seedDIVE.mp4"
+    "source": "dive/citizen_2359156835907481-DIVE.mp4"
   },
   "asl/words/doctor": {
     "type": "video",
@@ -813,7 +813,7 @@
     "type": "video",
     "uri": "/reference/asl-words/dry.mp4",
     "credit": "asl-citizen",
-    "source": "dry/citizen_07210736968514153-DRY.mp4"
+    "source": "dry/citizen_018297014348678697-DRY.mp4"
   },
   "asl/words/dryer": {
     "type": "video",
@@ -831,7 +831,7 @@
     "type": "video",
     "uri": "/reference/asl-words/ear.mp4",
     "credit": "asl-citizen",
-    "source": "ear/citizen_004887131733942285-EAR.mp4"
+    "source": "ear/citizen_015143605161060059-EAR.mp4"
   },
   "asl/words/elephant": {
     "type": "video",
@@ -843,13 +843,13 @@
     "type": "video",
     "uri": "/reference/asl-words/empty.mp4",
     "credit": "wlasl",
-    "source": "empty/19051.mp4"
+    "source": "empty/65627.mp4"
   },
   "asl/words/environment": {
     "type": "video",
     "uri": "/reference/asl-words/environment.mp4",
     "credit": "asl-citizen",
-    "source": "environment/citizen_04842057869703775-seedENVIRONMENT.mp4"
+    "source": "environment/citizen_313850799904706-ENVIRONMENT.mp4"
   },
   "asl/words/every": {
     "type": "video",
@@ -861,7 +861,7 @@
     "type": "video",
     "uri": "/reference/asl-words/example.mp4",
     "credit": "asl-citizen",
-    "source": "example/citizen_009863988370779175-seedEXAMPLE.mp4"
+    "source": "example/citizen_28537953632287816-EXAMPLE.mp4"
   },
   "asl/words/eye": {
     "type": "video",
@@ -879,7 +879,7 @@
     "type": "video",
     "uri": "/reference/asl-words/fall.mp4",
     "credit": "asl-citizen",
-    "source": "fall1/citizen_20438188384925993-FALL 1.mp4"
+    "source": "fall1/citizen_34360619238974444-FALL 1.mp4"
   },
   "asl/words/family": {
     "type": "video",
@@ -903,13 +903,13 @@
     "type": "video",
     "uri": "/reference/asl-words/fast.mp4",
     "credit": "asl-citizen",
-    "source": "fast/citizen_12070684052764968-FAST.mp4"
+    "source": "fast/citizen_07723402819615632-FAST.mp4"
   },
   "asl/words/fat": {
     "type": "video",
     "uri": "/reference/asl-words/fat.mp4",
     "credit": "asl-citizen",
-    "source": "fat/citizen_16201681285308012-FAT.mp4"
+    "source": "fat/citizen_013792777252140676-FAT.mp4"
   },
   "asl/words/fault": {
     "type": "video",
@@ -939,19 +939,19 @@
     "type": "video",
     "uri": "/reference/asl-words/finish.mp4",
     "credit": "asl-citizen",
-    "source": "finish/citizen_18286437913060416-FINISH.mp4"
+    "source": "finish/citizen_1528731852595422-FINISH.mp4"
   },
   "asl/words/fireman": {
     "type": "video",
     "uri": "/reference/asl-words/fireman.mp4",
     "credit": "asl-citizen",
-    "source": "fireman1/citizen_09928717777265383-FIREMAN.mp4"
+    "source": "fireman1/citizen_2606739721823943-FIREMAN.mp4"
   },
   "asl/words/first": {
     "type": "video",
     "uri": "/reference/asl-words/first.mp4",
     "credit": "asl-citizen",
-    "source": "first/citizen_1871515618939661-FIRST.mp4"
+    "source": "first/citizen_08402785584899775-FIRST.mp4"
   },
   "asl/words/fish": {
     "type": "video",
@@ -963,7 +963,7 @@
     "type": "video",
     "uri": "/reference/asl-words/flag.mp4",
     "credit": "wlasl",
-    "source": "flag/22273.mp4"
+    "source": "flag/22274.mp4"
   },
   "asl/words/flower": {
     "type": "video",
@@ -987,7 +987,7 @@
     "type": "video",
     "uri": "/reference/asl-words/french-fries.mp4",
     "credit": "asl-citizen",
-    "source": "frenchfries/citizen_1156040435772856-FRENCHFRIES.mp4"
+    "source": "frenchfries/citizen_046104879896933015-FRENCHFRIES.mp4"
   },
   "asl/words/frog": {
     "type": "video",
@@ -999,7 +999,7 @@
     "type": "video",
     "uri": "/reference/asl-words/full.mp4",
     "credit": "asl-citizen",
-    "source": "full/citizen_25080733967284985-FULL.mp4"
+    "source": "full/citizen_06392403152957393-seedFULL.mp4"
   },
   "asl/words/future": {
     "type": "video",
@@ -1011,7 +1011,7 @@
     "type": "video",
     "uri": "/reference/asl-words/gift.mp4",
     "credit": "asl-citizen",
-    "source": "gift/citizen_11688595865270734-GIFT.mp4"
+    "source": "gift/citizen_11282680563352021-GIFT.mp4"
   },
   "asl/words/giraffe": {
     "type": "video",
@@ -1023,7 +1023,7 @@
     "type": "video",
     "uri": "/reference/asl-words/girl.mp4",
     "credit": "asl-citizen",
-    "source": "girl/citizen_12644868251197527-GIRL.mp4"
+    "source": "girl/citizen_06888060382968919-GIRL.mp4"
   },
   "asl/words/give": {
     "type": "video",
@@ -1035,7 +1035,7 @@
     "type": "video",
     "uri": "/reference/asl-words/go.mp4",
     "credit": "asl-citizen",
-    "source": "go/citizen_20492226110701672-GO.mp4"
+    "source": "go/citizen_22762374635521176-GO.mp4"
   },
   "asl/words/good": {
     "type": "video",
@@ -1065,7 +1065,7 @@
     "type": "video",
     "uri": "/reference/asl-words/grandpa.mp4",
     "credit": "asl-citizen",
-    "source": "grandfather/citizen_058010436619391426-GRANDFATHER.mp4"
+    "source": "grandfather/citizen_009579953613939818-GRANDFATHER.mp4"
   },
   "asl/words/grass": {
     "type": "video",
@@ -1107,7 +1107,7 @@
     "type": "video",
     "uri": "/reference/asl-words/hate.mp4",
     "credit": "asl-citizen",
-    "source": "hate/citizen_277411898657703-HATE.mp4"
+    "source": "hate/citizen_05173427503594241-HATE.mp4"
   },
   "asl/words/have": {
     "type": "video",
@@ -1119,7 +1119,7 @@
     "type": "video",
     "uri": "/reference/asl-words/have-to.mp4",
     "credit": "asl-citizen",
-    "source": "must/citizen_04658532809649518-MUST.mp4"
+    "source": "must/citizen_18195165864576057-MUST.mp4"
   },
   "asl/words/he/she/it": {
     "type": "video",
@@ -1137,7 +1137,7 @@
     "type": "video",
     "uri": "/reference/asl-words/hear.mp4",
     "credit": "wlasl",
-    "source": "hear/26946.mp4"
+    "source": "hear/26944.mp4"
   },
   "asl/words/helicopter": {
     "type": "video",
@@ -1149,7 +1149,7 @@
     "type": "video",
     "uri": "/reference/asl-words/hello.mp4",
     "credit": "asl-citizen",
-    "source": "hello/citizen_05614933522741539-HELLO.mp4"
+    "source": "hello/citizen_081380748015633-HELLO.mp4"
   },
   "asl/words/help": {
     "type": "video",
@@ -1161,13 +1161,13 @@
     "type": "video",
     "uri": "/reference/asl-words/hen.mp4",
     "credit": "asl-citizen",
-    "source": "hen/citizen_2175611285857142-HEN.mp4"
+    "source": "hen/citizen_18039680943264935-seedHEN.mp4"
   },
   "asl/words/hide": {
     "type": "video",
     "uri": "/reference/asl-words/hide.mp4",
     "credit": "asl-citizen",
-    "source": "hide/citizen_07258457713266142-HIDE.mp4"
+    "source": "hide/citizen_16059783280053863-HIDE.mp4"
   },
   "asl/words/high": {
     "type": "video",
@@ -1185,7 +1185,7 @@
     "type": "video",
     "uri": "/reference/asl-words/horse.mp4",
     "credit": "asl-citizen",
-    "source": "horse/citizen_11515615445055283-HORSE.mp4"
+    "source": "horse/citizen_13348959902213542-HORSE.mp4"
   },
   "asl/words/hot": {
     "type": "video",
@@ -1215,7 +1215,7 @@
     "type": "video",
     "uri": "/reference/asl-words/improve.mp4",
     "credit": "asl-citizen",
-    "source": "improve/citizen_04615258339586048-seedIMPROVE.mp4"
+    "source": "improve/citizen_0747520036218976-IMPROVE.mp4"
   },
   "asl/words/inform": {
     "type": "video",
@@ -1227,13 +1227,13 @@
     "type": "video",
     "uri": "/reference/asl-words/interest.mp4",
     "credit": "asl-citizen",
-    "source": "interest/citizen_31678370856435367-INTEREST.mp4"
+    "source": "interest/citizen_07804429997157225-INTEREST.mp4"
   },
   "asl/words/jacket": {
     "type": "video",
     "uri": "/reference/asl-words/jacket.mp4",
     "credit": "wlasl",
-    "source": "jacket/30840.mp4"
+    "source": "jacket/30849.mp4"
   },
   "asl/words/join": {
     "type": "video",
@@ -1269,25 +1269,25 @@
     "type": "video",
     "uri": "/reference/asl-words/language.mp4",
     "credit": "asl-citizen",
-    "source": "language/citizen_2471707461204955-LANGUAGE.mp4"
+    "source": "language/citizen_12808797423117713-LANGUAGE.mp4"
   },
   "asl/words/last": {
     "type": "video",
     "uri": "/reference/asl-words/last.mp4",
     "credit": "asl-citizen",
-    "source": "last/citizen_03334113724536958-LAST.mp4"
+    "source": "last/citizen_20168992933962326-LAST.mp4"
   },
   "asl/words/later": {
     "type": "video",
     "uri": "/reference/asl-words/later.mp4",
     "credit": "asl-citizen",
-    "source": "later/citizen_13635874572819362-LATER.mp4"
+    "source": "later/citizen_19475974684528485-LATER.mp4"
   },
   "asl/words/laugh": {
     "type": "video",
     "uri": "/reference/asl-words/laugh.mp4",
     "credit": "asl-citizen",
-    "source": "laugh/citizen_15675760388381188-LAUGH.mp4"
+    "source": "laugh/citizen_11981971032201333-LAUGH.mp4"
   },
   "asl/words/leave": {
     "type": "video",
@@ -1335,7 +1335,7 @@
     "type": "video",
     "uri": "/reference/asl-words/loud.mp4",
     "credit": "asl-citizen",
-    "source": "loud/citizen_007192681349306174-LOUD.mp4"
+    "source": "loud/citizen_16871429091899914-LOUD.mp4"
   },
   "asl/words/mad": {
     "type": "video",
@@ -1347,7 +1347,7 @@
     "type": "video",
     "uri": "/reference/asl-words/make.mp4",
     "credit": "asl-citizen",
-    "source": "make/citizen_20003215375757932-MAKE.mp4"
+    "source": "make/citizen_17501981980725656-MAKE.mp4"
   },
   "asl/words/man": {
     "type": "video",
@@ -1365,7 +1365,7 @@
     "type": "video",
     "uri": "/reference/asl-words/mean.mp4",
     "credit": "wlasl",
-    "source": "mean/35295.mp4"
+    "source": "mean/35289.mp4"
   },
   "asl/words/milk": {
     "type": "video",
@@ -1401,7 +1401,7 @@
     "type": "video",
     "uri": "/reference/asl-words/mouth.mp4",
     "credit": "asl-citizen",
-    "source": "mouth/citizen_07770960749445921-MOUTH.mp4"
+    "source": "mouth/citizen_08629381582280149-MOUTH.mp4"
   },
   "asl/words/move": {
     "type": "video",
@@ -1413,7 +1413,7 @@
     "type": "video",
     "uri": "/reference/asl-words/my-mine.mp4",
     "credit": "asl-citizen",
-    "source": "my/citizen_08450103948651932-MY.mp4"
+    "source": "my/citizen_02119015136147895-MY.mp4"
   },
   "asl/words/napkin": {
     "type": "video",
@@ -1431,7 +1431,7 @@
     "type": "video",
     "uri": "/reference/asl-words/no.mp4",
     "credit": "asl-citizen",
-    "source": "no/citizen_08228267952066615-NO.mp4"
+    "source": "no/citizen_2140134632834978-NO.mp4"
   },
   "asl/words/noisy": {
     "type": "video",
@@ -1443,7 +1443,7 @@
     "type": "video",
     "uri": "/reference/asl-words/nose.mp4",
     "credit": "asl-citizen",
-    "source": "nose/citizen_08859205707077078-NOSE.mp4"
+    "source": "nose/citizen_11100447586620077-NOSE.mp4"
   },
   "asl/words/not": {
     "type": "video",
@@ -1455,7 +1455,7 @@
     "type": "video",
     "uri": "/reference/asl-words/now.mp4",
     "credit": "asl-citizen",
-    "source": "now/citizen_10928494959813584-NOW.mp4"
+    "source": "now/citizen_3186686241379755-NOW.mp4"
   },
   "asl/words/nuts": {
     "type": "video",
@@ -1491,7 +1491,7 @@
     "type": "video",
     "uri": "/reference/asl-words/order.mp4",
     "credit": "wlasl",
-    "source": "order/40169.mp4"
+    "source": "order/40171.mp4"
   },
   "asl/words/outside": {
     "type": "video",
@@ -1503,31 +1503,31 @@
     "type": "video",
     "uri": "/reference/asl-words/owl.mp4",
     "credit": "asl-citizen",
-    "source": "owl/citizen_0014294717734566476-OWL.mp4"
+    "source": "owl/citizen_00646870451616377-OWL.mp4"
   },
   "asl/words/pen": {
     "type": "video",
     "uri": "/reference/asl-words/pen.mp4",
     "credit": "asl-citizen",
-    "source": "pen/citizen_2174478921817542-PEN.mp4"
+    "source": "pen/citizen_2628676800017937-PEN.mp4"
   },
   "asl/words/pencil": {
     "type": "video",
     "uri": "/reference/asl-words/pencil.mp4",
     "credit": "asl-citizen",
-    "source": "pencil/citizen_10870208542357451-PENCIL.mp4"
+    "source": "pencil/citizen_0637696371176184-PENCIL.mp4"
   },
   "asl/words/penny": {
     "type": "video",
     "uri": "/reference/asl-words/penny.mp4",
     "credit": "asl-citizen",
-    "source": "penny/citizen_31387196529348116-PENNY.mp4"
+    "source": "penny/citizen_21510997807121468-seedPENNY.mp4"
   },
   "asl/words/person": {
     "type": "video",
     "uri": "/reference/asl-words/person.mp4",
     "credit": "asl-citizen",
-    "source": "person/citizen_1817196550268605-PERSON.mp4"
+    "source": "person/citizen_22233460727296395-PERSON.mp4"
   },
   "asl/words/perspective": {
     "type": "video",
@@ -1545,7 +1545,7 @@
     "type": "video",
     "uri": "/reference/asl-words/pink.mp4",
     "credit": "asl-citizen",
-    "source": "pink/citizen_09734878070308994-PINK.mp4"
+    "source": "pink/citizen_03573698951729942-PINK.mp4"
   },
   "asl/words/pizza": {
     "type": "video",
@@ -1557,25 +1557,25 @@
     "type": "video",
     "uri": "/reference/asl-words/play.mp4",
     "credit": "asl-citizen",
-    "source": "play/citizen_2738188831230899-PLAY.mp4"
+    "source": "play/citizen_26945880222591767-PLAY.mp4"
   },
   "asl/words/please": {
     "type": "video",
     "uri": "/reference/asl-words/please.mp4",
     "credit": "asl-citizen",
-    "source": "please/citizen_3584447878251358-PLEASE.mp4"
+    "source": "please/citizen_18053723532999788-PLEASE.mp4"
   },
   "asl/words/point": {
     "type": "video",
     "uri": "/reference/asl-words/point.mp4",
     "credit": "asl-citizen",
-    "source": "point/citizen_1940477075943814-POINT.mp4"
+    "source": "point/citizen_10929791319622817-POINT.mp4"
   },
   "asl/words/police": {
     "type": "video",
     "uri": "/reference/asl-words/police.mp4",
     "credit": "wlasl",
-    "source": "police/43525.mp4"
+    "source": "police/43528.mp4"
   },
   "asl/words/pool": {
     "type": "video",
@@ -1587,7 +1587,7 @@
     "type": "video",
     "uri": "/reference/asl-words/potty.mp4",
     "credit": "asl-citizen",
-    "source": "toilet/citizen_17205691499443687-TOILET.mp4"
+    "source": "toilet/citizen_20765499771937668-TOILET.mp4"
   },
   "asl/words/pretend": {
     "type": "video",
@@ -1623,13 +1623,13 @@
     "type": "video",
     "uri": "/reference/asl-words/rain.mp4",
     "credit": "asl-citizen",
-    "source": "rain/citizen_021281916138308432-RAIN.mp4"
+    "source": "rain/citizen_21290686289176697-RAIN.mp4"
   },
   "asl/words/read": {
     "type": "video",
     "uri": "/reference/asl-words/read.mp4",
     "credit": "asl-citizen",
-    "source": "read/citizen_21828575560875674-READ.mp4"
+    "source": "read/citizen_039314365088337855-READ.mp4"
   },
   "asl/words/ready": {
     "type": "video",
@@ -1641,7 +1641,7 @@
     "type": "video",
     "uri": "/reference/asl-words/red.mp4",
     "credit": "asl-citizen",
-    "source": "red/citizen_03048260576074524-RED.mp4"
+    "source": "red/citizen_27555332923654485-RED.mp4"
   },
   "asl/words/refrigerator": {
     "type": "video",
@@ -1653,25 +1653,25 @@
     "type": "video",
     "uri": "/reference/asl-words/ride.mp4",
     "credit": "wlasl",
-    "source": "ride/48043.mp4"
+    "source": "ride/48042.mp4"
   },
   "asl/words/room": {
     "type": "video",
     "uri": "/reference/asl-words/room.mp4",
     "credit": "asl-citizen",
-    "source": "room/citizen_17679009686670621-ROOM.mp4"
+    "source": "room/citizen_151244397752901-ROOM.mp4"
   },
   "asl/words/sad": {
     "type": "video",
     "uri": "/reference/asl-words/sad.mp4",
     "credit": "asl-citizen",
-    "source": "sad/citizen_07426159684377254-SAD.mp4"
+    "source": "sad/citizen_0320912589498219-SAD.mp4"
   },
   "asl/words/same": {
     "type": "video",
     "uri": "/reference/asl-words/same.mp4",
     "credit": "wlasl",
-    "source": "same/49175.mp4"
+    "source": "same/49181.mp4"
   },
   "asl/words/sandwich": {
     "type": "video",
@@ -1683,13 +1683,13 @@
     "type": "video",
     "uri": "/reference/asl-words/say.mp4",
     "credit": "wlasl",
-    "source": "say/49430.mp4"
+    "source": "say/49432.mp4"
   },
   "asl/words/scissors": {
     "type": "video",
     "uri": "/reference/asl-words/scissors.mp4",
     "credit": "asl-citizen",
-    "source": "scissors/citizen_31827943243717827-SCISSORS.mp4"
+    "source": "scissors/citizen_1320296302135493-SCISSORS.mp4"
   },
   "asl/words/score": {
     "type": "video",
@@ -1701,7 +1701,7 @@
     "type": "video",
     "uri": "/reference/asl-words/secretary.mp4",
     "credit": "asl-citizen",
-    "source": "secretary/citizen_39771317354391655-SECRETARY.mp4"
+    "source": "secretary/citizen_25212848794367093-SECRETARY.mp4"
   },
   "asl/words/see": {
     "type": "video",
@@ -1725,13 +1725,13 @@
     "type": "video",
     "uri": "/reference/asl-words/short.mp4",
     "credit": "wlasl",
-    "source": "short/51227.mp4"
+    "source": "short/51221.mp4"
   },
   "asl/words/shower": {
     "type": "video",
     "uri": "/reference/asl-words/shower.mp4",
     "credit": "asl-citizen",
-    "source": "shower/citizen_15880452209619778-seedSHOWER.mp4"
+    "source": "shower/citizen_023889251186243632-SHOWER.mp4"
   },
   "asl/words/sick": {
     "type": "video",
@@ -1743,7 +1743,7 @@
     "type": "video",
     "uri": "/reference/asl-words/silly.mp4",
     "credit": "asl-citizen",
-    "source": "silly/citizen_1338457656717602-SILLY.mp4"
+    "source": "silly/citizen_4147154583404842-SILLY.mp4"
   },
   "asl/words/sleep": {
     "type": "video",
@@ -1767,13 +1767,13 @@
     "type": "video",
     "uri": "/reference/asl-words/snack.mp4",
     "credit": "wlasl",
-    "source": "snack/52691.mp4"
+    "source": "snack/52686.mp4"
   },
   "asl/words/snow": {
     "type": "video",
     "uri": "/reference/asl-words/snow.mp4",
     "credit": "wlasl",
-    "source": "snow/52859.mp4"
+    "source": "snow/52857.mp4"
   },
   "asl/words/son": {
     "type": "video",
@@ -1785,7 +1785,7 @@
     "type": "video",
     "uri": "/reference/asl-words/soon.mp4",
     "credit": "wlasl",
-    "source": "soon/53301.mp4"
+    "source": "soon/53294.mp4"
   },
   "asl/words/speech": {
     "type": "video",
@@ -1797,13 +1797,13 @@
     "type": "video",
     "uri": "/reference/asl-words/stairs.mp4",
     "credit": "asl-citizen",
-    "source": "stairs/citizen_14684954525650107-STAIRS.mp4"
+    "source": "stairs/citizen_09281901456223873-STAIRS.mp4"
   },
   "asl/words/stay": {
     "type": "video",
     "uri": "/reference/asl-words/stay.mp4",
     "credit": "asl-citizen",
-    "source": "stay/citizen_012530386188145837-STAY.mp4"
+    "source": "stay/citizen_12825827929098765-STAY.mp4"
   },
   "asl/words/sticky": {
     "type": "video",
@@ -1815,7 +1815,7 @@
     "type": "video",
     "uri": "/reference/asl-words/store.mp4",
     "credit": "wlasl",
-    "source": "store/54957.mp4"
+    "source": "store/54956.mp4"
   },
   "asl/words/story": {
     "type": "video",
@@ -1827,19 +1827,19 @@
     "type": "video",
     "uri": "/reference/asl-words/stuck.mp4",
     "credit": "asl-citizen",
-    "source": "stuck/citizen_034397531877413234-STUCK.mp4"
+    "source": "stuck/citizen_14302319094151694-STUCK.mp4"
   },
   "asl/words/study": {
     "type": "video",
     "uri": "/reference/asl-words/study.mp4",
     "credit": "asl-citizen",
-    "source": "study/citizen_21500738701557953-STUDY.mp4"
+    "source": "study/citizen_18757567875372372-STUDY.mp4"
   },
   "asl/words/sun": {
     "type": "video",
     "uri": "/reference/asl-words/sun.mp4",
     "credit": "asl-citizen",
-    "source": "sun/citizen_04396410996080147-SUN.mp4"
+    "source": "sun/citizen_005356967449201777-SUN.mp4"
   },
   "asl/words/sweet": {
     "type": "video",
@@ -1851,7 +1851,7 @@
     "type": "video",
     "uri": "/reference/asl-words/table.mp4",
     "credit": "asl-citizen",
-    "source": "table/citizen_041530200454215516-TABLE.mp4"
+    "source": "table/citizen_008903198787238775-TABLE.mp4"
   },
   "asl/words/take": {
     "type": "video",
@@ -1863,7 +1863,7 @@
     "type": "video",
     "uri": "/reference/asl-words/talk.mp4",
     "credit": "wlasl",
-    "source": "talk/56816.mp4"
+    "source": "talk/56813.mp4"
   },
   "asl/words/tall": {
     "type": "video",
@@ -1875,13 +1875,13 @@
     "type": "video",
     "uri": "/reference/asl-words/taste.mp4",
     "credit": "asl-citizen",
-    "source": "taste/citizen_026471432961753694-TASTE.mp4"
+    "source": "taste/citizen_12840168615573821-TASTE.mp4"
   },
   "asl/words/tell": {
     "type": "video",
     "uri": "/reference/asl-words/tell.mp4",
     "credit": "asl-citizen",
-    "source": "tell/citizen_030859863529683285-TELL.mp4"
+    "source": "tell/citizen_02205485916234662-TELL.mp4"
   },
   "asl/words/thank you": {
     "type": "video",
@@ -1899,7 +1899,7 @@
     "type": "video",
     "uri": "/reference/asl-words/that.mp4",
     "credit": "asl-citizen",
-    "source": "that/citizen_061494394801220764-THAT.mp4"
+    "source": "that/citizen_23195679431151794-THAT.mp4"
   },
   "asl/words/theory": {
     "type": "video",
@@ -1911,13 +1911,13 @@
     "type": "video",
     "uri": "/reference/asl-words/there.mp4",
     "credit": "asl-citizen",
-    "source": "there/citizen_0518328729489248-THERE.mp4"
+    "source": "there/citizen_32342619342139356-THERE.mp4"
   },
   "asl/words/thin": {
     "type": "video",
     "uri": "/reference/asl-words/thin.mp4",
     "credit": "asl-citizen",
-    "source": "thin/citizen_3153477443824553-THIN.mp4"
+    "source": "thin/citizen_25916813953377815-THIN.mp4"
   },
   "asl/words/think": {
     "type": "video",
@@ -1929,7 +1929,7 @@
     "type": "video",
     "uri": "/reference/asl-words/thirsty.mp4",
     "credit": "asl-citizen",
-    "source": "thirsty/citizen_047999647354069586-THIRSTY.mp4"
+    "source": "thirsty/citizen_012755114496634024-THIRSTY.mp4"
   },
   "asl/words/thursday": {
     "type": "video",
@@ -1953,7 +1953,7 @@
     "type": "video",
     "uri": "/reference/asl-words/toast.mp4",
     "credit": "asl-citizen",
-    "source": "toast/citizen_27581478162959505-TOAST.mp4"
+    "source": "toast/citizen_18513914748729787-seedTOAST.mp4"
   },
   "asl/words/tomorrow": {
     "type": "video",
@@ -1983,7 +1983,7 @@
     "type": "video",
     "uri": "/reference/asl-words/touch.mp4",
     "credit": "asl-citizen",
-    "source": "touch/citizen_21672118627254333-TOUCH.mp4"
+    "source": "touch/citizen_05457793958586299-TOUCH.mp4"
   },
   "asl/words/toy": {
     "type": "video",
@@ -1995,7 +1995,7 @@
     "type": "video",
     "uri": "/reference/asl-words/trade.mp4",
     "credit": "wlasl",
-    "source": "trade/59211.mp4"
+    "source": "trade/59206.mp4"
   },
   "asl/words/tree": {
     "type": "video",
@@ -2007,13 +2007,13 @@
     "type": "video",
     "uri": "/reference/asl-words/ugly.mp4",
     "credit": "asl-citizen",
-    "source": "ugly/citizen_09058571717120811-UGLY.mp4"
+    "source": "ugly/citizen_15916101397139104-UGLY.mp4"
   },
   "asl/words/uncle": {
     "type": "video",
     "uri": "/reference/asl-words/uncle.mp4",
     "credit": "asl-citizen",
-    "source": "uncle/citizen_08012788103867674-UNCLE.mp4"
+    "source": "uncle/citizen_4015166921328126-UNCLE.mp4"
   },
   "asl/words/underwear": {
     "type": "video",
@@ -2025,7 +2025,7 @@
     "type": "video",
     "uri": "/reference/asl-words/up.mp4",
     "credit": "asl-citizen",
-    "source": "up/citizen_22522888097403992-UP.mp4"
+    "source": "up/citizen_19768631695836425-UP.mp4"
   },
   "asl/words/upset": {
     "type": "video",
@@ -2037,7 +2037,7 @@
     "type": "video",
     "uri": "/reference/asl-words/vacuum.mp4",
     "credit": "asl-citizen",
-    "source": "vacuum/citizen_19241885838645456-VACUUM.mp4"
+    "source": "vacuum/citizen_04759427279461037-VACUUM.mp4"
   },
   "asl/words/voice": {
     "type": "video",
@@ -2049,19 +2049,13 @@
     "type": "video",
     "uri": "/reference/asl-words/vomit.mp4",
     "credit": "asl-citizen",
-    "source": "vomit/citizen_0002600716749214804-VOMIT.mp4"
+    "source": "vomit/citizen_0324183392705486-VOMIT.mp4"
   },
   "asl/words/wait": {
     "type": "video",
     "uri": "/reference/asl-words/wait.mp4",
     "credit": "asl-citizen",
     "source": "wait/citizen_031074918450269218-WAIT.mp4"
-  },
-  "asl/words/wake": {
-    "type": "video",
-    "uri": "/reference/asl-words/wake.mp4",
-    "credit": "wlasl",
-    "source": "wake up/62145.mp4"
   },
   "asl/words/walk": {
     "type": "video",
@@ -2073,13 +2067,13 @@
     "type": "video",
     "uri": "/reference/asl-words/want.mp4",
     "credit": "wlasl",
-    "source": "want/62249.mp4"
+    "source": "want/62248.mp4"
   },
   "asl/words/water": {
     "type": "video",
     "uri": "/reference/asl-words/water.mp4",
     "credit": "asl-citizen",
-    "source": "water/citizen_03892908647294191-WATER.mp4"
+    "source": "water/citizen_057571220614212715-WATER.mp4"
   },
   "asl/words/we/us": {
     "type": "video",
@@ -2157,25 +2151,25 @@
     "type": "video",
     "uri": "/reference/asl-words/work.mp4",
     "credit": "asl-citizen",
-    "source": "work/citizen_16430646158155082-WORK.mp4"
+    "source": "work/citizen_06132878384310203-WORK.mp4"
   },
   "asl/words/write": {
     "type": "video",
     "uri": "/reference/asl-words/write.mp4",
     "credit": "asl-citizen",
-    "source": "write/citizen_038974698230258786-WRITE.mp4"
+    "source": "write/citizen_0940927928215547-WRITE.mp4"
   },
   "asl/words/year": {
     "type": "video",
     "uri": "/reference/asl-words/year.mp4",
     "credit": "asl-citizen",
-    "source": "year/citizen_2027477584552939-YEAR.mp4"
+    "source": "year/citizen_08090451600558746-YEAR.mp4"
   },
   "asl/words/yellow": {
     "type": "video",
     "uri": "/reference/asl-words/yellow.mp4",
     "credit": "asl-citizen",
-    "source": "yellow/citizen_02390770742279491-YELLOW.mp4"
+    "source": "yellow/citizen_12059502197035998-YELLOW.mp4"
   },
   "asl/words/yes": {
     "type": "video",
@@ -2187,19 +2181,19 @@
     "type": "video",
     "uri": "/reference/asl-words/yesterday.mp4",
     "credit": "asl-citizen",
-    "source": "yesterday/citizen_027291208517367993-YESTERDAY.mp4"
+    "source": "yesterday/citizen_000884691765486556-YESTERDAY.mp4"
   },
   "asl/words/yourself": {
     "type": "video",
     "uri": "/reference/asl-words/yourself.mp4",
     "credit": "asl-citizen",
-    "source": "yourself/citizen_029950708361064615-YOURSELF.mp4"
+    "source": "yourself/citizen_18239269759693455-YOURSELF.mp4"
   },
   "asl/words/yucky": {
     "type": "video",
     "uri": "/reference/asl-words/yucky.mp4",
     "credit": "asl-citizen",
-    "source": "yucky/citizen_03613003795876901-YUCKY.mp4"
+    "source": "yucky/citizen_08985732608051511-YUCKY.mp4"
   },
   "asl/words/zebra": {
     "type": "video",

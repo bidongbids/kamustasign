@@ -26,6 +26,10 @@ app trims a recording. For each gate it reports:
   python scripts/oov_rejection_eval.py --models "asl_combined_unk_seed[0-9].keras"
       (a model with the __unknown__ class: a top prediction of it counts as
       rejected at every gate, like the app treats it)
+  python scripts/oov_rejection_eval.py --skip models/asl_combined_v5_webcam/seen_clips.json
+  python scripts/oov_rejection_eval.py --skip models/asl_combined_v5_webcam/seen_clips.json ^
+      --models "asl_combined_v5_webcam/asl_combined_seed[0-9].keras"
+      (before/after: both on the same in-vocab clips, which neither trained on)
 
 Landmarks are cached in data/oov_landmarks_cache/, so a killed run resumes.
 Writes models/diagnostics/oov_rejection.json.
@@ -55,7 +59,7 @@ APP_GATE = 0.40  # Words translator; the video-call reader uses 0.60
 GATES = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
 
 
-def pick_clips(classes, per_set, seed):
+def pick_clips(classes, per_set, seed, skip=()):
     vocab = {sel.key(c) for c in classes}
     for c, aliases in sel.ALIASES.items():
         vocab.add(sel.key(c))
@@ -65,6 +69,7 @@ def pick_clips(classes, per_set, seed):
     # Webcam clips a --webcam-extra consolidation moved into training.
     if os.path.exists(os.path.join(DATA_DIR, "webcam_train_extra.json")):
         used |= set(json.load(open(os.path.join(DATA_DIR, "webcam_train_extra.json"), encoding="utf-8")))
+    used |= set(skip)
     used |= {u.removeprefix("citizen_") for u in used}
     word_index = {sel.key(c): i for i, c in enumerate(classes)}
 
@@ -130,11 +135,14 @@ def main():
     ap.add_argument("--per-set", type=int, default=250)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--models", default="asl_combined_seed[0-9].keras", help="glob under models/")
+    ap.add_argument("--skip", help="JSON list of clip ids an older model trained on, left out of the "
+                                   "in-vocab set so a before/after scores both on clips neither saw")
     args = ap.parse_args()
     os.makedirs(CACHE, exist_ok=True)
 
     classes = json.load(open(os.path.join(DATA_DIR, "combined_word_classes.json"), encoding="utf-8"))
-    oov_pick, inv_pick = pick_clips(classes, args.per_set, args.seed)
+    skip = json.load(open(args.skip, encoding="utf-8")) if args.skip else ()
+    oov_pick, inv_pick = pick_clips(classes, args.per_set, args.seed, skip)
     extract([f for f, _ in oov_pick + inv_pick])
 
     from tensorflow import keras

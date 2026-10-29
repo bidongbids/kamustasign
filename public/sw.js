@@ -15,7 +15,7 @@
 // - Everything else (Supabase, translation, other origins, video): untouched.
 //
 // Bump CACHE when the caching rules change; old caches are deleted on activate.
-const CACHE = "kamustasign-v3";
+const CACHE = "kamustasign-v4";
 const IMMUTABLE = [/^\/_expo\/static\//, /^\/assets\//];
 const REVALIDATE = [
   /^\/model\//,
