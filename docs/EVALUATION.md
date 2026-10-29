@@ -1,6 +1,6 @@
 # LCSign — model evaluation
 
-All figures are for the models **deployed in `public/`** (as of 2026-10-21; numbers and FSL letters 2026-10-28),
+All figures are for the models **deployed in `public/`** (as of 2026-10-21; numbers and FSL letters 2026-10-28; ASL words 2026-10-29),
 produced by the scripts named in each section. Re-run them after any retrain;
 numbers here go stale otherwise.
 
@@ -9,8 +9,9 @@ numbers here go stale otherwise.
 | ASL letters (since 2026-10-28) | 26 + del/space | **ASL-HG signers held out**, 2 per fold (25,983 photos) | **93.9%** | 100% (top-3) |
 | ASL letters | | **105 WLASL webcam clips** of 21 letters | **64.8%** per clip | 56.0% per frame |
 | *ASL letters before 2026-10-28* | | *10 ASL-HG signers / the same WLASL clips* | *71.5% / 34.3% per clip* | |
-| ASL words (4-seed ensemble) | 344 | Test split + 2 held-out GISLR signers (9,579 clips) | 58.6% | 82.7% |
-| ASL words | | **Held-out webcam clips** (3,113) | **31.5%** | 53.4% |
+| ASL words (4-seed ensemble, 2026-10-29) | 344 | Test split + 2 held-out GISLR signers (9,579 clips) | 59.2% | 83.2% |
+| ASL words | | **Held-out webcam clips** (1,630; mostly signers also in training, see §2) | **61.5%** | 85.6% |
+| *ASL words before 2026-10-29* | | *Same 9,579 / same 1,630 clips* | *58.6% / 30.9%* | *82.7% / 53.1%* |
 | FSL-105 words (4-seed ensemble) | 105 | **Signer D, never seen in training** (534 clips) | **75.3%** | 94.9% |
 | ASL numbers (2026-10-28) | 0–9 | **Webcam clips of ASL Citizen / WLASL / MS-ASL signers** (338 clips) | **97.9%** per clip | 83.1% per frame |
 | ASL numbers | | ASL-HG, 2 signers held out per fold (10,000 photos) | 100% | |
@@ -75,26 +76,40 @@ practice pass rule (`PASS_CONFIDENCE`).
 
 `ml/scripts/word_model_diagnostics.py asl` → `ml/models/diagnostics/asl_per_word.csv`, `summary.json`; PDF: `word_diagnostics_report.py`
 
-| Metric | Value |
-|---|---|
-| Test clips | 9,579 |
-| Top-1 / top-5 | 58.6% / 82.7% |
-| Macro top-1 / macro F1 | 62.1% / 0.597 |
-| Words at 100% / ≥ 80% / < 50% / 0% | 30 / 99 / 101 / 6 |
-| Shown at the app's 40% gate | 65.0% of clips |
-| Precision when shown | 76.4% |
-| Mean confidence when right / wrong | 0.69 / 0.36 |
-| **Held-out webcam clips** (ASL Citizen / WLASL / MS-ASL, trimmed like the app) | 3,113 clips, **31.5%** top-1, 53.4% top-5 |
+**Retrained 2026-10-29** with webcam-domain data (`consolidate_combined_words.py
+--webcam-extra`): half of each word's held-out webcam clips (1,483, split by
+clip hash) plus 197 verified YouTube dictionary segments moved into training.
+Before = the ensemble deployed 2026-10-20 (`models/asl_combined_v3_flip`);
+after = `models/asl_combined_v5_webcam`. `compare_word_models.py` scores both on
+the same clips:
+
+| Metric | Before | After |
+|---|---|---|
+| Test clips (9,579) top-1 / top-5 | 58.6% / 82.7% | **59.2% / 83.2%** |
+| Macro top-1 / macro F1 | 62.1% / 0.597 | 65.1% / 0.633 |
+| Words at 100% / ≥ 80% / < 50% / 0% | 30 / 99 / 101 / 6 | 47 / 113 / 90 / 3 |
+| Shown at the app's 40% gate / precision when shown | 65.0% / 76.4% | 63.6% / 77.3% |
+| Mean confidence when right / wrong | 0.69 / 0.36 | 0.68 / 0.35 |
+| **Held-out webcam clips** (the half kept out, 1,630, trimmed like the app) top-1 / top-5 | 30.9% / 53.1% | **61.5% / 85.6%** |
+| … the 976 clips of words the old model read worst (≤ 25%) | 4.9% / 30.0% | 47.4% / 80.1% |
+| … the other 654 | 69.6% / 87.5% | 82.4% / 93.7% |
+| … **signer-disjoint** clips only (21) | 33.3% / 61.9% | **66.7%** / 81.0% |
+
+**Caveat for the webcam rows:** the two webcam halves were split by clip, not
+by person, so 1,609 of the 1,630 held-out clips are by a signer who also has
+clips in training (WLASL `signer_id` / ASL Citizen participant). That
+inflates the gain. Only 21 held-out clips are by someone the model never
+saw. They improve the same way (weak words 0/8 → 6/8), but 21 clips is too
+few to quote a number from. A live webcam test with new people is the
+honest check.
 
 The test split is mostly Google Isolated SLR (GISLR) portrait phone clips,
-which flatters the 211 words learned mainly from that dataset. The webcam
-check is the closer match to a student at a laptop, and it is much lower: the
-remaining gap is cross-signer / cross-camera domain shift, and more webcam
-clips of those words is the real fix.
+which flatters the 211 words learned mainly from that dataset; it barely
+moved, so the extra webcam data did not cost accuracy there.
 
-Most-confused pairs (true → predicted, clips): awake→wake 21, tongue→duck 19,
-my/mine→please 18, ride→chair 17, milk→car 16, lips→say 16, because→ear 16,
-pen→pencil 15. Several are near-identical signs or share a handshape and
+Most-confused pairs now (true → predicted, clips): awake→wake 21, milk→car 20,
+my/mine→please 20, lips→say 17, cheek→eye 16, pen→pencil 16, because→ear 16,
+finger→wait 16. Several are near-identical signs or share a handshape and
 location.
 
 ## 3. FSL-105 words
@@ -172,25 +187,35 @@ each model folder's `meta.json` says which input it takes.
 Test accuracy only covers signs the model knows. In a video call people sign
 anything, so the reader has to **stay quiet** for signs outside its 344
 words. This test uses 250 ASL Citizen webcam clips of glosses that are
-*not* in the vocabulary (nor aliases of one), and for comparison 234 held-out
-clips of in-vocabulary words (one clip per gloss, trimmed like the app).
+*not* in the vocabulary (nor aliases of one), and for comparison 214 held-out
+clips of in-vocabulary words (one clip per gloss, trimmed like the app; none
+used in training, including the webcam clips the 2026-10-29 retrain added).
+
+Deployed model (2026-10-29), `oov_rejection.json`:
 
 | Gate (min. confidence) | False accept (OOV shown as a word) ↓ | In-vocab shown | In-vocab shown **and right** ↑ |
 |---|---|---|---|
-| 0.30 | 73.2% | 85.5% | 39.3% |
-| **0.40 (Words translator)** | **52.8%** | 72.2% | 37.2% |
-| 0.50 | 38.8% | 62.0% | 35.0% |
-| **0.60 (video call, since 2026-10-21)** | **25.6%** | 53.4% | **33.3%** |
-| 0.70 | 17.6% | 44.4% | 30.8% |
-| 0.80 | 9.6% | 35.0% | 26.5% |
+| 0.30 | 68.8% | 84.1% | 63.6% |
+| **0.40 (Words translator)** | **49.2%** | 74.8% | 58.9% |
+| 0.50 | 34.0% | 62.6% | 52.8% |
+| **0.60 (video call, since 2026-10-21)** | **21.6%** | 53.7% | **47.7%** |
+| 0.70 | 14.8% | 46.3% | 42.1% |
+| 0.80 | 8.0% | 36.0% | 33.2% |
 
-Mean top confidence is 0.46 on OOV clips versus 0.63 on in-vocab clips.
-In-vocab top-1 on this set is 41.5%.
+Mean top confidence is 0.43 on OOV clips versus 0.63 on in-vocab clips.
+In-vocab top-1 on this set is 68.7% (the model before the retrain: 36.4%,
+`oov_rejection_v3.json`; its rows were 52.8% / 32.2% shown and right at 0.4,
+25.6% / 28.0% at 0.6). Most in-vocab clips share a signer with the webcam
+clips added to training, as in §2.
+
+The tables in the rest of this section were measured on the model before
+the retrain (and 234 in-vocab clips).
 
 **Reading it:** at a 40% gate, about half of unknown signs get
 captioned as *some* word. Raising the gate cuts false captions much faster
-than it loses right ones. At 0.6, false accepts halve (52.8% → 25.6%) while
-correct captions drop only 37.2% → 33.3%. A softmax classifier has no
+than it loses right ones. At 0.6 (old model), false accepts halve (52.8% → 25.6%) while
+correct captions drop only 37.2% → 33.3%; the retrained model keeps the
+same shape (49.2% → 21.6%, 58.9% → 47.7%), so the gate stays. A softmax classifier has no
 "none of these" class, so a confidence gate is the only lever without
 retraining. The stronger fix is training with an explicit *unknown* class
 built from out-of-vocabulary clips (the 2,473 OOV ASL Citizen glosses are

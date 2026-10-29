@@ -62,6 +62,9 @@ def pick_clips(classes, per_set, seed):
         vocab.update(sel.key(a.rstrip("0123456789")) for a in aliases)
     with open(os.path.join(DATA_DIR, "word_manifest.csv"), newline="", encoding="utf-8") as f:
         used = {r["video_id"] for r in csv.DictReader(f) if r["split"] in ("train", "val")}
+    # Webcam clips a --webcam-extra consolidation moved into training.
+    if os.path.exists(os.path.join(DATA_DIR, "webcam_train_extra.json")):
+        used |= set(json.load(open(os.path.join(DATA_DIR, "webcam_train_extra.json"), encoding="utf-8")))
     used |= {u.removeprefix("citizen_") for u in used}
     word_index = {sel.key(c): i for i, c in enumerate(classes)}
 

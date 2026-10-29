@@ -260,7 +260,13 @@ def main() -> None:
         review_letters()
         return
 
+    # Keep the groups export_handshape_references.py merges in (ASL numbers,
+    # FSL letters, FSL numbers); everything this script makes is rebuilt.
+    own = ("asl/letters/", "fsl/words/", "asl/words/")
     media: dict = {}
+    if os.path.exists(OUT_JSON):
+        old = json.load(open(OUT_JSON, encoding="utf-8"))
+        media = {k: v for k, v in old.items() if not k.startswith(own)}
     export_letters(media)
     export_fsl(media)
     export_asl_words(media)
