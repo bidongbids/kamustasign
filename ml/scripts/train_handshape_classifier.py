@@ -12,6 +12,8 @@ Each run (1) measures accuracy on people the model never saw, by cross-
 validation over signers (or, for FSL letters, over photos - see below), then
 (2) trains the deployable model on everything, (3) writes a SavedModel for the
 tensorflowjs converter. Landmarks come from extract_handshape_landmarks.py.
+--eval-only stops after (1): the diagnostics without touching the deployed
+model's files.
 
 Input the app gives the model
 -----------------------------
@@ -344,6 +346,8 @@ def main():
               (f", per clip {summary['clip_top1']:.1%}" if "clip_top1" in summary else ""))
         weakest = sorted(summary["per_sign"], key=lambda r: r["top1"])[:6]
         print("  weakest: " + ", ".join(f"{r['sign']} {r['top1']:.0%} (as {r['most_confused_with']})" for r in weakest))
+    if "--eval-only" in sys.argv:
+        return
     model = fit(X, y, len(classes), seed=100)
     export(model, name, classes)
 
