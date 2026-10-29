@@ -22,7 +22,7 @@ import AccountPanel from "./AccountPanel";
 import { ConfirmInline } from "./ManageKit";
 import type { Profile } from "../../lib/queries";
 import { useBackHandler } from "../../lib/backNavigation";
-import { colors as staticColors, fonts, spacing, radii, type ThemeColors } from "../../theme/theme";
+import { fonts, spacing, radii, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useResponsive } from "../../theme/responsive";
 
@@ -324,10 +324,9 @@ export function DashboardCard({
   );
 }
 
-// Still Graphite dark: moved to the theme with the screens that use it
-// (handoff §10, steps 3-4).
-const colors = staticColors;
-export const dashboardStyles = StyleSheet.create({
+// Shared list/section styles for the dashboard sections, in the current theme.
+const makeDashboardStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center" },
   spaceBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: {
@@ -352,7 +351,7 @@ export const dashboardStyles = StyleSheet.create({
   },
   listItem: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
+    borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border,
     paddingVertical: spacing.sm + 4,
   },
   listItemFirst: {
@@ -378,6 +377,7 @@ export const dashboardStyles = StyleSheet.create({
   },
   pillText: { fontFamily: fonts.bodyMedium, fontSize: 12 },
 });
+export const useDashboardStyles = () => useThemedStyles(makeDashboardStyles);
 
 const makeStyles = (colors: ThemeColors, theme: Theme) => {
   const dark = theme.name === "dark";

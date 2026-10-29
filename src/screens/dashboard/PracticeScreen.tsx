@@ -46,8 +46,8 @@ import { accuracyStars, starReference } from "../../lib/starReference";
 import { getMotionHint, getSignMedia } from "../../lib/referenceMedia";
 import { signName } from "../../lib/signNames";
 import { buildFeedback, type PracticeFeedbackState } from "../../lib/learnCopy";
-import { colors, fonts, kidTypography, radii, spacing } from "../../theme/theme";
-import { neuInset } from "../../theme/shadows";
+import { fonts, kidTypography, radii, spacing, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useResponsive } from "../../theme/responsive";
 
 type Props = {
@@ -81,6 +81,8 @@ export default function PracticeScreen({
   onChangeSign,
   onDone,
 }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { isDesktop, height: windowHeight, width: windowWidth } = useResponsive();
   const reduceMotion = useReduceMotion();
   const [targetLanguage] = useSelectedLanguage();
@@ -122,6 +124,8 @@ export default function PracticeScreen({
   // latest values without re-running.
   const signRef = useRef(sign);
   const sessionRef = useRef({ started: false, best: 0, recorded: false });
+  // Words: the last clip's score for this sign, for "Up from 62%".
+  const lastScoreRef = useRef<number | null>(null);
   const passesRef = useRef(initialRow?.passes ?? 0);
   const writesRef = useRef<Promise<unknown>>(Promise.resolve());
   const lastFailedRef = useRef<{ sign: string; passed: boolean; confidence: number } | null>(null);
@@ -133,6 +137,7 @@ export default function PracticeScreen({
     signRef.current = sign;
     const row = rows.get(sign);
     sessionRef.current = { started: false, best: 0, recorded: false };
+    lastScoreRef.current = null;
     passesRef.current = row?.passes ?? 0;
     lastKindRef.current = "waiting";
     setPasses(row?.passes ?? 0);
@@ -195,13 +200,13 @@ export default function PracticeScreen({
   function showPass(confidence: number) {
     const alreadyLearned = passesRef.current >= MASTERY_PASSES;
     const target = signRef.current;
-    setFeedbackState({ kind: "passed", counted: null, alreadyLearned });
+    setFeedbackState({ kind: "passed", counted: null, alreadyLearned, confidence });
     void write(true, confidence).then((r) => {
       if (target !== signRef.current) return;
       if (r.crossed) setCelebrate(true);
       // Only resolve the message if nothing newer (a retry) replaced it.
       setFeedback((f) =>
-        f.kind === "passed" && f.counted === null ? { kind: "passed", counted: r.counted, alreadyLearned: r.alreadyLearned } : f
+        f.kind === "passed" && f.counted === null ? { ...f, counted: r.counted, alreadyLearned: r.alreadyLearned } : f
       );
     });
   }
@@ -228,10 +233,12 @@ export default function PracticeScreen({
     s.recorded = true;
     s.best = Math.max(s.best, confidence);
     setBest(s.best);
+    const previous = lastScoreRef.current;
+    lastScoreRef.current = confidence;
     if (passed) {
       showPass(confidence);
     } else {
-      setFeedbackState({ kind: "retry", predicted, confidence });
+      setFeedbackState({ kind: "retry", predicted, confidence, previous });
       void write(false, confidence);
     }
   }
@@ -377,7 +384,7 @@ export default function PracticeScreen({
           disabled={leaving}
           iconLeft={<ChevronLeftIcon size={18} color={colors.textPrimary} />}
         />
-        <View style={[styles.groupPill, neuInset("sm")]}>
+        <View style={[styles.groupPill, shadows.neuInset("sm")]}>
           <Text style={styles.groupPillText}>
             {languageLabel} · {groupLabel}
           </Text>
@@ -418,7 +425,7 @@ export default function PracticeScreen({
                 <View style={styles.targetInfo}>
                   <Text style={styles.instruction}>
                     {isLive ? (isDesktop ? "Make the sign for " : "Sign ") : "Sign "}
-                    <Text style={{ color: colors.accentCoral }}>{isLive ? shownSign : `“${shownSign}”`}</Text>
+                    <Text style={{ color: colors.accentCoralText }}>{isLive ? shownSign : `“${shownSign}”`}</Text>
                   </Text>
                   <StarMeter stars={stars} passes={passes} size={isDesktop ? 30 : 26} reduceMotion={reduceMotion} />
                 </View>
@@ -440,7 +447,7 @@ export default function PracticeScreen({
               {!isLive && (
                 <View style={styles.steps} accessibilityLabel={`Step ${step} of 3`}>
                   {(captureMode === "auto" ? ["Sign it", "Keep going", "Checking"] : ["Press Record", "Sign it", "Press Stop"]).map((label, i) => (
-                    <View key={label} style={[styles.stepChip, i + 1 === step ? styles.stepOn : neuInset("sm")]}>
+                    <View key={label} style={[styles.stepChip, i + 1 === step ? styles.stepOn : shadows.neuInset("sm")]}>
                       <Text style={[styles.stepText, i + 1 === step && { color: colors.textOnAccent }]}>
                         {i + 1} · {label}
                       </Text>
@@ -530,7 +537,8 @@ export default function PracticeScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   root: { flex: 1 },
   topBar: {
     flexDirection: "row",

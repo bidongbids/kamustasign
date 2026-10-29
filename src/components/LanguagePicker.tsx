@@ -6,8 +6,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ALL_LANGUAGES, PINNED_LANGUAGES, findLanguage } from "../lib/languages";
-import { colors, fonts, radii, spacing } from "../theme/theme";
-import { shadow } from "../theme/shadows";
+import { fonts, radii, spacing, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 
 const STORAGE_KEY = "kamustasign:targetLanguage";
 const DEFAULT_LANGUAGE_CODE = "en";
@@ -47,7 +47,10 @@ type Props = {
   renderTrigger?: (props: { open: () => void; current: { code: string; name: string } }) => React.ReactNode;
 };
 
-export default function LanguagePicker({ value, onChange, accentColor = colors.primaryTeal, renderTrigger }: Props) {
+export default function LanguagePicker({ value, onChange, accentColor: accentColorProp, renderTrigger }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const accentColor = accentColorProp ?? colors.primaryTeal;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -77,7 +80,7 @@ export default function LanguagePicker({ value, onChange, accentColor = colors.p
 
       <Modal visible={open} animationType="fade" transparent onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={[styles.sheet, shadow("lg")]} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, shadows.shadow("lg")]} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.sheetTitle}>Translate to</Text>
             <TextInput
               value={query}
@@ -147,7 +150,8 @@ function Platform_isWeb() {
   return typeof document !== "undefined";
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   trigger: {
     borderWidth: 1.5,
     borderRadius: radii.pill,

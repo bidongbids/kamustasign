@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Platform, Pressable, Text, StyleSheet, ViewStyle, StyleProp } from "react-native";
-import { colors, fonts, spacing, radii } from "../../theme/theme";
-import { shadow } from "../../theme/shadows";
+import { fonts, spacing, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
 
 type Props = {
@@ -25,9 +25,12 @@ export default function AuthButton({
   loading,
   disabled,
   variant = "primary",
-  accentColor = colors.primaryTeal,
+  accentColor: accentColorProp,
   style,
 }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const accentColor = accentColorProp ?? colors.primaryTeal;
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const isPrimary = variant === "primary";
@@ -67,7 +70,7 @@ export default function AuthButton({
           isPrimary
             ? { backgroundColor: accentColor }
             : { backgroundColor: colors.surfaceElevated, borderWidth: 1.5, borderColor: colors.border },
-          !isDisabled && shadow(lifted ? "md" : "sm", isPrimary ? accentColor : colors.primaryTealDark),
+          !isDisabled && shadows.shadow(lifted ? "md" : "sm", isPrimary ? accentColor : colors.primaryTealDark),
           focused && { outlineWidth: 2, outlineColor: colors.focusRing, outlineOffset: 2 },
           isDisabled && styles.disabled,
           { transform: [{ scale: scaleAnim }] },
@@ -87,7 +90,8 @@ export default function AuthButton({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   pressable: {
     width: "100%",
   },

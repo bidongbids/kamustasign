@@ -18,8 +18,8 @@ import {
   TrashIcon,
   UsersIcon,
 } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import type { ClassRow } from "../../lib/queries";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
@@ -54,6 +54,8 @@ type RailProps = {
 };
 
 export function TeacherRail({ classes, klass, studentCount, section, onSection, needsCount, actions, onCopyCode }: RailProps) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.rail}>
       <Text style={styles.eyebrow}>CLASS</Text>
@@ -69,7 +71,7 @@ export function TeacherRail({ classes, klass, studentCount, section, onSection, 
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               accessibilityLabel={badge ? `${s.label}, ${badge} thing${badge === 1 ? "" : "s"} need${badge === 1 ? "s" : ""} you` : s.label}
-              style={({ hovered }: any) => [styles.navItem, active ? [styles.navActive, neuRaised("sm")] : hovered && styles.navHover, webCursor]}
+              style={({ hovered }: any) => [styles.navItem, active ? [styles.navActive, shadows.neuRaised("sm")] : hovered && styles.navHover, webCursor]}
             >
               {s.icon(active ? colors.textPrimary : colors.textOnGlass)}
               <Text style={[styles.navText, active && styles.navTextActive]} numberOfLines={1}>
@@ -91,6 +93,8 @@ export function TeacherRail({ classes, klass, studentCount, section, onSection, 
 }
 
 export function ClassCodeCard({ code, onCopy }: { code: string; onCopy: () => void }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.codeCard}>
       <Text style={styles.eyebrow}>CLASS CODE</Text>
@@ -99,7 +103,7 @@ export function ClassCodeCard({ code, onCopy }: { code: string; onCopy: () => vo
           {code}
         </Text>
         {canCopy ? (
-          <Pressable onPress={onCopy} accessibilityRole="button" accessibilityLabel="Copy class code" style={[styles.copy, neuRaised("sm"), webCursor]} hitSlop={4}>
+          <Pressable onPress={onCopy} accessibilityRole="button" accessibilityLabel="Copy class code" style={[styles.copy, shadows.neuRaised("sm"), webCursor]} hitSlop={4}>
             <CopyIcon size={16} color={colors.textPrimary} />
           </Pressable>
         ) : null}
@@ -127,6 +131,8 @@ export function ClassSwitcher({
   actions: ClassActions;
   fullWidth?: boolean;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const ref = useRef<View>(null);
   const { width: W } = useWindowDimensions();
   const [anchor, setAnchor] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -164,7 +170,7 @@ export function ClassSwitcher({
         onPress={open}
         accessibilityRole="button"
         accessibilityLabel={`Class: ${klass.name}, ${count}. Switch, add, rename or delete classes`}
-        style={({ hovered }: any) => [styles.switcher, neuRaised("sm"), hovered && styles.navHover, webCursor]}
+        style={({ hovered }: any) => [styles.switcher, shadows.neuRaised("sm"), hovered && styles.navHover, webCursor]}
       >
         <View style={styles.switchDot} />
         <View style={styles.flex}>
@@ -178,7 +184,7 @@ export function ClassSwitcher({
       <Modal visible={!!anchor} transparent animationType="none" onRequestClose={close}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close class menu" />
         {anchor ? (
-          <View style={[styles.pop, neuRaised("md"), { top: anchor.y + anchor.h + 8, left, width }]}>
+          <View style={[styles.pop, shadows.neuRaised("md"), { top: anchor.y + anchor.h + 8, left, width }]}>
             {mode === "list" ? (
               <>
                 <Text style={styles.popEyebrow}>YOUR CLASSES</Text>
@@ -227,7 +233,7 @@ export function ClassSwitcher({
                   placeholderTextColor={colors.textTertiary}
                   accessibilityLabel={mode === "new" ? "New class name" : "Class name"}
                   onSubmitEditing={submit}
-                  style={[styles.input, neuInset("sm")]}
+                  style={[styles.input, shadows.neuInset("sm")]}
                 />
                 <View style={styles.formRow}>
                   <ActionButton label="Cancel" variant="ghost" onPress={() => setMode("list")} disabled={busy} />
@@ -249,6 +255,8 @@ export function ClassSwitcher({
 }
 
 function PopAction({ label, icon, onPress, danger }: { label: string; icon: (c: string) => React.ReactNode; onPress: () => void; danger?: boolean }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const color = danger ? colors.needsPracticeText : colors.textPrimary;
   return (
     <Pressable onPress={onPress} accessibilityRole="menuitem" style={({ hovered }: any) => [styles.popItem, hovered && styles.popHover, webCursor]}>
@@ -258,7 +266,8 @@ function PopAction({ label, icon, onPress, danger }: { label: string; icon: (c: 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   rail: { flex: 1, paddingHorizontal: 12, paddingTop: 22, paddingBottom: 18 },
   eyebrow: { fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.2, color: colors.textOnGlass, marginBottom: 10, marginLeft: 6 },
@@ -278,7 +287,7 @@ const styles = StyleSheet.create({
   nav: { marginTop: 28, gap: 6 },
   navItem: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48, paddingHorizontal: 14, borderRadius: radii.md },
   navActive: { backgroundColor: colors.neuBase },
-  navHover: { backgroundColor: "rgba(255,255,255,0.05)" },
+  navHover: { backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface },
   navText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.textOnGlass },
   navTextActive: { fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
   badge: {
@@ -297,8 +306,8 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.04)" : colors.surfacePressed,
   },
   codeRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   code: { fontFamily: fonts.heading, fontSize: 24, letterSpacing: 5, color: colors.textPrimary },
@@ -310,14 +319,14 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
   },
   popEyebrow: { fontFamily: fonts.bodyMedium, fontSize: 10.5, letterSpacing: 1.1, color: colors.textOnGlass, margin: 8 },
   popItem: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44, paddingHorizontal: 10, borderRadius: 12 },
-  popHover: { backgroundColor: "rgba(255,255,255,0.06)" },
+  popHover: { backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.06)" : colors.surfacePressed },
   popText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.textPrimary },
   popTextActive: { fontFamily: fonts.bodySemiBold },
-  popDivider: { height: 1, marginVertical: 6, marginHorizontal: 8, backgroundColor: "rgba(255,255,255,0.1)" },
+  popDivider: { height: 1, marginVertical: 6, marginHorizontal: 8, backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border },
   form: { padding: 8, gap: 10 },
   formLabel: { fontFamily: fonts.bodySemiBold, fontSize: 12.5, color: colors.textOnGlass },
   input: {

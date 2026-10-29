@@ -1,5 +1,5 @@
 // Appearance (design_handoff_classroom_theming §5, frames H4/H6): the mode
-// (Light / Dark / Match device) and the colour scheme, applied to every
+// (Light / Dark) and the colour scheme, applied to every
 // screen the moment they're picked - no Save, no cross-fade. A popover under
 // the header button on desktop/tablet, a bottom sheet on phones.
 //
@@ -8,14 +8,13 @@
 import React, { useState } from "react";
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CheckIcon, CloseIcon, MonitorIcon, MoonIcon, PaletteIcon, SunIcon } from "./icons/UiIcons";
+import { CheckIcon, CloseIcon, MoonIcon, PaletteIcon, SunIcon } from "./icons/UiIcons";
 import { fonts, palettes, radii, SCHEMES, type SchemeName, type ThemeColors } from "../theme/theme";
 import { useTheme, useThemedStyles, type Theme, type ThemeMode } from "../theme/ThemeProvider";
 
 const MODES: { key: ThemeMode; label: string; icon: (c: string) => React.ReactNode }[] = [
   { key: "light", label: "Light", icon: (c) => <SunIcon size={15} color={c} /> },
   { key: "dark", label: "Dark", icon: (c) => <MoonIcon size={14} color={c} /> },
-  { key: "system", label: "Match device", icon: (c) => <MonitorIcon size={15} color={c} /> },
 ];
 
 const schemeLabel = (s: SchemeName) => SCHEMES.find((x) => x.key === s)!.label;
@@ -226,10 +225,9 @@ const makeStyles = (colors: ThemeColors, theme: Theme) => {
     group: { gap: 8 },
     meta: { fontFamily: fonts.bodyMedium, fontSize: 10.5, letterSpacing: 1.1, color: colors.textTertiary },
     seg: { flexDirection: "row", padding: 4, gap: 2, borderRadius: radii.pill, backgroundColor: colors.well, ...theme.shadows.neuInset("sm") },
-    // Sized to the label ("Match device" is the long one), the slack shared out.
+    // Two equal halves.
     segItem: {
-      flexGrow: 1,
-      flexShrink: 0,
+      flex: 1,
       height: 40,
       flexDirection: "row",
       alignItems: "center",

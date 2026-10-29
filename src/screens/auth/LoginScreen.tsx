@@ -10,8 +10,9 @@ import StartLayout from "./StartLayout";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 import { friendlyAuthError } from "../../lib/authForms";
 import type { ProfileRole } from "../../lib/queries";
-import { authStyles as s } from "./authStyles";
-import { colors, fonts, spacing } from "../../theme/theme";
+import { useAuthStyles } from "./authStyles";
+import { fonts, spacing, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 // Google sign-in has to be switched on in the Supabase dashboard
 // (Authentication -> Providers) first; until then the button only errors.
@@ -52,6 +53,8 @@ export default function LoginScreen({
   notice,
   onDismissNotice,
 }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const s = useAuthStyles();
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -208,7 +211,8 @@ export default function LoginScreen({
 }
 
 // On the frosted card: dark text only.
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   notice: {
     flexDirection: "row",
     flexWrap: "wrap",

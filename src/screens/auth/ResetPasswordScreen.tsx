@@ -9,7 +9,7 @@ import AuthButton from "../../components/auth/AuthButton";
 import AuthScreenShell from "./AuthScreenShell";
 import { supabase } from "../../lib/supabase";
 import { friendlyAuthError, newPasswordProblem } from "../../lib/authForms";
-import { authStyles as s } from "./authStyles";
+import { useAuthStyles } from "./authStyles";
 
 type Props = {
   accentColor: string;
@@ -20,6 +20,7 @@ type Props = {
 };
 
 export default function ResetPasswordScreen({ accentColor, onDone, onCancel }: Props) {
+  const s = useAuthStyles();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);

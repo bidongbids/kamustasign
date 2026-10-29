@@ -12,8 +12,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import SignerAvatar from "../components/SignerAvatar";
 import GlassCard from "../components/GlassCard";
 import type { SignerClip } from "../lib/smplxSkeleton";
-import { colors, typography } from "../theme/theme";
-import { neuInset, neuRaised } from "../theme/shadows";
+import { typography, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 import { useResponsive } from "../theme/responsive";
 
 import { SIGNER_CLIPS, SIGNABLE_WORDS } from "../data/signer_clips";
@@ -25,6 +25,8 @@ const SPEEDS = [
 ];
 
 export default function SignerScreen() {
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { isDesktop } = useResponsive();
   const [word, setWord] = useState(SIGNABLE_WORDS[0]);
   const [playing, setPlaying] = useState(true);
@@ -68,7 +70,7 @@ export default function SignerScreen() {
                 setWord(w);
                 setFrame(0);
               }}
-              style={[styles.wordChip, active ? [styles.wordChipActive, neuRaised("sm")] : neuInset("sm")]}
+              style={[styles.wordChip, active ? [styles.wordChipActive, shadows.neuRaised("sm")] : shadows.neuInset("sm")]}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
@@ -90,21 +92,21 @@ export default function SignerScreen() {
       <Text style={styles.eyebrow}>PLAYBACK</Text>
       <Pressable
         onPress={() => setPlaying((p) => !p)}
-        style={[styles.primaryButton, neuRaised("sm")]}
+        style={[styles.primaryButton, shadows.neuRaised("sm")]}
         accessibilityRole="button"
       >
         <Text style={styles.primaryButtonText}>{playing ? "Pause" : "Play"}</Text>
       </Pressable>
 
       <Text style={[styles.eyebrow, styles.eyebrowSpaced]}>SPEED</Text>
-      <View style={[styles.segmentTrack, neuInset("sm")]}>
+      <View style={[styles.segmentTrack, shadows.neuInset("sm")]}>
         {SPEEDS.map((option) => {
           const active = speed === option.value;
           return (
             <Pressable
               key={option.label}
               onPress={() => setSpeed(option.value)}
-              style={[styles.segment, active && [styles.segmentActive, neuRaised("sm")]]}
+              style={[styles.segment, active && [styles.segmentActive, shadows.neuRaised("sm")]]}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
@@ -119,7 +121,7 @@ export default function SignerScreen() {
   );
 
   const stage = (
-    <View style={[styles.stage, isDesktop ? styles.stageDesktop : styles.stageMobile, neuInset("md")]}>
+    <View style={[styles.stage, isDesktop ? styles.stageDesktop : styles.stageMobile, shadows.neuInset("md")]}>
       <SignerAvatar
         key={word}
         clip={clip}
@@ -155,7 +157,8 @@ export default function SignerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   bodyDesktop: {
     flex: 1,
     minHeight: 0,

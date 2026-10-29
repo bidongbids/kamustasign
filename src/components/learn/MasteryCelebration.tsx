@@ -8,7 +8,8 @@ import KidButton from "./KidButton";
 import { StarRow } from "./Stars";
 import { STAR_COUNT } from "../../lib/starReference";
 import { ArrowRightIcon, CheckIcon } from "../icons/UiIcons";
-import { colors, kidTypography, radii } from "../../theme/theme";
+import { kidTypography, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   sign: string;
@@ -22,7 +23,7 @@ type Props = {
   onDismiss: () => void;
 };
 
-const DOTS: [number, number, number, string][] = [
+const dots = (colors: ThemeColors): [number, number, number, string][] => [
   [-250, -150, 9, colors.accentCoral],
   [255, -120, 7, colors.primaryTealLight],
   [-285, 10, 6, colors.primaryTealLight],
@@ -34,6 +35,8 @@ const DOTS: [number, number, number, string][] = [
 ];
 
 export default function MasteryCelebration({ sign, stars, nextSign, groupLabel, reduceMotion, onNext, onBack, onDismiss }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const t = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
   const [done, setDone] = useState(reduceMotion);
   const nextRef = useRef<View>(null);
@@ -76,7 +79,7 @@ export default function MasteryCelebration({ sign, stars, nextSign, groupLabel, 
   return (
     <Pressable style={styles.scrim} onPress={done ? undefined : finish} accessible={false}>
       {!reduceMotion &&
-        DOTS.map(([x, y, r, c], i) => (
+        dots(colors).map(([x, y, r, c], i) => (
           <Animated.View
             key={i}
             pointerEvents="none"
@@ -146,7 +149,8 @@ export default function MasteryCelebration({ sign, stars, nextSign, groupLabel, 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   scrim: {
     position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: colors.overlay,
@@ -171,7 +175,7 @@ const styles = StyleSheet.create({
       { offsetX: 0, offsetY: 0, blurRadius: 28, color: colors.celebrationGlow },
     ],
   } as any,
-  sign: { color: colors.accentCoral, fontSize: 64, lineHeight: 68, textAlign: "center" },
+  sign: { color: colors.accentCoralText, fontSize: 64, lineHeight: 68, textAlign: "center" },
   head: { color: colors.textPrimary, textAlign: "center", marginTop: 4 },
   stars: { marginVertical: 10 },
   body: { color: colors.textSecondary, textAlign: "center" },

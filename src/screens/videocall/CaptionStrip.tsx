@@ -6,7 +6,8 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { BackspaceIcon, ExpandIcon, HandIcon, SpeakerIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import type { useCallSignReader } from "../../hooks/useCallSignReader";
 import type { useTranslateAndSpeak } from "../../hooks/useTranslateAndSpeak";
 import { CallPill, HoldRing, PhaseChip } from "./CallParts";
@@ -63,6 +64,7 @@ export default function CaptionStrip({
   readingNote,
   width,
 }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const student = role === "student";
   const size = phone ? (student ? 34 : 28) : student ? (compact ? 36 : 44) : compact ? 30 : 36;
   const text = primary.reader.text.trim();
@@ -157,7 +159,8 @@ export default function CaptionStrip({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   strip: {
     flex: 1,
     backgroundColor: "rgba(12,14,19,0.92)",

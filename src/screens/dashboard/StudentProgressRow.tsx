@@ -7,7 +7,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import ProgressBar from "../../components/ProgressBar";
-import { dashboardStyles as ds } from "./DashboardShell";
+import { useDashboardStyles } from "./DashboardShell";
 import {
   computeOverall,
   getLanguage,
@@ -18,7 +18,8 @@ import {
   type SignGroup,
   type SignLanguage,
 } from "../../lib/curriculum";
-import { colors, fonts } from "../../theme/theme";
+import { fonts, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   name: string;
@@ -32,6 +33,8 @@ type Props = {
 };
 
 export default function StudentProgressRow({ name, mastered, plan, language, highlightGroup, first }: Props) {
+  const ds = useDashboardStyles();
+  const styles = useThemedStyles(makeStyles);
   const lang = getLanguage(language);
   return (
     <View style={[ds.listItem, first && ds.listItemFirst, styles.row]}>
@@ -58,7 +61,8 @@ export default function StudentProgressRow({ name, mastered, plan, language, hig
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
   name: { width: 150 },
   detail: { flex: 1, minWidth: 200 },

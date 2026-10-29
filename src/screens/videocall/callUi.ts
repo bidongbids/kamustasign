@@ -1,6 +1,6 @@
 // Shared words and small helpers for the call screen's pieces
 // (VideoCallScreen and the files beside it).
-import { colors } from "../../theme/theme";
+import type { ThemeColors } from "../../theme/theme";
 import type { CallModel, ReaderPhase } from "../../hooks/useCallSignReader";
 import type { CallModelKey, CallSettings } from "../../lib/callSignaling";
 
@@ -58,7 +58,7 @@ export const PHASE: Record<ReaderPhase, { chip: string; tone: Tone; icon: "dot" 
 
 // Text colours that pass on glass and on the dark ground (theme.ts:
 // green/red text uses the *Text tokens).
-export const toneColor = (t: Tone) =>
+export const toneColor = (t: Tone, colors: ThemeColors) =>
   t === "success" ? colors.successText : t === "gold" ? colors.accentCoral : t === "error" ? colors.needsPracticeText : colors.textOnGlass;
 
 export const initials = (name?: string | null) =>

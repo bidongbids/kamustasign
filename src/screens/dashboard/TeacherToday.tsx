@@ -21,8 +21,8 @@ import {
   UsersIcon,
   VideoIcon,
 } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import type { CallNoteRow, ClassRow } from "../../lib/queries";
 import type { PresenceStatus } from "../../lib/callSignaling";
 import { dayWords, firstNameOf, nameList, soonGroupsText, type NeedsYouItem, type classGroupAverages } from "../../lib/teacherInsights";
@@ -58,6 +58,7 @@ type Props = {
 };
 
 export default function TeacherToday(props: Props) {
+  const styles = useThemedStyles(makeStyles);
   const { klass, phone, compact, items, classAverage } = props;
   const now = new Date();
   const dateLine = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }).toUpperCase();
@@ -90,8 +91,10 @@ export default function TeacherToday(props: Props) {
 }
 
 function AverageTile({ value, compact }: { value: number; compact: boolean }) {
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
-    <View style={[styles.avgTile, neuInset("sm")]} accessibilityLabel={`Class average ${Math.round(value * 100)}%, over the learning plan, the same figure students see`}>
+    <View style={[styles.avgTile, shadows.neuInset("sm")]} accessibilityLabel={`Class average ${Math.round(value * 100)}%, over the learning plan, the same figure students see`}>
       <View>
         <Text style={styles.avgValue}>{Math.round(value * 100)}%</Text>
         {!compact ? <Text style={styles.avgLabel}>Class average</Text> : null}
@@ -106,6 +109,8 @@ function AverageTile({ value, compact }: { value: number; compact: boolean }) {
 
 /** A thin track with a violet fill (green when full). Decorative: the number beside it carries the value. */
 export function Bar({ value, height = 7, tone }: { value: number; height?: number; tone?: "violet" | "green" | "gold" | "red" }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const v = Math.max(0, Math.min(1, value));
   const fill =
     tone === "green" || (tone === undefined && v >= 1)
@@ -123,24 +128,27 @@ export function Bar({ value, height = 7, tone }: { value: number; height?: numbe
 }
 
 function IconTile({ kind }: { kind: NeedsYouItem["kind"] }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const icon =
     kind === "missed" ? (
-      <PhoneIcon size={19} color={colors.accentCoral} />
+      <PhoneIcon size={19} color={colors.accentCoralText} />
     ) : kind === "under25" ? (
       <UsersIcon size={19} color={colors.needsPracticeText} />
     ) : kind === "stuck" ? (
-      <FlagIcon size={19} color={colors.accentCoral} />
+      <FlagIcon size={19} color={colors.accentCoralText} />
     ) : kind === "due" ? (
       <CalendarIcon size={19} color={colors.primaryTealText} />
     ) : (
       <InboxIcon size={19} color={colors.successText} />
     );
-  return <View style={[styles.iconTile, neuInset("sm")]}>{icon}</View>;
+  return <View style={[styles.iconTile, shadows.neuInset("sm")]}>{icon}</View>;
 }
 
 // ── Needs you ───────────────────────────────────────────────────────────
 
 function NeedsCard(props: Props) {
+  const styles = useThemedStyles(makeStyles);
   const { items } = props;
   return (
     <View style={styles.card}>
@@ -158,6 +166,8 @@ function NeedsCard(props: Props) {
 }
 
 function NeedsRow({ item, first, ...p }: { item: NeedsYouItem; first: boolean } & Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [busy, setBusy] = useState(false);
   let title: React.ReactNode;
   let sub: React.ReactNode = null;
@@ -197,7 +207,7 @@ function NeedsRow({ item, first, ...p }: { item: NeedsYouItem; first: boolean } 
     sub = (
       <View style={styles.subRow}>
         {item.signs.map((s) => (
-          <View key={s.sign} style={[styles.signChip, neuRaised("sm")]}>
+          <View key={s.sign} style={[styles.signChip, shadows.neuRaised("sm")]}>
             <Text style={styles.signChipText}>{name(s.sign)}</Text>
           </View>
         ))}
@@ -253,6 +263,8 @@ function NeedsRow({ item, first, ...p }: { item: NeedsYouItem; first: boolean } 
 }
 
 function AllCaughtUp({ onGoStudents }: { onGoStudents: () => void }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.card, styles.caughtUp]}>
       <View style={styles.caughtIcon}>
@@ -268,6 +280,8 @@ function AllCaughtUp({ onGoStudents }: { onGoStudents: () => void }) {
 // ── side column ─────────────────────────────────────────────────────────
 
 function OnlineCard({ online, classSize, onCall, phone }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.card}>
       <View style={styles.cardHead}>
@@ -284,7 +298,7 @@ function OnlineCard({ online, classSize, onCall, phone }: Props) {
       ) : (
         online.map((s) => (
           <View key={s.id} style={styles.personRow}>
-            <Avatar name={s.name} color={colors.accentCoral} size={38} />
+            <Avatar name={s.name} color={colors.accentCoralText} size={38} />
             <View style={styles.flex}>
               <Text style={styles.personName} numberOfLines={1}>
                 {s.name}
@@ -313,6 +327,7 @@ function OnlineCard({ online, classSize, onCall, phone }: Props) {
 }
 
 function WhereCard({ groups, compact }: { groups: Props["groups"]; compact?: boolean }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.card}>
       <Text style={[styles.cardTitle, styles.mb]} accessibilityRole="header">
@@ -335,6 +350,8 @@ function WhereCard({ groups, compact }: { groups: Props["groups"]; compact?: boo
 }
 
 function NotesCard({ lastNote, nameOf, onAllNotes }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.card}>
       <View style={styles.cardHead}>
@@ -354,7 +371,7 @@ function NotesCard({ lastNote, nameOf, onAllNotes }: Props) {
           accessibilityLabel={`Call notes with ${nameOf(lastNote.student_id)}, ${noteLine(lastNote)}`}
           style={({ hovered }: any) => [styles.noteRow, hovered && styles.hover, webCursor]}
         >
-          <Avatar name={nameOf(lastNote.student_id)} color={colors.accentCoral} size={34} />
+          <Avatar name={nameOf(lastNote.student_id)} color={colors.accentCoralText} size={34} />
           <View style={styles.flex}>
             <Text style={styles.personName} numberOfLines={1}>
               {nameOf(lastNote.student_id)} · {clock(lastNote.duration_seconds)}
@@ -383,6 +400,8 @@ export function noteLine(n: CallNoteRow): string {
 // ── phone (T11a) ────────────────────────────────────────────────────────
 
 function TodayPhone(props: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { items } = props;
   const missed = items.filter((i): i is Missed => i.kind === "missed");
   const under = items.find((i) => i.kind === "under25") as Extract<NeedsYouItem, { kind: "under25" }> | undefined;
@@ -397,7 +416,7 @@ function TodayPhone(props: Props) {
         return (
           <View key={m.key} style={[styles.card, styles.missedCard]}>
             <View style={styles.missedHead}>
-              <PhoneIcon size={20} color={colors.accentCoral} />
+              <PhoneIcon size={20} color={colors.accentCoralText} />
               <View style={styles.flex}>
                 <Text style={styles.rowTitle}>{m.name} called you</Text>
                 <Text style={styles.sub}>
@@ -426,7 +445,7 @@ function TodayPhone(props: Props) {
           </View>
           {under.students.slice(0, 3).map((s) => (
             <View key={s.id} style={styles.personRow}>
-              <Avatar name={s.name} color={colors.accentCoral} size={38} />
+              <Avatar name={s.name} color={colors.accentCoralText} size={38} />
               <Text style={[styles.personName, styles.flex]} numberOfLines={1}>
                 {s.name}
               </Text>
@@ -442,7 +461,8 @@ function TodayPhone(props: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   mb: { marginBottom: 12 },
   mt: { marginTop: 14 },
@@ -462,15 +482,15 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface,
   },
   cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 },
   cardTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.textPrimary },
   cardCount: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.textOnGlass },
   cardNote: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.textOnGlass },
   row: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 14 },
-  rowRule: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)" },
+  rowRule: { borderTopWidth: 1, borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border },
   iconTile: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuWell },
   rowText: { flex: 1, minWidth: 0, gap: 5 },
   rowTitle: { fontFamily: fonts.bodySemiBold, fontSize: 15.5, color: colors.textPrimary },
@@ -495,7 +515,7 @@ const styles = StyleSheet.create({
   wherePct: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
   link: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.primaryTealText },
   noteRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, marginHorizontal: -10, borderRadius: 14 },
-  hover: { backgroundColor: "rgba(255,255,255,0.05)" },
+  hover: { backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface },
   chevron: { transform: [{ rotate: "-90deg" }] },
   phoneStack: { gap: 16 },
   phoneTitle: { fontFamily: fonts.heading, fontSize: 26, color: colors.textPrimary },

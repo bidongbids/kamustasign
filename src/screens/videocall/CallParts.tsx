@@ -6,16 +6,18 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, Rect } from "react-native-svg";
 import { AlertCircleIcon, CheckIcon, HandIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
 import type { CallQuality } from "../../hooks/useVideoCall";
 import type { ReaderPhase } from "../../hooks/useCallSignReader";
 import { PHASE, initials, toneColor } from "./callUi";
 
 export function PhaseChip({ phase, compact }: { phase: ReaderPhase; compact?: boolean }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const p = PHASE[phase];
-  const c = toneColor(p.tone);
+  const c = toneColor(p.tone, colors);
   const icon =
     p.icon === "hand" ? (
       <HandIcon size={13} color={c} />
@@ -39,6 +41,8 @@ export function PhaseChip({ phase, compact }: { phase: ReaderPhase; compact?: bo
 
 /** Signal bars + words: never colour alone. */
 export function QualityBadge({ quality }: { quality: CallQuality }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const bars = quality.level === "good" ? 3 : quality.level === "fair" ? 2 : 1;
   const color = quality.level === "good" ? colors.qualityGood : quality.level === "fair" ? colors.qualityFair : colors.qualityPoor;
   const label = quality.level === "good" ? "Good connection" : quality.level === "fair" ? "OK connection" : "Weak connection";
@@ -61,6 +65,7 @@ export function QualityBadge({ quality }: { quality: CallQuality }) {
 }
 
 export function QualityBars({ bars, color }: { bars: number; color: string }) {
+  const { colors } = useTheme();
   return (
     <Svg width={14} height={12} viewBox="0 0 14 12">
       {[0, 1, 2].map((i) => (
@@ -88,13 +93,15 @@ export function HoldRing({
   glyphSize?: number;
   dim?: boolean;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const stroke = Math.max(4, Math.round(size / 16));
   const r = size / 2 - stroke;
   const c = 2 * Math.PI * r;
   const inner = size - stroke * 4;
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
-      <View style={[styles.holdSlab, neuRaised("sm"), { width: inner, height: inner, borderRadius: inner / 2 }]}>
+      <View style={[styles.holdSlab, shadows.neuRaised("sm"), { width: inner, height: inner, borderRadius: inner / 2 }]}>
         <Text
           style={[styles.holdGlyph, { fontSize: glyphSize ?? Math.round(inner * 0.5), lineHeight: glyphSize ?? Math.round(inner * 0.5) }, dim && { color: colors.textTertiary }]}
           numberOfLines={1}
@@ -130,6 +137,7 @@ export function HoldRing({
  * with reduced motion they're static.
  */
 export function RingingAvatar({ name, size, color }: { name: string; size: number; color: string }) {
+  const styles = useThemedStyles(makeStyles);
   const reduceMotion = useReduceMotion();
   const scale = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -160,6 +168,7 @@ export function RingingAvatar({ name, size, color }: { name: string; size: numbe
 }
 
 export function CallAvatar({ name, size = 44, color }: { name: string; size?: number; color: string }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.avatarSmall, { width: size, height: size, borderRadius: size / 2, borderColor: color }]}>
       <Text style={[styles.avatarSmallText, { color, fontSize: Math.round(size * 0.34) }]}>{initials(name)}</Text>
@@ -169,6 +178,7 @@ export function CallAvatar({ name, size = 44, color }: { name: string; size?: nu
 
 /** One arc that turns once a second; a still arc with reduced motion. */
 export function SpinnerArc({ size = 40 }: { size?: number }) {
+  const { colors } = useTheme();
   const reduceMotion = useReduceMotion();
   const turn = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -221,6 +231,8 @@ export function ControlToggle({
   size: number;
   inlineLabel?: boolean;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const color = on ? colors.textPrimary : colors.needsPracticeText;
   const text = on ? label : offLabel;
   return (
@@ -236,7 +248,7 @@ export function ControlToggle({
         style={[
           styles.ctrl,
           { width: size, height: size, borderRadius: size / 2 },
-          on ? neuRaised("md") : [styles.ctrlOff, neuInset("sm")],
+          on ? shadows.neuRaised("md") : [styles.ctrlOff, shadows.neuInset("sm")],
         ]}
       >
         {icon(color)}
@@ -268,6 +280,8 @@ export function CallPill({
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const h = size === "xl" ? 64 : size === "lg" ? 52 : size === "sm" ? 36 : 44;
   const fg =
     variant === "danger" || variant === "primary"
@@ -306,7 +320,7 @@ export function CallPill({
           backgroundColor: bg,
           borderRadius: h / 2,
         },
-        variant === "raised" && neuRaised("sm"),
+        variant === "raised" && shadows.neuRaised("sm"),
         variant === "dangerOutline" && styles.pillDangerOutline,
         variant === "ghost" && styles.pillGhost,
         pressed && !disabled && { opacity: 0.85 },
@@ -322,7 +336,8 @@ export function CallPill({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   chip: {
     flexDirection: "row",
     alignItems: "center",

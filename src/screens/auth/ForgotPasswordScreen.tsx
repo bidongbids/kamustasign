@@ -10,7 +10,7 @@ import AuthButton from "../../components/auth/AuthButton";
 import AuthScreenShell from "./AuthScreenShell";
 import { supabase } from "../../lib/supabase";
 import { friendlyAuthError, isEmailShaped } from "../../lib/authForms";
-import { authStyles as s } from "./authStyles";
+import { useAuthStyles } from "./authStyles";
 
 type Props = {
   accentColor: string;
@@ -20,6 +20,7 @@ type Props = {
 };
 
 export default function ForgotPasswordScreen({ accentColor, initialEmail = "", onBack }: Props) {
+  const s = useAuthStyles();
   const [email, setEmail] = useState(initialEmail);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

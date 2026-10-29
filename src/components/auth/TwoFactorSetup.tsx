@@ -7,7 +7,7 @@ import AuthTextField from "./AuthTextField";
 import AuthButton from "./AuthButton";
 import { supabase } from "../../lib/supabase";
 import { cleanTotpCode, friendlyAuthError } from "../../lib/authForms";
-import { authStyles as s } from "../../screens/auth/authStyles";
+import { useAuthStyles } from "../../screens/auth/authStyles";
 import { spacing } from "../../theme/theme";
 
 type Props = {
@@ -35,6 +35,7 @@ function qrImageUri(uri: string) {
 }
 
 export default function TwoFactorSetup({ accentColor, cancelLabel, onDone }: Props) {
+  const s = useAuthStyles();
   const [enroll, setEnroll] = useState<EnrollState | null>(null);
   const [starting, setStarting] = useState(true);
   const [code, setCode] = useState("");

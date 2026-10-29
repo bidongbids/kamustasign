@@ -6,7 +6,8 @@ import { Animated, View, Text, Pressable, ScrollView, StyleSheet } from "react-n
 import HandLandmarkMark from "../../components/HandLandmarkMark";
 import GradientBackground from "../../components/GradientBackground";
 import GlassCard from "../../components/GlassCard";
-import { colors, fonts, spacing, radii } from "../../theme/theme";
+import { fonts, spacing, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useResponsive } from "../../theme/responsive";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
 
@@ -18,6 +19,8 @@ type Props = {
 };
 
 export default function AuthScreenShell({ accentColor, onBack, backLabel = "Back", children }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { isDesktop } = useResponsive();
 
   const entrance = useRef(new Animated.Value(0)).current;
@@ -71,7 +74,8 @@ export default function AuthScreenShell({ accentColor, onBack, backLabel = "Back
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   root: {
     overflow: "hidden",
   },

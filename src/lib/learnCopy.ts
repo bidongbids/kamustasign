@@ -1,8 +1,20 @@
 // Every student-facing practice string (the design system's copy deck). One
 // idea per sentence, the computer takes the blame, a tip instead of a
-// verdict, no percentages, no clock times. Keys mirror the deck so Filipino /
-// Cebuano tables can be added later without touching the screens.
-import { MASTERY_PASSES } from "./curriculum";
+// verdict, no clock times. Every result shows its score as a percentage, with
+// the pass mark beside it (in words or on the ScoreMeter) so the number
+// means something. Keys mirror the deck so Filipino / Cebuano tables can be
+// added later without touching the screens.
+import { MASTERY_PASSES, PASS_CONFIDENCE } from "./curriculum";
+
+/** 0-1 -> whole percent, rounded down so a miss never shows the pass mark. */
+export const percent = (c: number) => Math.floor(c * 100);
+export const PASS_PERCENT = percent(PASS_CONFIDENCE);
+
+/** "Up from 62%. Getting closer!" when this try beat the last one, else null. Never points out a drop. */
+export function closerText(now: number, previous: number | null | undefined): string | null {
+  if (previous == null || percent(now) <= percent(previous)) return null;
+  return `Up from ${percent(previous)}%. Getting closer!`;
+}
 
 export type FeedbackIcon = "hand" | "handGold" | "star" | "question" | "alert";
 
@@ -11,6 +23,8 @@ export type FeedbackModel = {
   headline: string;
   body?: string;
   tone: "neutral" | "gold" | "success";
+  /** 0-1: the try's score, drawn as a ScoreMeter with the pass mark. */
+  score?: number;
   tip?: string;
   chip?: string;
   action?: { label: string; onPress: () => void };
@@ -30,8 +44,10 @@ export type PracticeFeedbackState =
   | { kind: "waiting" }
   | { kind: "trying"; best: number }
   // counted: null while the write is in flight.
-  | { kind: "passed"; counted: boolean | null; alreadyLearned: boolean }
-  | { kind: "retry"; predicted: string | null; confidence: number };
+  | { kind: "passed"; counted: boolean | null; alreadyLearned: boolean; confidence: number }
+  // confidence: the target sign's score (0-1), whatever the computer saw.
+  // previous: the last word clip's score for this sign, if there was one.
+  | { kind: "retry"; predicted: string | null; confidence: number; previous?: number | null };
 
 export function buildFeedback(args: {
   state: PracticeFeedbackState;
@@ -71,43 +87,67 @@ export function buildFeedback(args: {
           : { icon: "hand", headline: "Ready when you are", body: `Press Record, then sign “${sign}”.`, tone: "neutral" };
     case "trying":
       return state.best > 0
-        ? { icon: "handGold", headline: "Keep going!", body: "You are close. Try again.", tone: "neutral", tip }
+        ? {
+            icon: "handGold",
+            headline: "Keep going!",
+            body:
+              state.best >= PASS_CONFIDENCE
+                ? `Best so far: ${percent(state.best)}%. Now hold it still.`
+                : `Best so far: ${percent(state.best)}%. Reach ${PASS_PERCENT}% and hold still.`,
+            tone: "neutral",
+            score: state.best,
+            tip,
+          }
         : { icon: "handGold", headline: "Keep going!", body: `The computer hasn't seen “${sign}” yet.`, tone: "neutral", tip };
     case "passed": {
-      if (state.counted === null) return { icon: "star", headline: "Correct!", body: "Saving your good try…", tone: "success" };
+      const pct = `${percent(state.confidence)}%`;
+      const score = state.confidence;
+      if (state.counted === null) return { icon: "star", headline: `Correct! ${pct}`, body: "Saving your good try…", tone: "success", score };
       if (state.alreadyLearned)
-        return { icon: "star", headline: "Correct!", body: "You already learned this one. Great practice!", tone: "success" };
+        return { icon: "star", headline: `Correct! ${pct}`, body: "You already learned this one. Great practice!", tone: "success", score };
       if (state.counted && passes >= MASTERY_PASSES) {
-        return { icon: "star", headline: "That one counts!", body: "You learned this sign!", tone: "success" };
+        return { icon: "star", headline: `That one counts! ${pct}`, body: "You learned this sign!", tone: "success", score };
       }
       if (state.counted) {
         const left = Math.max(0, MASTERY_PASSES - passes);
         return {
           icon: "star",
-          headline: "That one counts!",
+          headline: `That one counts! ${pct}`,
           body: `${left} more good ${left === 1 ? "try" : "tries"} to learn this sign.`,
           tone: "success",
+          score,
         };
       }
-      return { icon: "star", headline: "Correct!", body: "Sign it again so it counts.", tone: "success" };
+      return { icon: "star", headline: `Correct! ${pct}`, body: "Sign it again so it counts.", tone: "success", score };
     }
-    case "retry":
+    case "retry": {
+      const scored = `“${sign}” scored ${percent(state.confidence)}%.`;
       if (!state.predicted)
-        return { icon: "question", headline: "The computer couldn't tell", body: "That's okay. Try again.", tone: "neutral", tip };
+        return {
+          icon: "question",
+          headline: "The computer couldn't tell",
+          body: `${scored} That's okay. Try again.`,
+          tone: "neutral",
+          score: state.confidence,
+          tip,
+        };
       if (state.predicted === sign)
         return {
           icon: "handGold",
-          headline: "Almost!",
-          body: `The computer saw “${sign}”, but it wasn't sure.`,
+          headline: `Almost! ${percent(state.confidence)}%`,
+          body: closerText(state.confidence, state.previous) ?? `You need ${PASS_PERCENT}% to pass. Try again.`,
           tone: "neutral",
-          tip: "Sign it again, big and clear.",
+          score: state.confidence,
+          tip,
         };
       return {
         icon: "question",
         headline: "Let's try again",
-        body: `The computer thought it saw “${state.predicted}”.`,
+        body: `${scored} It looked more like “${state.predicted}”.`,
         tone: "neutral",
+        score: state.confidence,
         tip: "Watch “How to make it”, then sign slowly.",
       };
+    }
   }
 }

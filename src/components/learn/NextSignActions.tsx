@@ -5,7 +5,8 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import KidButton from "./KidButton";
 import { ArrowRightIcon, ChevronLeftIcon } from "../icons/UiIcons";
-import { colors, kidTypography } from "../../theme/theme";
+import { kidTypography, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   sign: string;
@@ -18,6 +19,8 @@ type Props = {
 };
 
 export default function NextSignActions({ sign, nextSign, groupWord, onNext, onRepeat, onBack, compact }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   if (!nextSign) {
     return (
       <View style={styles.col}>
@@ -43,7 +46,8 @@ export default function NextSignActions({ sign, nextSign, groupWord, onNext, onR
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   col: { gap: 12 },
   row: { flexDirection: "row", flexWrap: "wrap" },
   grow: { flexGrow: 1 },

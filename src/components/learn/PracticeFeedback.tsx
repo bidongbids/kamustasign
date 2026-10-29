@@ -5,6 +5,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import GlassCard from "../GlassCard";
 import KidButton from "./KidButton";
+import ScoreMeter from "./ScoreMeter";
 import {
   AlertCircleIcon,
   ClockIcon,
@@ -13,8 +14,8 @@ import {
   LightbulbIcon,
   StarIcon,
 } from "../icons/UiIcons";
-import { colors, kidTypography, radii } from "../../theme/theme";
-import { neuInset } from "../../theme/shadows";
+import { kidTypography, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import type { FeedbackModel } from "../../lib/learnCopy";
 
 type Props = {
@@ -27,13 +28,15 @@ type Props = {
 };
 
 export default function PracticeFeedback({ model, compact, fill, dense }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const iconSize = compact ? 24 : 28;
   const icon = (() => {
     switch (model.icon) {
       case "hand":
         return <HandIcon size={iconSize} color={colors.textSecondary} />;
       case "handGold":
-        return <HandIcon size={iconSize} color={colors.accentCoral} />;
+        return <HandIcon size={iconSize} color={colors.accentCoralText} />;
       case "star":
         return <StarIcon size={iconSize} color={colors.starFilled} />;
       case "question":
@@ -44,6 +47,12 @@ export default function PracticeFeedback({ model, compact, fill, dense }: Props)
   })();
   const headColor =
     model.tone === "success" ? colors.success : model.tone === "gold" ? colors.accentCoral : colors.textPrimary;
+  const headline = (
+    <Text style={[kidTypography.kidHeadline, { color: headColor }, compact && styles.headCompact, dense && styles.headDense]} numberOfLines={dense ? 1 : undefined}>
+      {model.headline}
+    </Text>
+  );
+  const meter = model.score != null ? <ScoreMeter value={model.score} style={dense ? styles.meterDense : styles.meter} /> : null;
 
   return (
     <GlassCard
@@ -53,20 +62,27 @@ export default function PracticeFeedback({ model, compact, fill, dense }: Props)
       contentStyle={[styles.row, fill && styles.rowFill]}
     >
       <View
-        style={[styles.icon, neuInset("sm"), compact && { width: 44, height: 44 }, dense && { width: 40, height: 40 }]}
+        style={[styles.icon, shadows.neuInset("sm"), compact && { width: 44, height: 44 }, dense && { width: 40, height: 40 }]}
         accessible={false}
       >
         {icon}
       </View>
       <View style={styles.text} accessibilityLiveRegion="polite" accessible>
-        <Text style={[kidTypography.kidHeadline, { color: headColor }, compact && styles.headCompact, dense && styles.headDense]} numberOfLines={dense ? 1 : undefined}>
-          {model.headline}
-        </Text>
+        {/* The one-row desktop strip has no height to spare: the meter sits beside the headline there. */}
+        {dense && meter ? (
+          <View style={styles.headRow}>
+            {headline}
+            {meter}
+          </View>
+        ) : (
+          headline
+        )}
         {model.body ? (
           <Text style={[kidTypography.kidBody, styles.body, dense && styles.bodyDense]} numberOfLines={dense ? 2 : undefined}>
             {model.body}
           </Text>
         ) : null}
+        {!dense && meter}
         {model.chip ? (
           <View style={styles.chip}>
             <ClockIcon size={14} color={colors.textPrimary} />
@@ -74,7 +90,7 @@ export default function PracticeFeedback({ model, compact, fill, dense }: Props)
           </View>
         ) : null}
         {model.tip ? (
-          <View style={[styles.tip, neuInset("sm"), dense && styles.tipDense]}>
+          <View style={[styles.tip, shadows.neuInset("sm"), dense && styles.tipDense]}>
             <LightbulbIcon size={dense ? 16 : 20} color={colors.tipAccent} />
             <Text style={[styles.tipText, dense && styles.tipTextDense]} numberOfLines={dense ? 1 : undefined}>
               <Text style={styles.tipLabel}>Tip: </Text>
@@ -90,7 +106,8 @@ export default function PracticeFeedback({ model, compact, fill, dense }: Props)
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   row: { flexDirection: "row", alignItems: "flex-start", gap: 16 },
   rowFill: { flex: 1, alignItems: "center" },
   icon: {
@@ -104,6 +121,9 @@ const styles = StyleSheet.create({
   text: { flex: 1, minWidth: 0 },
   headCompact: { fontSize: 22, lineHeight: 26 },
   headDense: { fontSize: 19, lineHeight: 23 },
+  headRow: { flexDirection: "row", alignItems: "center", gap: 16 },
+  meter: { marginTop: 10 },
+  meterDense: { flex: 1, minWidth: 110, maxWidth: 240, marginTop: 6 },
   bodyDense: { fontSize: 14, lineHeight: 19 },
   tipDense: { marginTop: 6, paddingVertical: 5, paddingHorizontal: 10 },
   tipTextDense: { fontSize: 13, lineHeight: 18 },

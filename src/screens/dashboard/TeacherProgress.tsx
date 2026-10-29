@@ -15,8 +15,8 @@ import CurriculumTabs, { availableGroupFor } from "./CurriculumTabs";
 import { RowMenu } from "./Overlays";
 import { Bar } from "./TeacherToday";
 import { CheckIcon, GridIcon, VideoIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { computeOverall, getGroup, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { signsToReview, type SignInsight } from "../../lib/classInsights";
 import { signName } from "../../lib/signNames";
@@ -48,6 +48,8 @@ type Props = {
 const nounFor = (group: SignGroup, n = 2) => (group === "letters" ? (n === 1 ? "letter" : "letters") : group === "numbers" ? (n === 1 ? "number" : "numbers") : n === 1 ? "word" : "words");
 
 export default function TeacherProgress(props: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { students, plan, language, group, onTabs, rows, phone, compact } = props;
   const [sort, setSort] = useState<"overall" | "name">("overall");
   const gDef = getGroup(language, group);
@@ -107,7 +109,7 @@ export default function TeacherProgress(props: Props) {
       <View>
         <Header phone={phone} tabs={tabs} />
         <View style={[styles.card, styles.empty]}>
-          <View style={[styles.emptyIcon, neuRaised("sm")]}>
+          <View style={[styles.emptyIcon, shadows.neuRaised("sm")]}>
             <GridIcon size={22} color={colors.primaryTealText} />
           </View>
           <Text style={styles.body}>Progress shows up here once students are in your class.</Text>
@@ -274,6 +276,7 @@ export default function TeacherProgress(props: Props) {
 }
 
 function Header({ phone, tabs }: { phone: boolean; tabs: React.ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.head, phone && styles.headPhone]}>
       <View style={styles.flex}>
@@ -289,6 +292,7 @@ function Header({ phone, tabs }: { phone: boolean; tabs: React.ReactNode }) {
 
 /** Learned: filled + check. Tried, not yet: ring + dot. Not tried: an empty well. */
 function CellView({ cell, size = CELL }: { cell: Cell; size?: number }) {
+  const styles = useThemedStyles(makeStyles);
   const box = { width: size, height: size, borderRadius: Math.round(size / 4) };
   if (cell === "learned") {
     return (
@@ -325,6 +329,8 @@ function ReviewSignRow({
   onMakeModule: () => void;
   onPractise: () => void;
 }) {
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const learned = insight.learned;
   const stuck = insight.stuck;
   const notTried = Math.max(0, classSize - insight.tried);
@@ -333,7 +339,7 @@ function ReviewSignRow({
   const words = `${learned} of ${classSize} learned · ${stuck} still learning · ${insight.attempts} tries${best !== null ? ` · best ${best}% (pass 80%)` : ""}`;
   return (
     <View style={[styles.reviewRow, !first && styles.rule]}>
-      <View style={[styles.reviewTile, neuRaised("sm")]}>
+      <View style={[styles.reviewTile, shadows.neuRaised("sm")]}>
         <Text style={[styles.reviewGlyph, name.length > 2 && styles.reviewWord]} numberOfLines={1} adjustsFontSizeToFit>
           {name}
         </Text>
@@ -359,6 +365,7 @@ function ReviewSignRow({
 
 /** Learned (green) / still learning (gold, striped) / not tried (dark): shape and pattern, not colour alone. */
 function Strip({ learned, stuck }: { learned: number; stuck: number }) {
+  const { colors } = useTheme();
   const l = Math.max(0, Math.min(1, learned)) * 100;
   const s = Math.max(0, Math.min(1 - learned, stuck)) * 100;
   return (
@@ -376,7 +383,8 @@ function Strip({ learned, stuck }: { learned: number; stuck: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   mb: { marginBottom: 12 },
   mt: { marginTop: 12 },
@@ -393,8 +401,8 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface,
   },
   empty: { alignItems: "center", gap: 12, paddingVertical: 36 },
   emptyIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase },
@@ -414,7 +422,7 @@ const styles = StyleSheet.create({
   label: { fontFamily: fonts.bodySemiBold, fontSize: 11.5, color: colors.textPrimary },
   labelWord: { width: 80, textAlign: "left", fontSize: 11, transform: [{ rotate: "-90deg" }, { translateX: 34 }] },
   nameCell: { height: PITCH, justifyContent: "center", paddingRight: 8, borderRadius: 6 },
-  nameHover: { backgroundColor: "rgba(255,255,255,0.05)" },
+  nameHover: { backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface },
   nameText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.textPrimary },
   cellRow: { flexDirection: "row", height: PITCH, alignItems: "center" },
   cellSlot: { width: PITCH, alignItems: "center" },
@@ -424,7 +432,7 @@ const styles = StyleSheet.create({
   cellDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.heatTried },
   cellNone: { backgroundColor: colors.heatNone },
   reviewRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 12 },
-  rule: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)" },
+  rule: { borderTopWidth: 1, borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border },
   reviewTile: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase, paddingHorizontal: 4 },
   reviewGlyph: { fontFamily: fonts.heading, fontSize: 20, color: colors.textPrimary },
   reviewWord: { fontSize: 11 },

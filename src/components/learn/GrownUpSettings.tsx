@@ -6,7 +6,8 @@ import GlassCard from "../GlassCard";
 import KidButton from "./KidButton";
 import HandednessPicker, { useHandedness } from "../HandednessPicker";
 import { GearIcon } from "../icons/UiIcons";
-import { colors, fonts, radii, typography } from "../../theme/theme";
+import { fonts, radii, typography, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { MASTERY_PASSES, PROGRESS_RULES_TEXT } from "../../lib/curriculum";
 
 type Props = {
@@ -27,6 +28,8 @@ export default function GrownUpSettings({
   onToggleInstrumentView,
   compact,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [open, setOpen] = useState(false);
   const [handedness, setHandedness] = useHandedness();
 
@@ -77,6 +80,7 @@ export default function GrownUpSettings({
 }
 
 function Row({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.row}>
       <Text style={styles.k}>{label}</Text>
@@ -85,7 +89,8 @@ function Row({ label, value, children }: { label: string; value?: string; childr
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   scrim: { position: "fixed" as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 },
   panel: { position: "absolute", top: 56, right: 0, width: 420, zIndex: 41 },
   panelCompact: { width: 330 },

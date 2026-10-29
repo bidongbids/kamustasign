@@ -23,8 +23,8 @@ import {
   MODEL_FEATURES_PER_FRAME,
 } from "../ml/wordLandmarks";
 import { SignSegmenter } from "../ml/signSegmenter";
-import { colors, typography } from "../theme/theme";
-import { neuInset, neuRaised } from "../theme/shadows";
+import { typography, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 import { useResponsive } from "../theme/responsive";
 import GlassCard from "../components/GlassCard";
 import CameraDevice from "../components/CameraDevice";
@@ -128,6 +128,11 @@ export default function WordTranslatorScreen({
   onRetry,
   practiceAside,
 }: Props) {
+  const { colors, shadows, name } = useTheme();
+  // Graphite dark's greys; light mode needs them a step darker to read on a card.
+  const dimText = name === "dark" ? "#8F98A6" : colors.textTertiary;
+  const meter = name === "dark" ? { on: "#4B5364", onAlt: "#5B647A", off: "#3F4655" } : { on: colors.textTertiary, onAlt: colors.controlBorder, off: colors.border };
+  const styles = useThemedStyles(makeStyles);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const recordingRef = useRef(false);
@@ -707,7 +712,7 @@ export default function WordTranslatorScreen({
             style={[
               styles.rankOneSlab,
               { borderRadius: isDesktop ? 18 : 16, padding: isDesktop ? 18 : 14 },
-              neuRaised("md"),
+              shadows.neuRaised("md"),
             ]}
           >
             <View style={styles.rankOneRow}>
@@ -718,7 +723,7 @@ export default function WordTranslatorScreen({
                 {top.confidence.toFixed(0)}%
               </Text>
             </View>
-            <View style={[styles.trough, { height: isDesktop ? 12 : 11 }, neuInset("sm")]}>
+            <View style={[styles.trough, { height: isDesktop ? 12 : 11 }, shadows.neuInset("sm")]}>
               <LinearGradient
                 colors={["#2E9A58", "#3FB56A"]}
                 start={{ x: 0, y: 0 }}
@@ -752,12 +757,12 @@ export default function WordTranslatorScreen({
               return (
                 <View key={p.word + rank} style={styles.rankRow}>
                   <View style={styles.rankLabelRow}>
-                    <Text style={[typography.label, { color: dim ? "#8F98A6" : colors.textPrimary }]}>{signName(language, p.word)}</Text>
-                    <Text style={[typography.labelSm, { color: dim ? "#8F98A6" : colors.textSecondary }]}>
+                    <Text style={[typography.label, { color: dim ? dimText : colors.textPrimary }]}>{signName(language, p.word)}</Text>
+                    <Text style={[typography.labelSm, { color: dim ? dimText : colors.textSecondary }]}>
                       {p.confidence.toFixed(0)}%
                     </Text>
                   </View>
-                  <View style={[styles.trough, { height: 8 }, neuInset("sm")]}>
+                  <View style={[styles.trough, { height: 8 }, shadows.neuInset("sm")]}>
                     <View
                       style={[
                         styles.troughFill,
@@ -842,8 +847,8 @@ export default function WordTranslatorScreen({
               : isMarker
                 ? colors.primaryTeal
                 : isActive
-                  ? i % 2 === 0 ? "#4B5364" : "#5B647A"
-                  : "#3F4655";
+                  ? i % 2 === 0 ? meter.on : meter.onAlt
+                  : meter.off;
             return (
               <View
                 key={i}
@@ -1003,7 +1008,7 @@ export default function WordTranslatorScreen({
           </Text>
         ) : (
           <>
-            <View style={[styles.rankOneSlab, { borderRadius: 18, padding: 18 }, neuRaised("md")]}>
+            <View style={[styles.rankOneSlab, { borderRadius: 18, padding: 18 }, shadows.neuRaised("md")]}>
               <View style={styles.rankOneRow}>
                 <Text style={[typography.h1, { fontSize: 32, color: colors.textPrimary }]} numberOfLines={1}>
                   {signName(language, top.word)}
@@ -1012,7 +1017,7 @@ export default function WordTranslatorScreen({
                   {top.confidence.toFixed(0)}%
                 </Text>
               </View>
-              <View style={[styles.trough, { height: 12 }, neuInset("sm")]}>
+              <View style={[styles.trough, { height: 12 }, shadows.neuInset("sm")]}>
                 <LinearGradient
                   colors={["#2E9A58", "#3FB56A"]}
                   start={{ x: 0, y: 0 }}
@@ -1046,12 +1051,12 @@ export default function WordTranslatorScreen({
                 return (
                   <View key={p.word + rank} style={styles.rankRow}>
                     <View style={styles.rankLabelRow}>
-                      <Text style={[typography.label, { color: dim ? "#8F98A6" : colors.textPrimary }]}>{signName(language, p.word)}</Text>
-                      <Text style={[typography.labelSm, { color: dim ? "#8F98A6" : colors.textSecondary }]}>
+                      <Text style={[typography.label, { color: dim ? dimText : colors.textPrimary }]}>{signName(language, p.word)}</Text>
+                      <Text style={[typography.labelSm, { color: dim ? dimText : colors.textSecondary }]}>
                         {p.confidence.toFixed(0)}%
                       </Text>
                     </View>
-                    <View style={[styles.trough, { height: 8 }, neuInset("sm")]}>
+                    <View style={[styles.trough, { height: 8 }, shadows.neuInset("sm")]}>
                       <View
                         style={[
                           styles.troughFill,
@@ -1119,8 +1124,8 @@ export default function WordTranslatorScreen({
                 : isMarker
                   ? colors.primaryTeal
                   : isActive
-                    ? i % 2 === 0 ? "#4B5364" : "#5B647A"
-                    : "#3F4655";
+                    ? i % 2 === 0 ? meter.on : meter.onAlt
+                    : meter.off;
               return <View key={i} style={[styles.frameBar, { height: `${height}%`, backgroundColor: barColor }]} />;
             })}
           </View>
@@ -1215,7 +1220,8 @@ export default function WordTranslatorScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   nativeFallback: {
     flex: 1,
     alignItems: "center",
@@ -1494,7 +1500,7 @@ const styles = StyleSheet.create({
   stripCellAccent: {
     fontFamily: typography.body.fontFamily,
     fontSize: 10,
-    color: colors.accentCoral,
+    color: colors.accentCoralText,
   },
 
   // --- Desktop bay-3 action (Clear, full width) ---
@@ -1503,7 +1509,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.22)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.22)" : colors.border,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -45,7 +45,9 @@ type Props = {
 
 // Light theme (phones only, docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md §5): there is
 // no colorful backdrop to blur, so a card off the camera is a plain opaque
-// `surface` card with the light card shadow. Over video it is a dark scrim
+// `surface` card with a 1px `border` and the light card shadow (classroom
+// theming README §2: the ground and cards are close in tone, so the edge
+// carries it). Over video it is a dark scrim
 // with a dark blur in both themes' spirit; white text (`onCamera`) goes on it.
 // The dark theme is drawn exactly as before.
 
@@ -79,7 +81,7 @@ export default function GlassCard({
         <View style={[padding ? { padding } : null, contentStyle]}>{children}</View>
       </View>
     ) : (
-      <View style={[{ borderRadius: radius, backgroundColor: colors.surface }, shadows.shadow("md"), style]}>
+      <View style={[{ borderRadius: radius, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }, shadows.shadow("md"), style]}>
         <View style={[padding ? { padding } : null, contentStyle]}>{children}</View>
       </View>
     );

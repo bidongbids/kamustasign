@@ -19,7 +19,8 @@ import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { colors, fonts } from "../theme/theme";
+import { fonts, type ThemeColors } from "../theme/theme";
+import { DarkTheme, useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 
 const STORAGE_KEY = "kamustasign:handedness";
 export type Handedness = "right" | "left";
@@ -75,7 +76,17 @@ type Props = {
   compact?: boolean;
 };
 
-export default function HandednessPicker({ value, onChange, compact = false }: Props) {
+// A material object: dark in both modes, like the camera housing.
+export default function HandednessPicker(props: Props) {
+  return (
+    <DarkTheme>
+      <Rocker {...props} />
+    </DarkTheme>
+  );
+}
+
+function Rocker({ value, onChange, compact = false }: Props) {
+  const styles = useThemedStyles(makeStyles);
   // Non-compact size matches the control-strip rocker spec (design handoff:
   // "UI mockups combining design styles" - 4a control strip, cell 1): 50
   // high, radius 15, 11-radius cap. Compact (mobile) is untouched.
@@ -129,7 +140,8 @@ export default function HandednessPicker({ value, onChange, compact = false }: P
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   housing: {
     flexDirection: "row",
     boxShadow: [

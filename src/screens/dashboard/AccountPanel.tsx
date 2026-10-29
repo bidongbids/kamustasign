@@ -15,7 +15,8 @@ import { supabase } from "../../lib/supabase";
 import { changePassword, getTotpFactor, turnOffTwoFactor } from "../../lib/account";
 import { NAME_MAX, cleanTotpCode, newPasswordProblem } from "../../lib/authForms";
 import { updateProfileName, type Profile } from "../../lib/queries";
-import { colors, fonts, radii, spacing } from "../../theme/theme";
+import { fonts, radii, spacing, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   visible: boolean;
@@ -28,6 +29,8 @@ type Props = {
 type Status = { kind: "ok" | "error"; text: string } | null;
 
 export default function AccountPanel({ visible, onClose, accentColor, profile, onProfileChange }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -52,6 +55,7 @@ export default function AccountPanel({ visible, onClose, accentColor, profile, o
 }
 
 function AccountSections({ accentColor, profile, onProfileChange }: Omit<Props, "visible" | "onClose">) {
+  const styles = useThemedStyles(makeStyles);
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,6 +73,7 @@ function AccountSections({ accentColor, profile, onProfileChange }: Omit<Props, 
 }
 
 function StatusLine({ status }: { status: Status }) {
+  const styles = useThemedStyles(makeStyles);
   if (!status) return null;
   return (
     <Text style={[styles.status, status.kind === "error" && styles.statusError]} accessibilityLiveRegion="polite">
@@ -78,6 +83,7 @@ function StatusLine({ status }: { status: Status }) {
 }
 
 function NameSection({ accentColor, profile, onProfileChange }: Omit<Props, "visible" | "onClose">) {
+  const styles = useThemedStyles(makeStyles);
   const [name, setName] = useState(profile.full_name);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<Status>(null);
@@ -119,6 +125,7 @@ function NameSection({ accentColor, profile, onProfileChange }: Omit<Props, "vis
 }
 
 function PasswordSection({ accentColor, email }: { accentColor: string; email: string | null }) {
+  const styles = useThemedStyles(makeStyles);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -201,6 +208,7 @@ function PasswordSection({ accentColor, email }: { accentColor: string; email: s
 }
 
 function TwoFactorSection({ accentColor, role }: { accentColor: string; role: Profile["role"] }) {
+  const styles = useThemedStyles(makeStyles);
   // undefined while loading; null = no 2FA on this account.
   const [factorId, setFactorId] = useState<string | null | undefined>(undefined);
   const [mode, setMode] = useState<"idle" | "setup" | "turnOff">("idle");
@@ -336,7 +344,8 @@ function TwoFactorSection({ accentColor, role }: { accentColor: string; role: Pr
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: colors.overlay,

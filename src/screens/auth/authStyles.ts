@@ -1,10 +1,12 @@
 // Shared layout for the auth screens (Login / Register / 2FA / password
 // reset) and the Account panel — same visual language, just different
-// content, so one stylesheet.
+// content, so one stylesheet, in the current theme via useAuthStyles().
 import { StyleSheet } from "react-native";
-import { colors, fonts, spacing } from "../../theme/theme";
+import { fonts, spacing, type ThemeColors } from "../../theme/theme";
+import { useThemedStyles } from "../../theme/ThemeProvider";
 
-export const authStyles = StyleSheet.create({
+const makeAuthStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   title: {
     fontFamily: fonts.heading,
     fontSize: 24,
@@ -111,3 +113,5 @@ export const authStyles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 });
+
+export const useAuthStyles = () => useThemedStyles(makeAuthStyles);

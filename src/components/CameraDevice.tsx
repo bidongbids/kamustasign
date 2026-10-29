@@ -10,7 +10,8 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
-import { colors, typography } from "../theme/theme";
+import { typography, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 
 type Props = {
   isDesktop: boolean;
@@ -29,12 +30,15 @@ export default function CameraDevice({
   isDesktop,
   videoRef,
   canvasRef,
-  ledColor = colors.success,
+  ledColor: ledColorProp,
   statusText,
   mobileScreenHeight = 340,
   overlays,
   style,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const ledColor = ledColorProp ?? colors.success;
   // Desktop numbers are the instrument-panel bay-1 device spec (design
   // handoff: "UI mockups combining design styles"): housing radius 20,
   // padding 12, screen radius 14, top shelf 22 / bottom shelf 26, 10x10
@@ -148,7 +152,8 @@ const canvasStyle: any = {
   pointerEvents: "none",
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   rootDesktop: {
     flex: 1,
     minWidth: 0,

@@ -9,8 +9,8 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { colors, fonts } from "../theme/theme";
-import { neuRaised, neuInset } from "../theme/shadows";
+import { fonts, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 
 const STORAGE_KEY = "kamustasign:holdDurationMs";
 
@@ -46,6 +46,8 @@ type Props = {
 };
 
 export default function HoldDurationControl({ value, onChange, compact = false }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   // Non-compact height/padding/gap match the control-strip segmented-control
   // spec (design handoff: "UI mockups combining design styles" - 4a control
   // strip, cell 2): 50 high, padding 5, gap 5. Compact (mobile) is untouched.
@@ -60,7 +62,7 @@ export default function HoldDurationControl({ value, onChange, compact = false }
             style={[
               styles.pill,
               { backgroundColor: active ? colors.surfaceElevated : colors.neuWell },
-              active ? neuRaised("sm") : neuInset("sm"),
+              active ? shadows.neuRaised("sm") : shadows.neuInset("sm"),
             ]}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
@@ -76,7 +78,8 @@ export default function HoldDurationControl({ value, onChange, compact = false }
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   row: {
     flexDirection: "row",
     borderRadius: 999,
@@ -90,7 +93,7 @@ const styles = StyleSheet.create({
   pillLabel: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
-    color: "#8A93A3",
+    color: theme.name === "dark" ? "#8A93A3" : colors.textTertiary,
   },
   pillLabelStrip: {
     fontSize: 12,

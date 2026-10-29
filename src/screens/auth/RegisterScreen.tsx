@@ -6,9 +6,10 @@ import AuthScreenShell from "./AuthScreenShell";
 import { CheckBox } from "../dashboard/ManageKit";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 import { NAME_MAX, friendlyAuthError, isEmailShaped, isExistingAccountError, newPasswordProblem } from "../../lib/authForms";
-import { authStyles as s } from "./authStyles";
+import { useAuthStyles } from "./authStyles";
 import type { ProfileRole } from "../../lib/queries";
-import { colors, fonts, radii, spacing } from "../../theme/theme";
+import { fonts, radii, spacing, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   accentColor: string;
@@ -36,6 +37,8 @@ const PRIVACY_NOTE =
   "video call is shared only with the person you're calling. Ask an admin to correct or delete your data.";
 
 export default function RegisterScreen({ accentColor, onNavigateLogin, onRegistered }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const s = useAuthStyles();
   const [role, setRole] = useState<ProfileRole>("student");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -243,7 +246,8 @@ export default function RegisterScreen({ accentColor, onNavigateLogin, onRegiste
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as object) : null;
 
 // On the frosted card: dark text only, like the rest of the form.
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   label: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.textOnFrosted, marginBottom: spacing.xs + 2 },
   roleRow: { flexDirection: "row", gap: spacing.sm },
   roleOption: {

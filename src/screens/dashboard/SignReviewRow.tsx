@@ -3,13 +3,14 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import ProgressBar from "../../components/ProgressBar";
-import { dashboardStyles as ds } from "./DashboardShell";
+import { useDashboardStyles } from "./DashboardShell";
 import { PASS_CONFIDENCE } from "../../lib/curriculum";
 import type { SignInsight } from "../../lib/classInsights";
 
 type Props = { insight: SignInsight; first?: boolean };
 
 export default function SignReviewRow({ insight: s, first }: Props) {
+  const ds = useDashboardStyles();
   const best = s.stuckBest !== null ? Math.round(s.stuckBest * 100) : null;
   return (
     <View style={[ds.listItem, first && ds.listItemFirst, styles.row]}>

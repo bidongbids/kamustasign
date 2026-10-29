@@ -5,8 +5,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { loadAlphabet, type Alphabet, type SignLanguage } from "../ml/modelLoader";
 import { frameAspect, handshapeInput, type HandshapeInputFormat } from "../ml/handshapeInput";
 import * as tf from "@tensorflow/tfjs";
-import { colors, fonts, spacing, typography } from "../theme/theme";
-import { neuInset, neuRaised } from "../theme/shadows";
+import { fonts, spacing, typography, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 import { useResponsive } from "../theme/responsive";
 import GlassCard from "../components/GlassCard";
 import CameraDevice from "../components/CameraDevice";
@@ -93,6 +93,8 @@ export default function LiveTranslatorScreen({
   onHoldProgress,
   onRetry,
 }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // The desktop and mobile layouts render CameraDevice in different tree
@@ -612,7 +614,7 @@ export default function LiveTranslatorScreen({
           style={[
             isDesktop ? styles.letterTileDesktop : styles.letterTileMobile,
             { backgroundColor: colors.neuBase },
-            neuRaised("lg"),
+            shadows.neuRaised("lg"),
           ]}
         >
           <Text style={[typography.hero, { fontSize: isDesktop ? 50 : 44, lineHeight: isDesktop ? 50 : 44, color: colors.textPrimary }]}>
@@ -652,7 +654,7 @@ export default function LiveTranslatorScreen({
                   style={[
                     styles.letterChip,
                     { width: w, height: h, borderRadius: isDesktop ? 8 : 6, backgroundColor: isNewest ? colors.surfaceElevated : colors.neuWell },
-                    isNewest ? neuRaised("sm") : neuInset("sm"),
+                    isNewest ? shadows.neuRaised("sm") : shadows.neuInset("sm"),
                   ]}
                 >
                   <Text style={[typography.label, { fontSize: isDesktop ? 14 : 12, color: isNewest ? colors.accentCoral : colors.adminGray }]}>
@@ -721,7 +723,7 @@ export default function LiveTranslatorScreen({
     <View style={[styles.actionRow, isDesktop ? { marginTop: "auto" as any } : styles.actionRowMobile]}>
       <Pressable
         onPress={handleSpeak}
-        style={[styles.speakButton, { height: isDesktop ? 46 : 56, backgroundColor: colors.neuBase }, neuRaised("md")]}
+        style={[styles.speakButton, { height: isDesktop ? 46 : 56, backgroundColor: colors.neuBase }, shadows.neuRaised("md")]}
         accessibilityRole="button"
         accessibilityLabel="Speak the accumulated word"
       >
@@ -733,7 +735,7 @@ export default function LiveTranslatorScreen({
         style={[
           styles.backspaceButton,
           { width: isDesktop ? 46 : 56, height: isDesktop ? 46 : 56, backgroundColor: colors.neuBase, opacity: wordText ? 1 : 0.45 },
-          neuRaised("md"),
+          shadows.neuRaised("md"),
         ]}
         accessibilityRole="button"
         accessibilityLabel="Show the word big"
@@ -745,7 +747,7 @@ export default function LiveTranslatorScreen({
         style={[
           styles.backspaceButton,
           { width: isDesktop ? 46 : 56, height: isDesktop ? 46 : 56, backgroundColor: colors.neuBase },
-          neuRaised("md"),
+          shadows.neuRaised("md"),
         ]}
         accessibilityRole="button"
         accessibilityLabel="Delete last letter"
@@ -812,7 +814,7 @@ export default function LiveTranslatorScreen({
         </View>
         <View style={[styles.recognizedRow, { gap: 22, marginTop: 14 }]}>
           <View style={{ width: RING, height: RING, alignItems: "center", justifyContent: "center" }}>
-            <View style={[styles.letterTileBig, { backgroundColor: colors.neuBase }, neuRaised("lg")]}>
+            <View style={[styles.letterTileBig, { backgroundColor: colors.neuBase }, shadows.neuRaised("lg")]}>
               <Text
                 style={[
                   styles.letterGlyphBig,
@@ -871,7 +873,7 @@ export default function LiveTranslatorScreen({
                   style={[
                     styles.letterChipBig,
                     { backgroundColor: isNewest ? colors.surfaceElevated : colors.neuWell },
-                    isNewest ? neuRaised("sm") : neuInset("sm"),
+                    isNewest ? shadows.neuRaised("sm") : shadows.neuInset("sm"),
                     letter === " " && styles.spaceChip,
                   ]}
                 >
@@ -921,7 +923,7 @@ export default function LiveTranslatorScreen({
         <View style={styles.holdingWell}>
           <View style={styles.holdingTrough}>
             <LinearGradient
-              colors={["#5A50A8", "#7C6CF5"]}
+              colors={[colors.primaryTealDark, colors.primaryTeal]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[styles.holdingFill, { width: `${Math.round(heldFraction * 100)}%` }]}
@@ -958,7 +960,7 @@ export default function LiveTranslatorScreen({
           </Pressable>
           <Pressable
             onPress={handleBackspace}
-            style={[styles.backspaceButtonDesktop, { backgroundColor: colors.neuBase }, neuRaised("md")]}
+            style={[styles.backspaceButtonDesktop, { backgroundColor: colors.neuBase }, shadows.neuRaised("md")]}
             accessibilityRole="button"
             accessibilityLabel="Delete last letter"
           >
@@ -972,11 +974,11 @@ export default function LiveTranslatorScreen({
       <View style={styles.guide}>
         {[
           { icon: <HandIcon size={16} color={colors.tipAccent} />, text: "Sign one letter at a time." },
-          { icon: <ClockIcon size={16} color={colors.accentCoral} />, text: "Hold still until the ring fills. Then the letter is added." },
+          { icon: <ClockIcon size={16} color={colors.accentCoralText} />, text: "Hold still until the ring fills. Then the letter is added." },
           { icon: <CheckIcon size={16} color={colors.success} strokeWidth={2.6} />, text: "To repeat a letter, lower your hand first." },
         ].map((step, i) => (
           <View key={i} style={styles.guideRow}>
-            <View style={[styles.guideIcon, neuInset("sm")]}>{step.icon}</View>
+            <View style={[styles.guideIcon, shadows.neuInset("sm")]}>{step.icon}</View>
             <Text style={styles.guideText}>{step.text}</Text>
           </View>
         ))}
@@ -1031,7 +1033,8 @@ export default function LiveTranslatorScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   unsupported: {
     flex: 1,
     alignItems: "center",
@@ -1134,7 +1137,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.10)" : colors.border,
     marginVertical: 10,
   },
   readingLabel: {
@@ -1170,7 +1173,7 @@ const styles = StyleSheet.create({
   affectsAccuracy: {
     ...typography.caption,
     fontSize: 10,
-    color: colors.accentCoral,
+    color: colors.accentCoralText,
   },
   reasonLine: {
     color: colors.textSecondary,
@@ -1272,7 +1275,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.22)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.22)" : colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1292,7 +1295,7 @@ const styles = StyleSheet.create({
   keysHint: { fontFamily: typography.body.fontFamily, fontSize: 11, lineHeight: 16, color: colors.textSecondary, marginTop: 2 },
   bigScrim: {
     flex: 1,
-    backgroundColor: "rgba(10,12,16,0.96)",
+    backgroundColor: theme.name === "dark" ? "rgba(10,12,16,0.96)" : colors.background,
     alignItems: "center",
     justifyContent: "center",
     padding: 32,
@@ -1320,7 +1323,7 @@ const styles = StyleSheet.create({
   },
   bay2Rule: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.12)" : colors.border,
     marginTop: 18,
     marginBottom: 14,
   },
@@ -1374,7 +1377,7 @@ const styles = StyleSheet.create({
   stripCellAccent: {
     fontFamily: typography.body.fontFamily,
     fontSize: 10,
-    color: colors.accentCoral,
+    color: colors.accentCoralText,
   },
   holdingCell: {
     width: 394,
@@ -1394,7 +1397,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#171B22",
+    backgroundColor: theme.name === "dark" ? "#171B22" : colors.border,
     overflow: "hidden",
   },
   holdingFill: {
@@ -1417,7 +1420,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.22)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.22)" : colors.border,
     alignItems: "center",
     justifyContent: "center",
   },

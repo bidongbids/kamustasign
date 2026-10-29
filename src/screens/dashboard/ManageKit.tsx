@@ -8,8 +8,8 @@
 // is a no-op, and a browser confirm() dialog blocks the page.
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
-import { colors, fonts, radii, spacing } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, spacing, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { AlertCircleIcon, CheckIcon, CloseIcon, RetryIcon, SearchIcon } from "../../components/icons/UiIcons";
 import type { ProfileRole } from "../../lib/queries";
 
@@ -22,7 +22,7 @@ type ActionVariant = "primary" | "secondary" | "danger" | "ghost";
 // White on the bright violet (3.95:1) or the bright red (3.8:1) fails AA for
 // a 13-16px label, so filled buttons use one darker step of each
 // (design_handoff_teacher_admin_videocall, "Token additions").
-export function fillFor(accent: string) {
+export function fillFor(accent: string, colors: ThemeColors) {
   if (accent === colors.primaryTeal) return colors.actionPrimaryFill;
   if (accent === colors.needsPractice) return colors.callDanger;
   return accent;
@@ -34,7 +34,7 @@ export function ActionButton({
   icon,
   onPress,
   variant = "secondary",
-  accentColor = colors.primaryTeal,
+  accentColor: accentColorProp,
   loading,
   disabled,
   iconOnly,
@@ -57,12 +57,15 @@ export function ActionButton({
   iconOnly?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { colors, shadows, name } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const accentColor = accentColorProp ?? colors.primaryTeal;
   const [hovered, setHovered] = useState(false);
   const inactive = Boolean(disabled || loading);
   const fg =
     variant === "primary"
-      ? accentColor === colors.adminGray
-        ? colors.neuShadowDark // white on admin grey is 3.6:1; this dark label is 5:1
+      ? accentColor === colors.adminGray && name === "dark"
+        ? colors.neuShadowDark // white on dark mode's admin grey is 3.6:1; this dark label is 5:1 (light's darker grey takes white at 6:1)
         : colors.textOnPrimary
       : variant === "danger"
         ? colors.needsPractice
@@ -86,8 +89,8 @@ export function ActionButton({
         size && { minHeight: HEIGHT[size], paddingHorizontal: size === "lg" ? 20 : size === "md" ? 16 : 12 },
         iconOnly && styles.btnIconOnly,
         iconOnly && size && { width: HEIGHT[size] },
-        variant === "primary" && { backgroundColor: fillFor(accentColor) },
-        variant === "secondary" && [styles.btnSecondary, neuRaised("sm")],
+        variant === "primary" && { backgroundColor: fillFor(accentColor, colors) },
+        variant === "secondary" && [styles.btnSecondary, shadows.neuRaised("sm")],
         variant === "danger" && styles.btnDanger,
         variant === "ghost" && styles.btnGhost,
         hovered && !inactive && styles.btnHover,
@@ -111,11 +114,12 @@ export function ActionButton({
 
 // ── Avatar / RoleBadge ──────────────────────────────────────────────────
 
-export const ROLE_COLORS: Record<ProfileRole, string> = {
-  student: colors.accentCoral,
+// Student is the accent as text: plain gold is too faint on a light card.
+export const roleColors = (colors: ThemeColors): Record<ProfileRole, string> => ({
+  student: colors.accentCoralText,
   teacher: colors.primaryTealLight,
   admin: colors.adminGrayLight,
-};
+});
 
 export function initials(name: string) {
   // "Teresa Gomez (you)" -> "TG", not "T(".
@@ -124,7 +128,10 @@ export function initials(name: string) {
   return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-export function Avatar({ name, color = colors.primaryTealLight, size = 38 }: { name: string; color?: string; size?: number }) {
+export function Avatar({ name, color: colorProp, size = 38 }: { name: string; color?: string; size?: number }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const color = colorProp ?? colors.primaryTealLight;
   return (
     <View
       style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, borderColor: color + "66" }]}
@@ -137,7 +144,9 @@ export function Avatar({ name, color = colors.primaryTealLight, size = 38 }: { n
 }
 
 export function RoleBadge({ role }: { role: ProfileRole }) {
-  const color = ROLE_COLORS[role];
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const color = roleColors(colors)[role];
   return (
     <View style={[styles.badge, { borderColor: color + "88", backgroundColor: color + "1F" }]}>
       <Text style={[styles.badgeText, { color }]}>{role}</Text>
@@ -147,9 +156,12 @@ export function RoleBadge({ role }: { role: ProfileRole }) {
 
 // ── StatTile ────────────────────────────────────────────────────────────
 
-export function StatTile({ label, value, color = colors.textPrimary }: { label: string; value: number | string; color?: string }) {
+export function StatTile({ label, value, color: colorProp }: { label: string; value: number | string; color?: string }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const color = colorProp ?? colors.textPrimary;
   return (
-    <View style={[styles.stat, neuInset("sm")]}>
+    <View style={[styles.stat, shadows.neuInset("sm")]}>
       <Text style={[styles.statValue, { color }]}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -171,6 +183,8 @@ export type NoticeState = {
 const SUCCESS_MS = 6000;
 
 export function Notice({ notice, onDismiss }: { notice: NoticeState; onDismiss: () => void }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   useEffect(() => {
     if (notice?.kind !== "success") return;
     const id = setTimeout(onDismiss, SUCCESS_MS);
@@ -230,6 +244,8 @@ export function ConfirmInline({
   /** What will happen, one sentence each, listed under the message. */
   details?: string[];
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.confirm}>
       <Text style={styles.confirmText}>{message}</Text>
@@ -263,13 +279,16 @@ export function ChoicePills<K extends string>({
   options,
   value,
   onChange,
-  accentColor = colors.primaryTeal,
+  accentColor: accentColorProp,
 }: {
   options: { key: K; label: string }[];
   value: K | null;
   onChange: (key: K) => void;
   accentColor?: string;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const accentColor = accentColorProp ?? colors.primaryTeal;
   return (
     <View style={styles.pills} accessibilityRole="radiogroup">
       {options.map((o) => {
@@ -305,8 +324,10 @@ export function SearchField({
   onChangeText: (t: string) => void;
   placeholder: string;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
-    <View style={[styles.search, neuInset("sm")]}>
+    <View style={[styles.search, shadows.neuInset("sm")]}>
       <SearchIcon size={16} color={colors.textSecondary} />
       <TextInput
         value={value}
@@ -354,6 +375,8 @@ export function InlineField({
   autoFocus?: boolean;
   onCancel?: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.fieldWrap}>
@@ -389,6 +412,7 @@ export function InlineField({
 }
 
 export function FieldLabel({ children }: { children: React.ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
   return <Text style={styles.fieldLabel}>{children}</Text>;
 }
 
@@ -398,7 +422,7 @@ export function FieldLabel({ children }: { children: React.ReactNode }) {
 
 export function CheckBox({
   checked,
-  accentColor = colors.primaryTeal,
+  accentColor: accentColorProp,
   size = 20,
   indeterminate,
 }: {
@@ -408,7 +432,10 @@ export function CheckBox({
   /** Some but not all (a category with some words picked): a bar instead of a tick. */
   indeterminate?: boolean;
 }) {
-  const fill = fillFor(accentColor);
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const accentColor = accentColorProp ?? colors.primaryTeal;
+  const fill = fillFor(accentColor, colors);
   return (
     <View
       style={[
@@ -444,6 +471,7 @@ export function CheckRow({
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       onPress={onToggle}
@@ -459,7 +487,8 @@ export function CheckRow({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   row8: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
 
   btn: {

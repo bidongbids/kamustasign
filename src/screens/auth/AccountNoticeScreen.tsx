@@ -9,9 +9,10 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import AuthButton from "../../components/auth/AuthButton";
 import AuthScreenShell from "./AuthScreenShell";
-import { authStyles as s } from "./authStyles";
+import { useAuthStyles } from "./authStyles";
 import { AlertCircleIcon, ClockIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, spacing } from "../../theme/theme";
+import { fonts, spacing, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   accentColor: string;
@@ -28,6 +29,9 @@ type Props = {
 };
 
 export default function AccountNoticeScreen({ accentColor, title, message, onCheckAgain, onSignOut, kind = "pending", detail, footnote }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const s = useAuthStyles();
   const [checking, setChecking] = useState(false);
 
   return (
@@ -58,7 +62,8 @@ export default function AccountNoticeScreen({ accentColor, title, message, onChe
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   icon: {
     width: 56,
     height: 56,

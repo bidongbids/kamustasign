@@ -9,8 +9,8 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import { colors, typography } from "../theme/theme";
-import { neuInset } from "../theme/shadows";
+import { typography, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -23,6 +23,8 @@ type Props = {
 };
 
 export default function ConfidenceDial({ size = 118, percent, pctSize = 27, metaSize = 8.5, reduceMotion = false }: Props) {
+  const { colors, shadows, name } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const clamped = Math.max(0, Math.min(100, percent));
   const anim = useRef(new Animated.Value(clamped)).current;
 
@@ -41,13 +43,13 @@ export default function ConfidenceDial({ size = 118, percent, pctSize = 27, meta
   const dashoffset = anim.interpolate({ inputRange: [0, 100], outputRange: [circumference, 0] });
 
   return (
-    <View style={[styles.well, { width: size, height: size, borderRadius: size, backgroundColor: colors.neuWell }, neuInset("md")]}>
+    <View style={[styles.well, { width: size, height: size, borderRadius: size, backgroundColor: colors.neuWell }, shadows.neuInset("md")]}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <Circle
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke="rgba(255,255,255,0.06)"
+          stroke={name === "dark" ? "rgba(255,255,255,0.06)" : colors.border}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -75,7 +77,8 @@ export default function ConfidenceDial({ size = 118, percent, pctSize = 27, meta
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   well: {
     alignItems: "center",
     justifyContent: "center",

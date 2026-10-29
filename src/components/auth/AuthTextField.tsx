@@ -1,6 +1,7 @@
 import React, { forwardRef, useState } from "react";
 import { Platform, Pressable, Text, TextInput, View, StyleSheet, TextInputProps } from "react-native";
-import { colors, fonts, spacing, radii } from "../../theme/theme";
+import { fonts, spacing, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = TextInputProps & {
   label: string;
@@ -18,6 +19,8 @@ const AuthTextField = forwardRef<TextInput, Props>(function AuthTextField(
   { label, error, tone = "frosted", style, onFocus, onBlur, secureTextEntry, ...inputProps },
   ref
 ) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [focused, setFocused] = useState(false);
   // Password fields get a Show/Hide switch: typing a password blind is hard
   // for a child, and a typo costs a failed sign-in.
@@ -74,7 +77,8 @@ const AuthTextField = forwardRef<TextInput, Props>(function AuthTextField(
 
 export default AuthTextField;
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   wrap: {
     width: "100%",
     marginBottom: spacing.md,

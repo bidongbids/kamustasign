@@ -35,8 +35,8 @@ import {
   TrashIcon,
   UsersIcon,
 } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import {
   deleteModule,
   moduleSigns,
@@ -107,6 +107,8 @@ type Props = {
 };
 
 export default function TeacherModules(props: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { klass, modules, loading, setModules, setNotice, editor, setEditor, planning, setPlanning, phone } = props;
   const [reordering, setReordering] = useState(false);
 
@@ -178,7 +180,7 @@ export default function TeacherModules(props: Props) {
   if (modules.length === 0) {
     return (
       <View style={[styles.card, styles.empty]}>
-        <View style={[styles.emptyIcon, neuRaised("sm")]}>
+        <View style={[styles.emptyIcon, shadows.neuRaised("sm")]}>
           <GridIcon size={24} color={colors.primaryTealText} />
         </View>
         <Text style={styles.emptyTitle}>No modules yet</Text>
@@ -246,6 +248,8 @@ function ModuleCard({
   onMoveUp?: () => void;
   onMoveDown?: () => void;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const signs = moduleSigns(m);
   const rows = rowsFor(m.language, m.sign_group);
   const [open, setOpen] = useState(false);
@@ -275,7 +279,7 @@ function ModuleCard({
       accessibilityRole="button"
       accessibilityLabel={`Move ${m.title} ${dir === "up" ? "earlier" : "later"}`}
       accessibilityState={{ disabled: !onPress }}
-      style={[styles.arrow, neuRaised("sm"), !onPress && styles.disabled, webCursor]}
+      style={[styles.arrow, shadows.neuRaised("sm"), !onPress && styles.disabled, webCursor]}
     >
       {dir === "up" ? <ChevronUpIcon size={16} color={colors.textPrimary} /> : <ChevronDownIcon size={16} color={colors.textPrimary} />}
     </Pressable>
@@ -377,13 +381,15 @@ function ModuleCard({
 
 /** "Due Sun, Nov 1 · in 5 days" (gold within a week), "Overdue · was due Oct 20" (red), "No due date". */
 export function DueChip({ date }: { date: string | null }) {
+  const { colors, name } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const d = dueInfo(date);
   const tone =
     d.tone === "overdue"
       ? { border: "rgba(255,122,133,0.6)", bg: "rgba(224,82,95,0.12)", text: colors.needsPracticeText }
       : d.tone === "soon"
-        ? { border: "rgba(242,178,62,0.6)", bg: "rgba(242,178,62,0.1)", text: colors.accentCoral }
-        : { border: "rgba(255,255,255,0.18)", bg: "transparent", text: colors.textOnGlass };
+        ? { border: "rgba(242,178,62,0.6)", bg: "rgba(242,178,62,0.1)", text: colors.accentCoralText }
+        : { border: name === "dark" ? "rgba(255,255,255,0.18)" : colors.border, bg: "transparent", text: colors.textOnGlass };
   return (
     <View style={[styles.dueChip, { borderColor: tone.border, backgroundColor: tone.bg }]} accessible accessibilityLabel={d.text}>
       {d.tone === "overdue" ? <AlertCircleIcon size={13} color={tone.text} /> : <CalendarIcon size={13} color={tone.text} />}
@@ -446,6 +452,8 @@ function ModuleForm({
   setNotice: (n: NoticeState) => void;
   onClose: (saved: boolean) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const m = state.module;
   const preset = state.preset;
   const [title, setTitle] = useState(m?.title ?? preset?.title ?? "");
@@ -706,6 +714,7 @@ function ModuleForm({
 }
 
 function TrayBtn({ label, disabled, onPress, children }: { label: string; disabled?: boolean; onPress: () => void; children: React.ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       onPress={onPress}
@@ -721,6 +730,8 @@ function TrayBtn({ label, disabled, onPress, children }: { label: string; disabl
 }
 
 function Problem({ text }: { text: string }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.problem} accessibilityLiveRegion="polite">
       <AlertCircleIcon size={14} color={colors.textOnFrosted} />
@@ -749,6 +760,7 @@ function ModulesByCategoryDialog({
   setNotice: (n: NoticeState) => void;
   onClose: (created: boolean) => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const wordLanguages = CURRICULUM.filter((l) => l.groups.some((g) => g.group === "words" && g.available));
   const [language, setLanguage] = useState<SignLanguage>(wordLanguages[0]?.language ?? "asl");
   const [saving, setSaving] = useState(false);
@@ -869,7 +881,8 @@ function ModulesByCategoryDialog({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   pad: { padding: 20 },
   row8: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
@@ -878,8 +891,8 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface,
   },
   muted: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.textOnGlass },
   caption: { fontFamily: fonts.body, fontSize: 12.5, color: colors.textOnGlass, marginTop: 8 },
@@ -908,7 +921,7 @@ const styles = StyleSheet.create({
   cardActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   dueChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill, borderWidth: 1.5 },
   dueText: { fontFamily: fonts.bodySemiBold, fontSize: 12.5 },
-  panel: { paddingTop: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)", gap: 8 },
+  panel: { paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border, gap: 8 },
   studentRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   studentName: { width: 180, fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.textPrimary },
   footNote: {
@@ -919,7 +932,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "rgba(255,255,255,0.16)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.16)" : colors.border,
   },
   // frosted form (textOnFrosted only, no gold / green)
   form: { gap: 18 },

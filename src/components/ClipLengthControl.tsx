@@ -10,8 +10,8 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { colors, fonts } from "../theme/theme";
-import { neuRaised, neuInset } from "../theme/shadows";
+import { fonts, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 
 const STORAGE_KEY = "kamustasign:clipLengthFrames";
 
@@ -46,6 +46,8 @@ type Props = {
 };
 
 export default function ClipLengthControl({ value, onChange }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.row}>
       {CLIP_LENGTH_PRESETS.map((preset) => {
@@ -57,7 +59,7 @@ export default function ClipLengthControl({ value, onChange }: Props) {
             style={[
               styles.pill,
               { backgroundColor: active ? colors.surfaceElevated : colors.neuWell },
-              active ? neuRaised("sm") : neuInset("sm"),
+              active ? shadows.neuRaised("sm") : shadows.neuInset("sm"),
             ]}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
@@ -71,7 +73,8 @@ export default function ClipLengthControl({ value, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   row: {
     flexDirection: "row",
     borderRadius: 999,
@@ -88,7 +91,7 @@ const styles = StyleSheet.create({
   pillLabel: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 12,
-    color: "#8A93A3",
+    color: theme.name === "dark" ? "#8A93A3" : colors.textTertiary,
   },
   pillLabelActive: {
     color: colors.textPrimary,

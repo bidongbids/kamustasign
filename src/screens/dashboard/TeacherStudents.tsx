@@ -25,8 +25,8 @@ import {
   TrashIcon,
   VideoIcon,
 } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { computeOverall, groupKey, planSigns, type ClassPlan } from "../../lib/curriculum";
 import {
   availableGroups,
@@ -65,6 +65,8 @@ type Props = {
 const FILTER_LABEL: Record<RosterFilter, string> = { all: "All", online: "Online", under25: "Under 25%", notStarted: "Not started" };
 
 export default function TeacherStudents(props: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { klass, students, plan, presence, loading, filter, onFilter, table } = props;
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<RosterSortKey>("overall");
@@ -114,7 +116,7 @@ export default function TeacherStudents(props: Props) {
             onPress={props.onInvite}
             accessibilityRole="button"
             accessibilityLabel="Invite students"
-            style={[styles.roundBtn, neuRaised("sm"), webCursor]}
+            style={[styles.roundBtn, shadows.neuRaised("sm"), webCursor]}
           >
             <PlusIcon size={18} color={colors.textPrimary} />
           </Pressable>
@@ -139,7 +141,7 @@ export default function TeacherStudents(props: Props) {
                 accessibilityLabel={`${s.full_name}, ${statusWord(status)}, ${Math.round(overall * 100)}% overall. Open details`}
                 style={({ pressed }) => [styles.phoneRow, i > 0 && styles.rule, pressed && styles.pressed]}
               >
-                <Avatar name={s.full_name} color={colors.accentCoral} size={40} />
+                <Avatar name={s.full_name} color={colors.accentCoralText} size={40} />
                 <View style={styles.flex}>
                   <Text style={styles.name} numberOfLines={1}>
                     {s.full_name || "(no name)"}
@@ -248,7 +250,7 @@ export default function TeacherStudents(props: Props) {
                 style={({ hovered, pressed }: any) => [styles.tr, (hovered || confirmId === s.id) && styles.trHover, pressed && styles.pressed, webCursor]}
               >
                 <View style={[styles.td, styles.colName]}>
-                  <Avatar name={name} color={colors.accentCoral} size={32} />
+                  <Avatar name={name} color={colors.accentCoralText} size={32} />
                   <Text style={styles.name} numberOfLines={1}>
                     {name}
                   </Text>
@@ -329,6 +331,7 @@ const statusWord = (s: PresenceStatus | undefined) => (s === "busy" ? "on a call
 
 /** Static placeholder rows while the roster loads (no shimmer). */
 export function Skeleton({ rows }: { rows: number }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View accessibilityLabel="Loading students…" accessibilityLiveRegion="polite">
       {Array.from({ length: rows }).map((_, i) => (
@@ -344,13 +347,15 @@ export function Skeleton({ rows }: { rows: number }) {
 }
 
 function StudentsEmpty({ klass, onCopyCode, onPrint, onInvite }: Props) {
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.card, styles.emptyCard]}>
       <Text style={styles.emptyTitle} accessibilityRole="header">
         No students yet
       </Text>
       <Text style={styles.emptyBody}>Students type this code on their dashboard to join.</Text>
-      <View style={[styles.bigCode, neuInset("sm")]} accessibilityLabel={`Class code ${klass.join_code.split("").join(" ")}`}>
+      <View style={[styles.bigCode, shadows.neuInset("sm")]} accessibilityLabel={`Class code ${klass.join_code.split("").join(" ")}`}>
         <Text style={styles.bigCodeText} selectable>
           {klass.join_code}
         </Text>
@@ -384,7 +389,8 @@ export function printClassCode(klass: ClassRow): boolean {
   return true;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   right: { textAlign: "right" },
   pad: { padding: 20 },
@@ -398,8 +404,8 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface,
   },
   tableCard: { overflow: "hidden" },
   thead: {
@@ -408,13 +414,13 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.08)",
+    borderBottomColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border,
   },
   th: { fontFamily: fonts.bodySemiBold, fontSize: 12.5, color: colors.textOnGlass },
   thActive: { color: colors.textPrimary },
   thBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  tr: { flexDirection: "row", alignItems: "center", minHeight: 52, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" },
-  trHover: { backgroundColor: "rgba(255,255,255,0.04)" },
+  tr: { flexDirection: "row", alignItems: "center", minHeight: 52, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: theme.name === "dark" ? "rgba(255,255,255,0.06)" : colors.border },
+  trHover: { backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.04)" : colors.surfacePressed },
   pressed: { opacity: 0.85 },
   td: { flexDirection: "row", alignItems: "center", gap: 10 },
   colName: { flex: 1.5, minWidth: 0, paddingRight: 12 },
@@ -433,14 +439,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.14)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.14)" : colors.border,
   },
   disabled: { opacity: 0.4 },
   confirmWrap: { paddingHorizontal: 16, paddingBottom: 12 },
   empty: { fontFamily: fonts.body, fontSize: 14, color: colors.textOnGlass, paddingVertical: 12 },
   skelRow: { flexDirection: "row", alignItems: "center", gap: 16, height: 52, paddingHorizontal: 16 },
-  skelDot: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.07)" },
-  skelBar: { height: 10, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.07)" },
+  skelDot: { width: 32, height: 32, borderRadius: 16, backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.07)" : colors.well },
+  skelBar: { height: 10, borderRadius: 5, backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.07)" : colors.well },
   emptyCard: { alignItems: "center", paddingVertical: 40, paddingHorizontal: 24, gap: 10 },
   emptyTitle: { fontFamily: fonts.heading, fontSize: 22, color: colors.textPrimary },
   emptyBody: { fontFamily: fonts.body, fontSize: 14.5, color: colors.textOnGlass },
@@ -453,7 +459,7 @@ const styles = StyleSheet.create({
   roundBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase },
   phoneList: { paddingHorizontal: 14 },
   phoneRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 64, paddingVertical: 8 },
-  rule: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.07)" },
+  rule: { borderTopWidth: 1, borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.07)" : colors.border },
   subRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 3 },
   sub: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.textOnGlass },
   roundCall: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: colors.actionPrimaryFill },

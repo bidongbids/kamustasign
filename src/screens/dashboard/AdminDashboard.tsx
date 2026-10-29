@@ -22,12 +22,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import DashboardShell from "./DashboardShell";
-import { ActionButton, Avatar, ChoicePills, ConfirmInline, Notice, ROLE_COLORS, RoleBadge, SearchField, type NoticeState } from "./ManageKit";
+import { ActionButton, Avatar, ChoicePills, ConfirmInline, Notice, RoleBadge, roleColors, SearchField, type NoticeState } from "./ManageKit";
 import { CloseButton, SelectPill, SideDrawer } from "./Overlays";
 import SegmentedToggle from "../../components/SegmentedToggle";
 import { AlertCircleIcon, CheckIcon, ChevronDownIcon, InboxIcon, PencilIcon, SearchIcon, ShieldIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { darkColors, fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useResponsive } from "../../theme/responsive";
 import {
   adminListAccounts,
@@ -72,6 +72,8 @@ type Props = {
 };
 
 export default function AdminDashboard({ accentColor, onSignOut, onExitToStart, onAccountChange }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { width } = useResponsive();
   const phone = width < 768;
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -176,7 +178,7 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToStart, 
               style={[styles.switchRow, webCursor]}
             >
               <Text style={styles.switchLabel}>Group by class</Text>
-              <View style={[styles.track, grouped && styles.trackOn, neuInset("sm")]}>
+              <View style={[styles.track, grouped && styles.trackOn, shadows.neuInset("sm")]}>
                 <View style={[styles.knob, grouped && styles.knobOn]} />
               </View>
             </Pressable>
@@ -261,6 +263,8 @@ function ApprovalsInbox({
   onSaved: (a: AccountRow) => void;
   onRemoved: (id: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -315,7 +319,7 @@ function ApprovalsInbox({
         return (
           <View key={a.id} style={styles.inboxRow}>
             <View style={[styles.inboxPerson, phone && styles.inboxPersonPhone]}>
-              <Avatar name={name} color={ROLE_COLORS[a.role]} size={42} />
+              <Avatar name={name} color={roleColors(colors)[a.role]} size={42} />
               <View style={styles.flex}>
                 <Text style={styles.name} numberOfLines={1}>
                   {name}
@@ -377,6 +381,8 @@ function AccountsList({
   nameOf: (id: string) => string | null;
   onEdit: (id: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const row = (a: AccountRow, i: number) => {
     const cell = classCell(a, classes);
     const name = displayName(a);
@@ -394,7 +400,7 @@ function AccountsList({
           accessibilityLabel={`${name}, ${a.role}. ${cell.text}. Edit`}
           style={({ pressed }) => [styles.phoneRow, i > 0 && styles.rule, pressed && { opacity: 0.85 }]}
         >
-          <Avatar name={name} color={ROLE_COLORS[a.role]} size={40} />
+          <Avatar name={name} color={roleColors(colors)[a.role]} size={40} />
           <View style={styles.flex}>
             <View style={styles.nameRow}>
               <Text style={[styles.name, styles.shrink]} numberOfLines={1}>
@@ -413,7 +419,7 @@ function AccountsList({
     return (
       <View key={a.id} style={[styles.tr, i > 0 && styles.rule]}>
         <View style={[styles.colName, styles.person]}>
-          <Avatar name={name} color={ROLE_COLORS[a.role]} size={36} />
+          <Avatar name={name} color={roleColors(colors)[a.role]} size={36} />
           <View style={styles.flex}>
             <Text style={styles.name} numberOfLines={1}>
               {name}
@@ -556,6 +562,8 @@ function AccountForm({
   onSaved: (a: AccountRow) => void;
   onClose: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [name, setName] = useState(a.full_name);
   const [role, setRole] = useState<ProfileRole>(a.role);
   const [saving, setSaving] = useState(false);
@@ -616,7 +624,7 @@ function AccountForm({
     <View style={styles.flex}>
       <ScrollView style={styles.flex} contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
         <View style={styles.formHead}>
-          <Avatar name={shown} color={ROLE_COLORS[a.role]} size={56} />
+          <Avatar name={shown} color={roleColors(colors)[a.role]} size={56} />
           <View style={styles.flex}>
             <Text style={styles.formTitle} accessibilityRole="header" numberOfLines={1}>
               {shown}
@@ -732,19 +740,20 @@ function AccountForm({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   shrink: { flexShrink: 1 },
   row8: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   title: { fontFamily: fonts.heading, fontSize: 32, lineHeight: 38, color: colors.textPrimary },
   titlePhone: { fontSize: 26, lineHeight: 32, marginBottom: 12 },
   lede: { fontFamily: fonts.body, fontSize: 14.5, color: colors.textOnGlass, marginTop: 6, marginBottom: 20 },
-  migrationNote: { fontFamily: fonts.body, fontSize: 12.5, color: colors.accentCoral, marginBottom: 12 },
+  migrationNote: { fontFamily: fonts.body, fontSize: 12.5, color: colors.accentCoralText, marginBottom: 12 },
   card: {
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface,
   },
   inbox: { padding: 20, gap: 10, borderColor: colors.attention, borderWidth: 1.5, marginBottom: 18 },
   inboxHead: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -752,7 +761,7 @@ const styles = StyleSheet.create({
   countBadge: { minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 7, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.attention, backgroundColor: "rgba(242,178,62,0.16)" },
   countText: { fontFamily: fonts.bodySemiBold, fontSize: 12.5, color: colors.attention },
   inboxBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.textOnGlass },
-  inboxRow: { gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)" },
+  inboxRow: { gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border },
   inboxPerson: { flexDirection: "row", alignItems: "center", gap: 14 },
   inboxPersonPhone: { gap: 12 },
   turnDown: { borderWidth: 1.5, borderColor: colors.attention },
@@ -770,10 +779,10 @@ const styles = StyleSheet.create({
   knobOn: { transform: [{ translateX: 18 }], backgroundColor: "#FFFFFF" },
   table: { overflow: "hidden" },
   listPhone: { paddingHorizontal: 14 },
-  thead: { flexDirection: "row", alignItems: "center", minHeight: 44, paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)" },
+  thead: { flexDirection: "row", alignItems: "center", minHeight: 44, paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border },
   th: { fontFamily: fonts.bodySemiBold, fontSize: 12.5, color: colors.textOnGlass },
   tr: { flexDirection: "row", alignItems: "center", minHeight: 60, paddingHorizontal: 18 },
-  rule: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.07)" },
+  rule: { borderTopWidth: 1, borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.07)" : colors.border },
   colName: { flex: 2, minWidth: 0, paddingRight: 12 },
   colRole: { width: 120 },
   colClass: { flex: 2.2, minWidth: 0, paddingRight: 12 },
@@ -785,7 +794,7 @@ const styles = StyleSheet.create({
   cellText: { fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.textPrimary },
   cellMuted: { color: colors.textOnGlass },
   pending: { color: colors.attention },
-  groupHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 10, backgroundColor: "rgba(255,255,255,0.03)", borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)" },
+  groupHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 10, backgroundColor: "rgba(255,255,255,0.03)", borderTopWidth: 1, borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border },
   groupTitle: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.textPrimary },
   groupCount: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.textOnGlass },
   phoneRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 66, paddingVertical: 8 },
@@ -796,8 +805,8 @@ const styles = StyleSheet.create({
   emptyBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.textOnGlass, textAlign: "center", maxWidth: 460 },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.textOnGlass, padding: 18 },
   skelRow: { flexDirection: "row", alignItems: "center", gap: 16, height: 60, paddingHorizontal: 18 },
-  skelDot: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.07)" },
-  skelBar: { height: 12, borderRadius: 6, backgroundColor: "rgba(255,255,255,0.07)" },
+  skelDot: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.07)" : colors.well },
+  skelBar: { height: 12, borderRadius: 6, backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.07)" : colors.well },
   // frosted drawer: textOnFrosted only
   formScroll: { padding: 28, gap: 18 },
   formHead: { flexDirection: "row", alignItems: "center", gap: 14 },
@@ -825,7 +834,8 @@ const styles = StyleSheet.create({
   roleTitle: { fontFamily: fonts.bodySemiBold, fontSize: 15.5, color: colors.textOnFrosted },
   roleDesc: { fontFamily: fonts.body, fontSize: 13.5, color: colors.textOnFrosted, marginTop: 2 },
   onDark: { color: "#FFFFFF" },
-  onDarkMuted: { color: colors.textOnGlass },
+  // The chosen card is a dark slab in both modes, so its muted text is the dark palette's.
+  onDarkMuted: { color: darkColors.textOnGlass },
   lockNote: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 },
   lockText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textOnFrosted },
   consequences: { padding: 18, borderRadius: radii.md, backgroundColor: "#1E222B", gap: 8 },

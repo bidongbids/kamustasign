@@ -7,7 +7,7 @@ import React from "react";
 import { Text } from "react-native";
 import AuthScreenShell from "./AuthScreenShell";
 import TwoFactorSetup from "../../components/auth/TwoFactorSetup";
-import { authStyles as s } from "./authStyles";
+import { useAuthStyles } from "./authStyles";
 
 type Props = {
   accentColor: string;
@@ -15,6 +15,7 @@ type Props = {
 };
 
 export default function Setup2FAScreen({ accentColor, onDone }: Props) {
+  const s = useAuthStyles();
   return (
     <AuthScreenShell accentColor={accentColor}>
       <Text style={[s.title, { color: accentColor }]}>Set up 2FA (recommended)</Text>

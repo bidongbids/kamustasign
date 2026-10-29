@@ -5,11 +5,11 @@
 // is their current teacher's call (they remove them first).
 import React, { useCallback, useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
-import { DashboardCard, dashboardStyles as ds } from "./DashboardShell";
+import { DashboardCard, useDashboardStyles } from "./DashboardShell";
 import { ActionButton, Avatar, CheckRow, ConfirmInline, FieldLabel, SearchField, type NoticeState } from "./ManageKit";
 import { LoopIcon, PlusIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii, spacing } from "../../theme/theme";
-import { neuInset } from "../../theme/shadows";
+import { fonts, radii, spacing, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import {
   addStudentsToClass,
   listUnassignedStudents,
@@ -29,6 +29,9 @@ export function JoinCodeCard({
   setNotice: (n: NoticeState) => void;
   onCodeChanged: (code: string) => void;
 }) {
+  const ds = useDashboardStyles();
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [confirmNew, setConfirmNew] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -51,7 +54,7 @@ export function JoinCodeCard({
         Students type this on their dashboard to join {klass.name}. It only works for students who aren't in a class yet.
       </Text>
       <View style={styles.codeRow}>
-        <View style={[styles.codeWell, neuInset("sm")]} accessibilityLabel={`Class code ${klass.join_code.split("").join(" ")}`}>
+        <View style={[styles.codeWell, shadows.neuInset("sm")]} accessibilityLabel={`Class code ${klass.join_code.split("").join(" ")}`}>
           <Text style={styles.code} selectable>
             {klass.join_code}
           </Text>
@@ -100,6 +103,9 @@ export function InviteStudentsCard({
   setNotice: (n: NoticeState) => void;
   onAdded: () => void;
 }) {
+  const ds = useDashboardStyles();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [students, setStudents] = useState<UnassignedStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -196,7 +202,7 @@ export function InviteStudentsCard({
               label={s.full_name || s.email || "Student"}
               accentColor={accentColor}
             >
-              <Avatar name={s.full_name} color={colors.accentCoral} size={32} />
+              <Avatar name={s.full_name} color={colors.accentCoralText} size={32} />
               <View style={styles.flex}>
                 <Text style={styles.name} numberOfLines={1}>
                   {s.full_name || "(no name)"}
@@ -228,7 +234,8 @@ export function InviteStudentsCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   row8: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   card: { marginTop: spacing.md },
@@ -237,6 +244,6 @@ const styles = StyleSheet.create({
   codeWell: { backgroundColor: colors.neuWell, borderRadius: radii.md, paddingVertical: 10, paddingHorizontal: 20 },
   code: { fontFamily: fonts.heading, fontSize: 30, letterSpacing: 6, color: colors.textPrimary },
   list: { marginTop: spacing.sm, maxHeight: 360, overflow: "scroll" as any },
-  allRow: { borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)" },
+  allRow: { borderBottomWidth: 1, borderBottomColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border },
   name: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.textPrimary },
 });

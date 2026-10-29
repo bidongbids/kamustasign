@@ -12,8 +12,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import GlassCard from "../../components/GlassCard";
 import { CheckIcon, ChevronDownIcon, CloseIcon, MoreIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
@@ -35,6 +35,8 @@ export type MenuItem = {
 const MENU_W = 240;
 
 export function RowMenu({ items, label, size = 38, tone = "raised" }: { items: MenuItem[]; label: string; size?: number; tone?: "raised" | "ghost" }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const ref = useRef<View>(null);
   const { width: W, height: H } = useWindowDimensions();
   const [anchor, setAnchor] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -86,7 +88,7 @@ export function RowMenu({ items, label, size = 38, tone = "raised" }: { items: M
         style={({ pressed }) => [
           styles.trigger,
           { width: size, height: size, borderRadius: size / 2 },
-          tone === "raised" ? [styles.triggerRaised, neuRaised("sm")] : null,
+          tone === "raised" ? [styles.triggerRaised, shadows.neuRaised("sm")] : null,
           anchor && styles.triggerOpen,
           pressed && { opacity: 0.8 },
           webCursor,
@@ -97,7 +99,7 @@ export function RowMenu({ items, label, size = 38, tone = "raised" }: { items: M
       <Modal visible={!!anchor} transparent animationType="none" onRequestClose={close}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close menu" />
         {pos ? (
-          <View style={[styles.menu, neuRaised("md"), pos]} accessibilityRole="menu">
+          <View style={[styles.menu, shadows.neuRaised("md"), pos]} accessibilityRole="menu">
             {plain.map(row)}
             {plain.length && danger.length ? <View style={styles.divider} /> : null}
             {danger.map(row)}
@@ -122,6 +124,8 @@ export function SelectPill<K extends string>({
   options: { key: K; label: string }[];
   onChange: (key: K) => void;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const ref = useRef<View>(null);
   const { width: W } = useWindowDimensions();
   const [anchor, setAnchor] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -135,7 +139,7 @@ export function SelectPill<K extends string>({
         onPress={() => ref.current?.measureInWindow((x, y, w, h) => setAnchor({ x, y, w, h }))}
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${current}. Change`}
-        style={({ hovered }: any) => [styles.select, neuRaised("sm"), hovered && styles.itemHover, webCursor]}
+        style={({ hovered }: any) => [styles.select, shadows.neuRaised("sm"), hovered && styles.itemHover, webCursor]}
       >
         <Text style={styles.selectText} numberOfLines={1}>
           {label}: {current}
@@ -145,7 +149,7 @@ export function SelectPill<K extends string>({
       <Modal visible={!!anchor} transparent animationType="none" onRequestClose={close}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close list" />
         {anchor ? (
-          <ScrollView style={[styles.menu, neuRaised("md"), { top: anchor.y + anchor.h + 6, left, maxHeight: 360 }]} accessibilityRole="menu">
+          <ScrollView style={[styles.menu, shadows.neuRaised("md"), { top: anchor.y + anchor.h + 6, left, maxHeight: 360 }]} accessibilityRole="menu">
             {options.map((o) => {
               const on = o.key === value;
               return (
@@ -194,6 +198,7 @@ export function SideDrawer({
   /** The children fill the panel and do their own scrolling (a form with a pinned footer). */
   bare?: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const { width: W } = useWindowDimensions();
   const phone = W < 768;
   const panelW = phone ? W : Math.min(width, W - 48);
@@ -243,13 +248,15 @@ export function SideDrawer({
 
 /** The round × in a drawer or dialog header. */
 export function CloseButton({ onPress, label = "Close", onFrosted }: { onPress: () => void; label?: string; onFrosted?: boolean }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={6}
-      style={({ pressed }) => [styles.close, onFrosted ? styles.closeFrosted : [styles.closeSheer, neuRaised("sm")], pressed && { opacity: 0.8 }, webCursor]}
+      style={({ pressed }) => [styles.close, onFrosted ? styles.closeFrosted : [styles.closeSheer, shadows.neuRaised("sm")], pressed && { opacity: 0.8 }, webCursor]}
     >
       <CloseIcon size={16} color={onFrosted ? colors.textOnFrosted : colors.textPrimary} />
     </Pressable>
@@ -259,6 +266,7 @@ export function CloseButton({ onPress, label = "Close", onFrosted }: { onPress: 
 // ── Dialog ──────────────────────────────────────────────────────────────
 
 export function Dialog({ visible, onClose, width = 640, children }: { visible: boolean; onClose: () => void; width?: number; children: React.ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
   const { width: W, height: H } = useWindowDimensions();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -272,7 +280,8 @@ export function Dialog({ visible, onClose, width = 640, children }: { visible: b
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   disabled: { opacity: 0.45 },
   trigger: { alignItems: "center", justifyContent: "center" },
@@ -285,20 +294,20 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
   },
   item: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44, paddingHorizontal: 16 },
-  itemHover: { backgroundColor: "rgba(255,255,255,0.06)" },
+  itemHover: { backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.06)" : colors.surfacePressed },
   itemText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14 },
   itemTextOn: { fontFamily: fonts.bodySemiBold },
   select: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44, paddingHorizontal: 16, borderRadius: radii.pill, backgroundColor: colors.neuBase },
   selectText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary, maxWidth: 220 },
   itemDetail: { fontFamily: fonts.body, fontSize: 12.5, color: colors.textOnGlass },
-  divider: { height: 1, marginVertical: 4, marginHorizontal: 12, backgroundColor: "rgba(255,255,255,0.1)" },
+  divider: { height: 1, marginVertical: 4, marginHorizontal: 12, backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border },
   scrim: { backgroundColor: colors.overlay },
   drawer: { position: "absolute", top: 0, right: 0, bottom: 0 },
   drawerRounded: { borderTopLeftRadius: 24, borderBottomLeftRadius: 24, overflow: "hidden" },
-  sheerPanel: { backgroundColor: "rgba(48,54,68,0.98)", borderLeftWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
+  sheerPanel: { backgroundColor: theme.name === "dark" ? "rgba(48,54,68,0.98)" : colors.surfaceElevated, borderLeftWidth: 1, borderColor: theme.name === "dark" ? "rgba(255,255,255,0.12)" : colors.border },
   drawerBody: { padding: 28, paddingBottom: 40 },
   drawerBodyPhone: { padding: 16, paddingTop: 20 },
   drawerFooter: {
@@ -309,7 +318,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 18,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.1)",
+    borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
   },
   drawerFooterFrosted: { borderTopColor: "rgba(30,31,38,0.14)" },
   close: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },

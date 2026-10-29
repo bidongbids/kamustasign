@@ -23,8 +23,8 @@ import { useSharedCameraStream } from "../hooks/useSharedCameraStream";
 import { useSharedLandmarkers } from "../hooks/useSharedLandmarkers";
 import { findLanguage } from "../lib/languages";
 import { useBackHandler } from "../lib/backNavigation";
-import { colors, spacing, typography } from "../theme/theme";
-import { neuInset, neuRaised } from "../theme/shadows";
+import { spacing, typography, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 import { useResponsive } from "../theme/responsive";
 
 type Mode = "fingerspelling" | "word" | "signer";
@@ -50,6 +50,8 @@ type Props = {
 };
 
 export default function TranslatorHubScreen({ onBack, backLabel = "Back" }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [mode, setMode] = useState<Mode>("fingerspelling");
   const { isDesktop } = useResponsive();
   const [targetLanguage, setTargetLanguage] = useSelectedLanguage();
@@ -76,27 +78,27 @@ export default function TranslatorHubScreen({ onBack, backLabel = "Back" }: Prop
           {onBack && (
             <Pressable
               onPress={onBack}
-              style={[styles.helpButton, neuRaised("sm")]}
+              style={[styles.helpButton, shadows.neuRaised("sm")]}
               accessibilityRole="button"
               accessibilityLabel={backLabel}
             >
               <ChevronLeftIcon size={16} color={colors.textSecondary} />
             </Pressable>
           )}
-          <View style={[styles.logoTile, !isDesktop && styles.logoTileMobile, neuRaised("sm")]}>
+          <View style={[styles.logoTile, !isDesktop && styles.logoTileMobile, shadows.neuRaised("sm")]}>
             <HandLandmarkMark size={isDesktop ? 17 : 15} color={colors.primaryTeal} dotColor={colors.accentCoral} animated={false} />
           </View>
           {isDesktop && <Text style={styles.headerTitle}>Translator</Text>}
         </View>
 
-        <View style={[styles.switcherTrack, !isDesktop && styles.switcherTrackMobile, neuInset("sm")]}>
+        <View style={[styles.switcherTrack, !isDesktop && styles.switcherTrackMobile, shadows.neuInset("sm")]}>
           {(["fingerspelling", "word", "signer"] as Mode[]).map((m) => {
             const active = mode === m;
             return (
               <Pressable
                 key={m}
                 onPress={() => setMode(m)}
-                style={[styles.switcherOption, !isDesktop && styles.switcherOptionMobile, active && [styles.switcherOptionActive, neuRaised("sm")]]}
+                style={[styles.switcherOption, !isDesktop && styles.switcherOptionMobile, active && [styles.switcherOptionActive, shadows.neuRaised("sm")]]}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
               >
@@ -122,7 +124,7 @@ export default function TranslatorHubScreen({ onBack, backLabel = "Back" }: Prop
             renderTrigger={({ open, current }) => (
               <Pressable
                 onPress={open}
-                style={[styles.langPill, neuRaised("sm")]}
+                style={[styles.langPill, shadows.neuRaised("sm")]}
                 accessibilityRole="button"
                 accessibilityLabel={`Translate to ${current.name}`}
               >
@@ -135,7 +137,7 @@ export default function TranslatorHubScreen({ onBack, backLabel = "Back" }: Prop
           />
           <Pressable
             onPress={() => Alert.alert(MODE_LABELS[mode], HELP_TEXT[mode])}
-            style={[styles.helpButton, neuRaised("sm")]}
+            style={[styles.helpButton, shadows.neuRaised("sm")]}
             accessibilityRole="button"
             accessibilityLabel="Help"
           >
@@ -168,7 +170,8 @@ export default function TranslatorHubScreen({ onBack, backLabel = "Back" }: Prop
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   root: {
     flex: 1,
   },
@@ -179,7 +182,7 @@ const styles = StyleSheet.create({
     height: 70,
     flexShrink: 0,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.09)",
+    borderBottomColor: theme.name === "dark" ? "rgba(255,255,255,0.09)" : colors.border,
     position: "relative",
   },
   headerMobile: {

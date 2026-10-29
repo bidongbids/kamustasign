@@ -21,11 +21,13 @@ import {
   SIGNING_JOINTS,
   type SignerClip,
 } from "../lib/smplxSkeleton";
-import { colors } from "../theme/theme";
+import { darkColors, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 
 const LIMB_COLOR = new THREE.Color("#8E97A8");
-const SIGNING_LIMB_COLOR = new THREE.Color(colors.primaryTeal);
-const JOINT_COLOR = new THREE.Color(colors.accentCoral);
+// The figure is a material object: the same colours in every theme.
+const SIGNING_LIMB_COLOR = new THREE.Color(darkColors.primaryTeal);
+const JOINT_COLOR = new THREE.Color(darkColors.accentCoral);
 const SKIN_COLOR = new THREE.Color("#E8B48C");
 
 const FINGER_PATTERN = /thumb|index|middle|pinky|ring/;

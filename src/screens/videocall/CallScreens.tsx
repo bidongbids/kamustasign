@@ -16,8 +16,8 @@ import {
   RetryIcon,
   VideoIcon,
 } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import type { EndReason } from "../../hooks/useVideoCall";
 import type { CallPracticeEntry } from "../../lib/queries";
 import type { PresenceStatus } from "../../lib/callSignaling";
@@ -94,6 +94,8 @@ export function CallingScreen({
   localStream: MediaStream | null;
   onCancel: () => void;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const first = firstName(peerName);
   // Present at all = online. Their status is "busy" while this very call
   // rings on their screen; a real other call would have declined it at once.
@@ -117,7 +119,7 @@ export function CallingScreen({
           icon={(c) => <PhoneOffIcon size={18} color={c} />}
           style={styles.mt8}
         />
-        <View style={[styles.selfCard, neuInset("sm")]}>
+        <View style={[styles.selfCard, shadows.neuInset("sm")]}>
           <View style={styles.selfThumb}>
             <StreamVideo stream={localStream} mirrored style={{ width: "100%", height: "100%" }} />
           </View>
@@ -144,6 +146,8 @@ export function IncomingScreen({
   onAccept: () => void;
   onDecline: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [since] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -228,6 +232,8 @@ export function TeacherSummary({
   onBack: () => void;
   onSave: () => Promise<{ error: { message: string } | null }>;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const first = firstName(peerName);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -282,7 +288,7 @@ export function TeacherSummary({
                 <Text style={styles.cardTitle}>Practised</Text>
                 {notes.practice.map((p, i) => (
                   <View key={`${p.sign}-${i}`} style={[styles.practRow, i > 0 && styles.rowRule]}>
-                    <View style={[styles.signChip, neuRaised("sm")]}>
+                    <View style={[styles.signChip, shadows.neuRaised("sm")]}>
                       <Text style={styles.signChipText} numberOfLines={1}>
                         {signName(p.language, p.sign)}
                       </Text>
@@ -302,11 +308,11 @@ export function TeacherSummary({
             ) : null}
             <View style={[styles.card, styles.col]}>
               <Text style={styles.cardTitle}>What was signed</Text>
-              <View style={[styles.signedBox, neuInset("sm")]}>
+              <View style={[styles.signedBox, shadows.neuInset("sm")]}>
                 <Text style={styles.eyebrow}>{first.toUpperCase()} SIGNED</Text>
                 <Text style={styles.signedText}>{notes.theirs || "-"}</Text>
               </View>
-              <View style={[styles.signedBox, neuInset("sm")]}>
+              <View style={[styles.signedBox, shadows.neuInset("sm")]}>
                 <Text style={styles.eyebrow}>YOU SIGNED</Text>
                 <Text style={styles.signedText}>{notes.mine || "-"}</Text>
               </View>
@@ -338,8 +344,10 @@ export function TeacherSummary({
 }
 
 function Tile({ value, label, color }: { value: string; label: string; color?: string }) {
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
-    <View style={[styles.tile, neuRaised("sm")]}>
+    <View style={[styles.tile, shadows.neuRaised("sm")]}>
       <Text style={[styles.tileValue, color ? { color } : null]}>{value}</Text>
       <Text style={styles.tileLabel}>{label}</Text>
     </View>
@@ -360,6 +368,8 @@ export function StudentEnded({
   reason: EndReason | null;
   onBack: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const practised = notes?.practice ?? [];
   const got = practised.filter((p) => p.passed);
   return (
@@ -412,12 +422,14 @@ export function CallErrorScreen({
   onBack: () => void;
   onCallAgain: () => void;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const first = firstName(peerName);
-  const card = errorCard(reason, first, error);
+  const card = errorCard(reason, first, error, colors);
   return (
     <GradientBackground variant="subtle" style={styles.center}>
-      <View style={[styles.errorCard, neuRaised("md")]} accessibilityLiveRegion="polite">
-        <View style={[styles.errorIcon, neuInset("sm")]}>{card.icon}</View>
+      <View style={[styles.errorCard, shadows.neuRaised("md")]} accessibilityLiveRegion="polite">
+        <View style={[styles.errorIcon, shadows.neuInset("sm")]}>{card.icon}</View>
         <View style={styles.flex}>
           <Text style={styles.errorTitle} accessibilityRole="header">
             {card.title}
@@ -435,7 +447,7 @@ export function CallErrorScreen({
   );
 }
 
-function errorCard(reason: EndReason | null, first: string, error: string | null) {
+function errorCard(reason: EndReason | null, first: string, error: string | null, colors: ThemeColors) {
   const red = colors.needsPracticeText;
   switch (reason) {
     case "declined":
@@ -460,10 +472,12 @@ function errorCard(reason: EndReason | null, first: string, error: string | null
 }
 
 export function WebOnlyScreen({ onBack }: { onBack: () => void }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <GradientBackground variant="subtle" style={styles.center}>
-      <View style={[styles.errorCard, neuRaised("md")]}>
-        <View style={[styles.errorIcon, neuInset("sm")]}>
+      <View style={[styles.errorCard, shadows.neuRaised("md")]}>
+        <View style={[styles.errorIcon, shadows.neuInset("sm")]}>
           <AlertCircleIcon size={22} color={colors.textOnGlass} />
         </View>
         <View style={styles.flex}>
@@ -478,7 +492,8 @@ export function WebOnlyScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   centerScroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 14 },

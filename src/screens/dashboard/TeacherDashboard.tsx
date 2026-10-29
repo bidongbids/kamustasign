@@ -20,7 +20,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import DashboardShell from "./DashboardShell";
-import { colors, fonts } from "../../theme/theme";
+import { fonts, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useResponsive } from "../../theme/responsive";
 import { Notice, type NoticeState } from "./ManageKit";
 import { CloseButton, SideDrawer } from "./Overlays";
@@ -92,6 +93,7 @@ type Props = {
 const LOAD_ERROR = { title: "Couldn't load your students", message: "Check the internet connection, then try again. Nothing you saved was lost." };
 
 export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart, onAccountChange, onOpenTranslator }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const { width, isDesktop } = useResponsive();
   const phone = width < 768;
   const compact = isDesktop && width < 1400;
@@ -657,7 +659,8 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   switcherRow: { marginBottom: 16 },
   drawerHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   drawerTitle: { fontFamily: fonts.heading, fontSize: 24, color: colors.textPrimary },

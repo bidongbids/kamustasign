@@ -6,10 +6,12 @@ import React, { useState } from "react";
 import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import HandLandmarkMark from "../../components/HandLandmarkMark";
 import { ActionButton } from "./ManageKit";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 export function FirstRunCard({ onCreate }: { onCreate: (name: string) => Promise<boolean> }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const submit = async () => {
@@ -23,7 +25,7 @@ export function FirstRunCard({ onCreate }: { onCreate: (name: string) => Promise
   return (
     <View style={styles.wrap}>
       <View style={styles.card}>
-        <View style={[styles.mark, neuRaised("sm")]}>
+        <View style={[styles.mark, shadows.neuRaised("sm")]}>
           <HandLandmarkMark size={30} color={colors.primaryTealLight} dotColor={colors.accentCoral} />
         </View>
         <Text style={styles.title} accessibilityRole="header">
@@ -41,14 +43,14 @@ export function FirstRunCard({ onCreate }: { onCreate: (name: string) => Promise
             accessibilityLabel="Class name"
             onSubmitEditing={submit}
             autoFocus
-            style={[styles.input, neuInset("sm")]}
+            style={[styles.input, shadows.neuInset("sm")]}
           />
           <ActionButton label="Create class" variant="primary" size="lg" onPress={submit} loading={busy} disabled={!name.trim()} />
         </View>
         <View style={styles.steps} accessible accessibilityLabel="Step 1 of 3: create the class. Then invite students, then choose what they learn.">
           {steps.map((s, i) => (
             <View key={s} style={styles.step}>
-              <View style={[styles.stepNo, i === 0 ? styles.stepNoOn : neuRaised("sm")]}>
+              <View style={[styles.stepNo, i === 0 ? styles.stepNoOn : shadows.neuRaised("sm")]}>
                 <Text style={[styles.stepNoText, i === 0 && styles.stepNoTextOn]}>{i + 1}</Text>
               </View>
               <Text style={[styles.stepText, i === 0 && styles.stepTextOn]}>{s}</Text>
@@ -62,6 +64,7 @@ export function FirstRunCard({ onCreate }: { onCreate: (name: string) => Promise
 
 /** Static placeholder blocks while the dashboard loads. */
 export function PageSkeleton() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View accessibilityLabel="Loading your class…" accessibilityLiveRegion="polite" style={styles.skel}>
       <View style={[styles.bar, { width: 220, height: 30 }]} />
@@ -78,7 +81,8 @@ export function PageSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1 },
   wrap: { alignItems: "center", paddingVertical: 32 },
   card: {
@@ -88,8 +92,8 @@ const styles = StyleSheet.create({
     padding: 32,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface,
     gap: 14,
   },
   mark: { width: 64, height: 64, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase, marginBottom: 6 },
@@ -118,6 +122,6 @@ const styles = StyleSheet.create({
   stepTextOn: { fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
   skel: { gap: 14 },
   skelRow: { flexDirection: "row", alignItems: "center", gap: 16, height: 56 },
-  dot: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.07)" },
-  bar: { height: 12, borderRadius: 6, backgroundColor: "rgba(255,255,255,0.07)" },
+  dot: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.07)" : colors.well },
+  bar: { height: 12, borderRadius: 6, backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.07)" : colors.well },
 });

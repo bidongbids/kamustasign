@@ -6,8 +6,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Modal, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { ChevronLeftIcon, ArrowRightIcon } from "./icons/UiIcons";
-import { colors, fonts } from "../theme/theme";
-import { neuRaised } from "../theme/shadows";
+import { fonts, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 import { monthGrid, parseDay, toDay } from "../lib/teacherInsights";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
@@ -27,6 +27,8 @@ const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.g
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
 export default function DatePickerField({ value, onChange, label, placeholder = "No due date" }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const selected = value ? parseDay(value) : null;
   const ref = useRef<View>(null);
   const { width: W, height: H } = useWindowDimensions();
@@ -100,13 +102,13 @@ export default function DatePickerField({ value, onChange, label, placeholder = 
       <Modal visible={!!anchor} transparent animationType="none" onRequestClose={close}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close calendar" />
         {pos ? (
-          <View style={[styles.card, neuRaised("md"), pos]} accessibilityViewIsModal>
+          <View style={[styles.card, shadows.neuRaised("md"), pos]} accessibilityViewIsModal>
             <View style={styles.head}>
               <Pressable
                 onPress={() => setCursor(new Date(y, m - 1, 1))}
                 accessibilityRole="button"
                 accessibilityLabel="Previous month"
-                style={[styles.nav, neuRaised("sm"), webCursor]}
+                style={[styles.nav, shadows.neuRaised("sm"), webCursor]}
               >
                 <ChevronLeftIcon size={16} color={colors.textPrimary} />
               </Pressable>
@@ -117,7 +119,7 @@ export default function DatePickerField({ value, onChange, label, placeholder = 
                 onPress={() => setCursor(new Date(y, m + 1, 1))}
                 accessibilityRole="button"
                 accessibilityLabel="Next month"
-                style={[styles.nav, neuRaised("sm"), webCursor]}
+                style={[styles.nav, shadows.neuRaised("sm"), webCursor]}
               >
                 <ArrowRightIcon size={15} color={colors.textPrimary} />
               </Pressable>
@@ -182,6 +184,7 @@ export default function DatePickerField({ value, onChange, label, placeholder = 
 
 /** A small calendar outline, drawn from Views (the icon set has a clock, not a calendar). */
 function CalendarGlyph() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.glyph} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <View style={styles.glyphRings}>
@@ -193,7 +196,8 @@ function CalendarGlyph() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   field: {
     flexDirection: "row",
     alignItems: "center",
@@ -215,7 +219,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
   },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   nav: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase },
@@ -223,7 +227,7 @@ const styles = StyleSheet.create({
   week: { flexDirection: "row", justifyContent: "space-between" },
   weekday: { width: 40, textAlign: "center", fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.textOnGlass, paddingVertical: 6 },
   day: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", marginVertical: 1 },
-  dayHover: { backgroundColor: "rgba(255,255,255,0.06)" },
+  dayHover: { backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.06)" : colors.surfacePressed },
   daySelected: { backgroundColor: colors.actionPrimaryFill },
   dayToday: { borderWidth: 1.5, borderColor: colors.primaryTealLight },
   dayCursor: { borderWidth: 2, borderColor: colors.focusRing },

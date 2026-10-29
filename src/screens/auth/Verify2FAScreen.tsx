@@ -5,7 +5,7 @@ import AuthButton from "../../components/auth/AuthButton";
 import AuthScreenShell from "./AuthScreenShell";
 import { supabase } from "../../lib/supabase";
 import { cleanTotpCode, friendlyAuthError } from "../../lib/authForms";
-import { authStyles as s } from "./authStyles";
+import { useAuthStyles } from "./authStyles";
 
 type Props = {
   accentColor: string;
@@ -17,6 +17,7 @@ type Props = {
 };
 
 export default function Verify2FAScreen({ accentColor, factorId, onVerified, onCancel, title = "Enter your 2FA code" }: Props) {
+  const s = useAuthStyles();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

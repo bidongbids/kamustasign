@@ -10,8 +10,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import SegmentedToggle from "../../components/SegmentedToggle";
 import { AlertCircleIcon, CheckIcon, ClockIcon, CloseIcon, RetryIcon, SearchIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { getLessonProgress } from "../../lib/queries";
 import { MASTERY_PASSES } from "../../lib/curriculum";
 import { callModelScope, summarizePractice } from "../../lib/callPractice";
@@ -58,12 +58,15 @@ function tryKind(r: PracticeResult): TryKind {
 const TRY_WORDS: Record<TryKind, string> = { passed: "Got it", notYet: "Not yet", close: "Close", unsure: "Not sure" };
 
 function TryIcon({ kind, size = 16 }: { kind: TryKind; size?: number }) {
+  const { colors } = useTheme();
   if (kind === "passed") return <CheckIcon size={size} color={colors.successText} />;
   if (kind === "unsure") return <AlertCircleIcon size={size} color={colors.textOnGlass} />;
   return <RetryIcon size={size} color={colors.accentCoral} />;
 }
 
 export default function CallToolsPanel(props: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { phone, tab, onTab, onClose, modelKey } = props;
   return (
     <View style={[styles.panel, phone && styles.panelPhone]}>
@@ -82,7 +85,7 @@ export default function CallToolsPanel(props: Props) {
         ) : props.practice && tab === "practice" ? (
           <CallPill size="sm" label="Stop" onPress={() => props.onAsk(null)} icon={(c) => <CloseIcon size={13} color={c} />} />
         ) : (
-          <Pressable onPress={onClose} style={[styles.close, neuRaised("sm")]} accessibilityRole="button" accessibilityLabel="Close Tools" hitSlop={6}>
+          <Pressable onPress={onClose} style={[styles.close, shadows.neuRaised("sm")]} accessibilityRole="button" accessibilityLabel="Close Tools" hitSlop={6}>
             <CloseIcon size={15} color={colors.textPrimary} />
           </Pressable>
         )}
@@ -96,6 +99,8 @@ export default function CallToolsPanel(props: Props) {
 }
 
 function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk, reading, phone }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const first = firstName(peer.name);
   const scope = callModelScope(modelKey);
   const letters = scope.group !== "words"; // letters and numbers: one still handshape each, shown as a grid
@@ -134,7 +139,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
       <View style={styles.section}>
         <Text style={styles.small}>Asked {first} to sign</Text>
         <View style={styles.askRow} accessibilityLiveRegion="polite">
-          <View style={[styles.askTile, neuRaised("sm"), { borderColor: ringColor }]}>
+          <View style={[styles.askTile, shadows.neuRaised("sm"), { borderColor: ringColor }]}>
             <Text style={[styles.askGlyph, practice.sign.length > 2 && styles.askGlyphWord]} numberOfLines={1} adjustsFontSizeToFit>
               {name(practice.sign)}
             </Text>
@@ -163,7 +168,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
               <>
                 <View style={styles.statusLine}>
                   <RetryIcon size={16} color={colors.accentCoral} />
-                  <Text style={[styles.statusTitle, { color: colors.accentCoral }]}>Not yet</Text>
+                  <Text style={[styles.statusTitle, { color: colors.accentCoralText }]}>Not yet</Text>
                 </View>
                 <Text style={styles.statusMain}>
                   {last!.seen && last!.seen !== practice.sign ? `The computer saw “${name(last!.seen)}”` : "Not clear enough yet"}
@@ -182,7 +187,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
             {current.map((r, i) => {
               const k = tryKind(r);
               return (
-                <View key={i} style={[styles.tryRow, neuInset("sm")]}>
+                <View key={i} style={[styles.tryRow, shadows.neuInset("sm")]}>
                   <Text style={styles.tryNo}>Try {i + 1}</Text>
                   <TryIcon kind={k} size={14} />
                   <Text style={[styles.tryWord, { color: k === "passed" ? colors.successText : k === "unsure" ? colors.textOnGlass : colors.accentCoral }]}>
@@ -231,7 +236,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
                 onPress={() => onAsk(s)}
                 accessibilityRole="button"
                 accessibilityLabel={`Ask ${peer.name} to sign ${s}${tried.has(s) ? ", tried but not learned yet" : ""}`}
-                style={({ pressed }) => [styles.letter, { width: tile, height: tile }, neuRaised("sm"), tried.has(s) && styles.letterTried, pressed && styles.letterPressed]}
+                style={({ pressed }) => [styles.letter, { width: tile, height: tile }, shadows.neuRaised("sm"), tried.has(s) && styles.letterTried, pressed && styles.letterPressed]}
               >
                 <Text style={styles.letterText}>{s}</Text>
               </Pressable>
@@ -246,7 +251,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
         </>
       ) : (
         <>
-          <View style={[styles.search, neuInset("sm")]}>
+          <View style={[styles.search, shadows.neuInset("sm")]}>
             <SearchIcon size={16} color={colors.textSecondary} />
             <TextInput
               value={search}
@@ -264,7 +269,7 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
                 onPress={() => onAsk(s)}
                 accessibilityRole="button"
                 accessibilityLabel={`Ask ${peer.name} to sign ${name(s)}`}
-                style={({ pressed }) => [styles.chip, neuRaised("sm"), tried.has(s) && styles.letterTried, pressed && styles.letterPressed]}
+                style={({ pressed }) => [styles.chip, shadows.neuRaised("sm"), tried.has(s) && styles.letterTried, pressed && styles.letterPressed]}
               >
                 <Text style={styles.chipText}>{name(s)}</Text>
               </Pressable>
@@ -279,11 +284,13 @@ function PracticeTab({ peer, modelKey, signs, practice, results, modelOf, onAsk,
 }
 
 function Earlier({ entries }: { entries: ReturnType<typeof summarizePractice> }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.triesBlock}>
       <Text style={styles.eyebrow}>EARLIER IN THIS CALL</Text>
       {entries.map((e, i) => (
-        <View key={`${e.sign}-${i}`} style={[styles.tryRow, neuInset("sm")]}>
+        <View key={`${e.sign}-${i}`} style={[styles.tryRow, shadows.neuInset("sm")]}>
           <Text style={styles.earlierSign}>{signName(e.language, e.sign)}</Text>
           {e.passed ? <CheckIcon size={14} color={colors.successText} /> : <RetryIcon size={14} color={colors.accentCoral} />}
           <Text style={[styles.tryWord, { color: e.passed ? colors.successText : colors.accentCoral }]}>{e.passed ? "Got it" : "Not yet"}</Text>
@@ -298,6 +305,8 @@ function Earlier({ entries }: { entries: ReturnType<typeof summarizePractice> })
 }
 
 function ReadingTab({ peer, modelKey, onModel, readFrom, onReadFrom, autoSpeak }: Props) {
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const first = firstName(peer.name);
   const models = CALL_MODEL_ORDER.map((key) => ({ key, name: MODEL_NAMES[key], hint: MODEL_HINTS[key] }));
   return (
@@ -313,7 +322,7 @@ function ReadingTab({ peer, modelKey, onModel, readFrom, onReadFrom, autoSpeak }
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
               accessibilityLabel={`${m.name}. ${m.hint}`}
-              style={[styles.radio, selected ? neuRaised("sm") : styles.radioIdle]}
+              style={[styles.radio, selected ? shadows.neuRaised("sm") : styles.radioIdle]}
             >
               <View style={[styles.radioDot, selected && styles.radioDotOn]}>{selected ? <View style={styles.radioDotInner} /> : null}</View>
               <View style={styles.flex}>
@@ -347,7 +356,8 @@ function ReadingTab({ peer, modelKey, onModel, readFrom, onReadFrom, autoSpeak }
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   panel: {
     flex: 1,
@@ -372,7 +382,7 @@ const styles = StyleSheet.create({
   body2: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.textOnGlass },
   bold: { fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
   small: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textOnGlass },
-  warn: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 18, color: colors.accentCoral },
+  warn: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 18, color: colors.accentCoralText },
   eyebrow: { fontFamily: fonts.bodyMedium, fontSize: 10, letterSpacing: 1.1, color: colors.textOnGlass, marginTop: 4 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP },
   letter: { borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase, borderWidth: 1.5, borderColor: "transparent" },

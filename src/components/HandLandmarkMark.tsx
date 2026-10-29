@@ -6,7 +6,8 @@
 import React, { useEffect, useRef } from "react";
 import { Animated } from "react-native";
 import Svg, { Circle, Line } from "react-native-svg";
-import { colors } from "../theme/theme";
+import { type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 import { useReduceMotion } from "../hooks/useReduceMotion";
 
 type Props = {
@@ -42,10 +43,13 @@ const CONNECTIONS: [number, number][] = [
 
 export default function HandLandmarkMark({
   size = 96,
-  color = colors.primaryTeal,
-  dotColor = colors.accentCoral,
+  color: colorProp,
+  dotColor: dotColorProp,
   animated = true,
 }: Props) {
+  const { colors } = useTheme();
+  const color = colorProp ?? colors.primaryTeal;
+  const dotColor = dotColorProp ?? colors.accentCoral;
   const pulse = useRef(new Animated.Value(0)).current;
   const reduceMotion = useReduceMotion();
 

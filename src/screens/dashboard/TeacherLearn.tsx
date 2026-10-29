@@ -8,8 +8,8 @@ import { ActionButton, type NoticeState } from "./ManageKit";
 import ClassPlanEditor, { type SaveBarState } from "./ClassPlanEditor";
 import TeacherModules, { type ModuleEditorState } from "./TeacherModules";
 import { ArrowRightIcon, CheckIcon, GridIcon, PlusIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { CURRICULUM, getGroup, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { dueInfo } from "../../lib/teacherInsights";
 import type { ClassRow, ModuleRow, ProgressEmbed, StudentProgressSummary } from "../../lib/queries";
@@ -53,6 +53,8 @@ export function planSummary(plan: ClassPlan): string {
 }
 
 export default function TeacherLearn(props: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { klass, plan, step, onStep, modules, phone, wide } = props;
   const dueThisWeek = modules.filter((m) => {
     const d = dueInfo(m.due_date);
@@ -137,13 +139,15 @@ export default function TeacherLearn(props: Props) {
 }
 
 function StepCard({ n, title, sub, active, done, onPress }: { n: number; title: string; sub: string; active: boolean; done?: boolean; onPress: () => void }) {
+  const { shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={`Step ${n}: ${title}. ${sub}`}
-      style={({ hovered }: any) => [styles.step, active ? [styles.stepActive, neuRaised("sm")] : styles.stepIdle, hovered && !active && styles.stepHover, webCursor]}
+      style={({ hovered }: any) => [styles.step, active ? [styles.stepActive, shadows.neuRaised("sm")] : styles.stepIdle, hovered && !active && styles.stepHover, webCursor]}
     >
       <View style={[styles.stepNo, active ? styles.stepNoActive : done ? styles.stepNoDone : styles.stepNoIdle]}>
         {done && !active ? <CheckIcon size={16} color="#FFFFFF" strokeWidth={3} /> : <Text style={[styles.stepNoText, active && styles.stepNoTextActive]}>{n}</Text>}
@@ -158,7 +162,8 @@ function StepCard({ n, title, sub, active, done, onPress }: { n: number; title: 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   flexShrink: { flexShrink: 1, minWidth: 0 },
   head: { flexDirection: "row", alignItems: "flex-start", gap: 16, marginBottom: 18 },
@@ -170,8 +175,8 @@ const styles = StyleSheet.create({
   stepsPhone: { flexDirection: "column", alignItems: "stretch", gap: 10 },
   step: { flexDirection: "row", alignItems: "center", gap: 14, minHeight: 64, paddingHorizontal: 16, paddingVertical: 10, borderRadius: radii.md, borderWidth: 1.5 },
   stepActive: { backgroundColor: colors.neuBase, borderColor: colors.primaryTealLight },
-  stepIdle: { borderColor: "rgba(255,255,255,0.14)" },
-  stepHover: { backgroundColor: "rgba(255,255,255,0.04)" },
+  stepIdle: { borderColor: theme.name === "dark" ? "rgba(255,255,255,0.14)" : colors.border },
+  stepHover: { backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.04)" : colors.surfacePressed },
   stepNo: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   stepNoActive: { backgroundColor: colors.actionPrimaryFill },
   stepNoDone: { backgroundColor: colors.success },

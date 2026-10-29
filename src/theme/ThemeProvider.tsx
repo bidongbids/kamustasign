@@ -1,36 +1,31 @@
-// Theme: two independent choices, the mode (light / dark / match device) and
-// the colour scheme (Graphite Aurora, Ocean, Forest, Sunset), per
+// Theme: two independent choices, the mode (light / dark) and the colour
+// scheme (Graphite Aurora, Ocean, Forest, Sunset), per
 // docs/design/design_handoff_classroom_theming/README.md §1. Both are saved
-// per device.
+// per device and apply at every width.
 //
 // Screens read colors and shadows from useTheme() and build their styles
 // with a makeStyles(colors) factory memoised per palette, so switching
 // re-renders in place without a reload. A screen that still imports the
-// static `colors` from theme.ts is always Graphite dark; that's how
-// not-yet-migrated screens behave until they're moved over.
+// static `colors` from theme.ts is always Graphite dark, so new screens
+// shouldn't.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Platform, useColorScheme } from "react-native";
+import { Appearance, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { palettes, SchemeName, SCHEMES, ThemeColors, ThemeName } from "./theme";
 import { makeShadows, Shadows } from "./shadows";
 import { useResponsive } from "./responsive";
 
-export type ThemeMode = "system" | "light" | "dark";
+export type ThemeMode = "light" | "dark";
 
 const MODE_KEY = "kamustasign.themePreference";
 const SCHEME_KEY = "kamustasign.colorScheme";
-const DEFAULT_MODE: ThemeMode = "system";
+const DEFAULT_MODE: ThemeMode = "dark";
 const DEFAULT_SCHEME: SchemeName = "graphite";
-
-// Desktop and tablet stay dark until every screen reads its colours from
-// useTheme() (handoff §10, steps 3-5): before that, a light GlassCard would
-// hold dark-styled content. Light mode already works on phones.
-const LIGHT_ON_EVERY_WIDTH = false;
 
 export type Theme = {
   /** What the user picked. */
   mode: ThemeMode;
-  /** Resolved: "system" follows the device. */
+  /** The palette in use: the same as `mode`. */
   name: ThemeName;
   scheme: SchemeName;
   colors: ThemeColors;
@@ -39,11 +34,15 @@ export type Theme = {
   isMobile: boolean;
   setMode: (next: ThemeMode) => void;
   setScheme: (next: SchemeName) => void;
-  /** Match device + Graphite Aurora. */
+  /** Dark + Graphite Aurora. */
   reset: () => void;
 };
 
-const isMode = (v: unknown): v is ThemeMode => v === "system" || v === "light" || v === "dark";
+const isMode = (v: unknown): v is ThemeMode => v === "light" || v === "dark";
+// "Match device" was a third choice until 10-30: keep what such a device
+// showed by reading its setting once.
+const fromSaved = (v: unknown): ThemeMode | null =>
+  isMode(v) ? v : v === "system" ? (Appearance.getColorScheme() === "light" ? "light" : "dark") : null;
 const isScheme = (v: unknown): v is SchemeName => SCHEMES.some((s) => s.key === v);
 
 // AsyncStorage on the web is localStorage under the same key, so the saved
@@ -74,11 +73,7 @@ const ThemeContext = createContext<Theme>(DARK);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { isMobile } = useResponsive();
-  const device = useColorScheme();
-  const [mode, setModeState] = useState<ThemeMode>(() => {
-    const v = savedNow(MODE_KEY);
-    return isMode(v) ? v : DEFAULT_MODE;
-  });
+  const [mode, setModeState] = useState<ThemeMode>(() => fromSaved(savedNow(MODE_KEY)) ?? DEFAULT_MODE);
   const [scheme, setSchemeState] = useState<SchemeName>(() => {
     const v = savedNow(SCHEME_KEY);
     return isScheme(v) ? v : DEFAULT_SCHEME;
@@ -87,7 +82,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     AsyncStorage.multiGet([MODE_KEY, SCHEME_KEY])
       .then(([[, m], [, s]]) => {
-        if (isMode(m)) setModeState(m);
+        const saved = fromSaved(m);
+        if (saved) setModeState(saved);
         if (isScheme(s)) setSchemeState(s);
       })
       .catch(() => {});
@@ -106,8 +102,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setScheme(DEFAULT_SCHEME);
   }, [setMode, setScheme]);
 
-  const wanted: ThemeName = mode === "system" ? (device === "light" ? "light" : "dark") : mode;
-  const name: ThemeName = isMobile || LIGHT_ON_EVERY_WIDTH ? wanted : "dark";
+  const name: ThemeName = mode;
 
   const value = useMemo<Theme>(() => {
     const colors = palettes[scheme][name];
@@ -118,6 +113,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function useTheme(): Theme {
   return useContext(ThemeContext);
+}
+
+/**
+ * Children get the dark palette of the current scheme in either mode. For
+ * what sits on the camera or a material object (README §2: the camera, video
+ * and the device housings stay near-black), so its text stays light on it.
+ */
+export function DarkTheme({ children }: { children: React.ReactNode }) {
+  const theme = useTheme();
+  const value = useMemo<Theme>(() => {
+    if (theme.name === "dark") return theme;
+    const colors = palettes[theme.scheme].dark;
+    return { ...theme, name: "dark", colors, shadows: makeShadows("dark", colors) };
+  }, [theme]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 /**

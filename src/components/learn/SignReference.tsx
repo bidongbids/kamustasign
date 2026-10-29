@@ -9,8 +9,8 @@ import { Image, Linking, Modal, Platform, Pressable, StyleSheet, Text, View } fr
 import GlassCard from "../GlassCard";
 import KidButton from "./KidButton";
 import { CloseIcon, ExpandIcon, EyeIcon } from "../icons/UiIcons";
-import { colors, fonts, kidTypography, radii, typography } from "../../theme/theme";
-import { neuInset } from "../../theme/shadows";
+import { fonts, kidTypography, radii, typography, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import type { SignMedia } from "../../lib/referenceMedia";
 
 export type { SignMedia };
@@ -29,6 +29,8 @@ type Props = {
 };
 
 export default function SignReference({ sign, media = null, motionHint, reduceMotion, loading, style, fill }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const label = `How to sign ${sign}`;
   // Clips are web-only for now, like the translator: no native video module
   // is installed, and the classroom runs in the browser.
@@ -66,7 +68,7 @@ export default function SignReference({ sign, media = null, motionHint, reduceMo
           />
         ) : null}
       </View>
-      <View style={[styles.slot, neuInset("md"), showable && styles.slotMedia, fill && styles.slotFill]}>
+      <View style={[styles.slot, shadows.neuInset("md"), showable && styles.slotMedia, fill && styles.slotFill]}>
         {loading ? null : showable ? (
           <Media media={showable} label={label} reduceMotion={reduceMotion} fill={fill} />
         ) : (
@@ -88,6 +90,7 @@ export default function SignReference({ sign, media = null, motionHint, reduceMo
 }
 
 function Media({ media, label, reduceMotion, fill }: { media: SignMedia; label: string; reduceMotion?: boolean; fill?: boolean }) {
+  const styles = useThemedStyles(makeStyles);
   return media.kind === "image" ? (
     <Image source={{ uri: media.uri }} style={fill ? styles.mediaFill : styles.media} resizeMode="contain" accessibilityLabel={label} />
   ) : (
@@ -120,6 +123,8 @@ function FullScreenReference({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   // Web/Electron: also take the browser's full screen while open, and close
   // on Escape. The browser can refuse full screen (e.g. inside an iframe);
   // the overlay still covers the window. Runs once per opening: onClose is
@@ -160,7 +165,7 @@ function FullScreenReference({
       <View style={styles.fullRoot} accessibilityViewIsModal>
         <View style={styles.fullHeader}>
           <Text style={styles.fullTitle} numberOfLines={1}>
-            How to sign <Text style={{ color: colors.accentCoral }}>{sign}</Text>
+            How to sign <Text style={{ color: colors.accentCoralText }}>{sign}</Text>
           </Text>
           <KidButton
             small
@@ -199,7 +204,8 @@ const videoFillStyle: React.CSSProperties = {
   background: "transparent",
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   slotFill: { minHeight: 0 },
   mediaFill: { position: "absolute", top: 8, left: 8, right: 8, bottom: 8 },
   content: { flex: 1 },

@@ -7,8 +7,8 @@ import { StyleSheet, Text, View } from "react-native";
 import Svg, { Rect } from "react-native-svg";
 import KidButton from "./KidButton";
 import { CameraIcon } from "../icons/UiIcons";
-import { colors, fonts, kidTypography, typography } from "../../theme/theme";
-import { neuInset } from "../../theme/shadows";
+import { fonts, kidTypography, typography, type ThemeColors } from "../../theme/theme";
+import { DarkTheme, useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   phase: "loading" | "error" | "live";
@@ -25,7 +25,16 @@ type Props = {
   doneLabel?: string;
 };
 
-export default function PracticeCameraOverlay({
+// On the camera, which is near-black in both modes: always the dark palette.
+export default function PracticeCameraOverlay(props: Props) {
+  return (
+    <DarkTheme>
+      <Overlay {...props} />
+    </DarkTheme>
+  );
+}
+
+function Overlay({
   phase,
   handSeen,
   hold = 0,
@@ -35,13 +44,15 @@ export default function PracticeCameraOverlay({
   holdLabel = "Hold it…",
   doneLabel = "Got it!",
 }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [box, setBox] = useState({ w: 0, h: 0 });
 
   if (phase !== "live") {
     const error = phase === "error";
     return (
       <View style={styles.scrim}>
-        <View style={[styles.icon, neuInset("sm")]}>
+        <View style={[styles.icon, shadows.neuInset("sm")]}>
           <CameraIcon size={28} color={error ? colors.needsPractice : colors.textSecondary} />
         </View>
         <Text style={[typography.h2, styles.title]}>{error ? "We can't see the camera" : "Getting the camera ready…"}</Text>
@@ -91,7 +102,8 @@ export default function PracticeCameraOverlay({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   scrim: {
     position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: colors.overlay,

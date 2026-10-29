@@ -18,8 +18,8 @@ import { ActionButton, CheckBox, SearchField, type NoticeState } from "./ManageK
 import SegmentedToggle from "../../components/SegmentedToggle";
 import { Bar } from "./TeacherToday";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon, PlusIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { saveClassPlan, type ClassRow } from "../../lib/queries";
 import { CURRICULUM, getGroup, planSigns, type ClassPlan, type SignLanguage } from "../../lib/curriculum";
 import { WORD_CATEGORIES, getWordCategory, type WordCategory } from "../../lib/wordCategories";
@@ -65,6 +65,8 @@ export default function ClassPlanEditor({
   /** Desktop: the side cards sit beside the editor. */
   wide: boolean;
 }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [language, setLanguage] = useState<SignLanguage>(LANGUAGES[0] ?? "asl");
   const [drafts, setDrafts] = useState<Drafts>(() => draftsFrom(plan));
   const [open, setOpen] = useState<Set<WordCategory>>(new Set());
@@ -185,7 +187,7 @@ export default function ClassPlanEditor({
           />
         ) : null}
         <View
-          style={[styles.summary, neuInset("sm")]}
+          style={[styles.summary, shadows.neuInset("sm")]}
           accessible
           accessibilityLabel={`${chosen.size} of ${all.length} ${langLabel} words in the plan, ${Math.round(share * 100)}%`}
         >
@@ -313,6 +315,7 @@ export default function ClassPlanEditor({
 
 /** The pinned bar under the page while the plan has unsaved changes. */
 export function SaveBar({ bar }: { bar: NonNullable<SaveBarState> }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.saveBar} accessibilityLiveRegion="polite">
       <View style={styles.saveIcon}>
@@ -327,7 +330,8 @@ export function SaveBar({ bar }: { bar: NonNullable<SaveBarState> }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   layout: { gap: 18 },
   layoutWide: { flexDirection: "row", alignItems: "flex-start" },
   main: { flex: 1, minWidth: 0 },
@@ -335,8 +339,8 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surface,
   },
   topRow: { flexDirection: "row", alignItems: "center", gap: 14, flexWrap: "wrap" },
   summary: {
@@ -358,7 +362,7 @@ const styles = StyleSheet.create({
   row8: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   muted: { fontFamily: fonts.body, fontSize: 13.5, color: colors.textOnGlass, paddingVertical: 12 },
   cat: { paddingVertical: 2 },
-  rule: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)" },
+  rule: { borderTopWidth: 1, borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border },
   catRow: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 52 },
   catCheck: { padding: 8 },
   catMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52 },
@@ -367,7 +371,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, paddingLeft: 42, paddingBottom: 14 },
   chip: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: 14, borderRadius: radii.pill, borderWidth: 1.5 },
   chipOn: { backgroundColor: colors.actionPrimaryFill, borderColor: colors.actionPrimaryFill },
-  chipOff: { borderColor: "rgba(255,255,255,0.16)", backgroundColor: "transparent" },
+  chipOff: { borderColor: theme.name === "dark" ? "rgba(255,255,255,0.16)" : colors.border, backgroundColor: "transparent" },
   // Changed since the last save: a dashed gold ring, so unsaved picks are visible.
   chipChanged: { borderStyle: "dashed", borderColor: colors.accentCoral },
   chipText: { fontFamily: fonts.bodySemiBold, fontSize: 13.5 },
@@ -389,8 +393,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(22,25,32,0.97)",
+    borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(22,25,32,0.97)" : colors.surface,
   },
   saveIcon: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.8, borderColor: colors.attention, alignItems: "center", justifyContent: "center" },
   saveIconText: { fontFamily: fonts.bodySemiBold, fontSize: 13, lineHeight: 16, color: colors.attention },

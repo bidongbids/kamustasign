@@ -3,7 +3,7 @@
 // you see first:
 //   learned  - a raised tile, a small check inside its top-right corner, stars
 //   tried    - a raised tile with stars, no check
-//   not yet  - no fill, a dashed outline, the sign in grey and "not yet"
+//   not yet  - no fill, a dashed outline, the sign in grey, nothing under it
 //   next     - raised, an accent ring and a "NEXT" pill, and "start"
 // All from lesson_progress.
 import React from "react";
@@ -43,8 +43,9 @@ export default function SignTile({ sign, language, group, word, row, isNext, onP
   const name = signName(language, sign);
 
   const stateWords = notYet ? "not started" : learned ? `learned, ${starsText(stars)}` : `${starsText(stars)}, not learned yet`;
-  // "not yet" under an untried sign; the next one says where to begin.
-  const hint = notYet ? (isNext ? "start" : "not yet") : null;
+  // Untried signs carry no caption (a full row of "not yet" was noise); the
+  // next one says where to begin.
+  const hint = notYet && isNext ? "start" : null;
 
   return (
     <Pressable
@@ -73,7 +74,7 @@ export default function SignTile({ sign, language, group, word, row, isNext, onP
       </Text>
       {hint ? (
         <Text style={[styles.hint, !big && !word && styles.hintSmall]}>{hint}</Text>
-      ) : (
+      ) : notYet ? null : (
         <StarRow filled={stars} size={word ? sizes.starSm : big ? 12 : 9} gap={2} />
       )}
       {learned ? (

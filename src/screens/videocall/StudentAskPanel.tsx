@@ -8,11 +8,14 @@ import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import SignReference from "../../components/learn/SignReference";
 import { StarRow } from "../../components/learn/Stars";
+import ScoreMeter from "../../components/learn/ScoreMeter";
 import { AlertCircleIcon, CheckIcon, EyeIcon, HandIcon, VideoIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, kidTypography } from "../../theme/theme";
+import { fonts, kidTypography, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { getMotionHint, getSignMedia } from "../../lib/referenceMedia";
 import { signName } from "../../lib/signNames";
 import { accuracyStars, starReference, starsText } from "../../lib/starReference";
+import { PASS_PERCENT, closerText, percent } from "../../lib/learnCopy";
 import type { SignGroup, SignLanguage } from "../../lib/curriculum";
 import type { PracticeResult } from "../../lib/callSignaling";
 import type { ReaderPhase } from "../../hooks/useCallSignReader";
@@ -37,6 +40,8 @@ type Props = {
 };
 
 export default function StudentAskPanel({ phone, sign, language, group, results, checking, cameraOff, captionsOff, hold, guess, phase, reduceMotion }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [showHow, setShowHow] = useState(false);
   const media = getSignMedia(language, group, sign);
   const passed = results.find((r) => r.passed);
@@ -51,7 +56,7 @@ export default function StudentAskPanel({ phone, sign, language, group, results,
         <View style={styles.bigCheck}>
           <CheckIcon size={phone ? 40 : 52} color={colors.successText} strokeWidth={3.4} />
         </View>
-        <Text style={styles.headline}>Great signing!</Text>
+        <Text style={styles.headline}>Great signing! {percent(passed.confidence)}%</Text>
         <Text style={styles.body}>That counts. {name} is learned.</Text>
         <View accessibilityLabel={starsText(stars)}>
           <StarRow filled={stars} size={phone ? 26 : 30} gap={6} />
@@ -63,6 +68,11 @@ export default function StudentAskPanel({ phone, sign, language, group, results,
 
   if (last) {
     const different = !!last.seen && last.seen !== sign;
+    // The target's score. 0 means it wasn't measured (a word read as another
+    // word, or nothing read), so no number is shown for it.
+    const score = last.confidence;
+    const before = results.length > 1 ? results[results.length - 2].confidence : 0;
+    const scored = score > 0 ? `“${name}” scored ${percent(score)}%. ` : "";
     return (
       <ScrollView style={[styles.card, phone && styles.cardPhone]} contentContainerStyle={styles.cardContent}>
         <View style={styles.slab}>
@@ -70,11 +80,14 @@ export default function StudentAskPanel({ phone, sign, language, group, results,
             {name}
           </Text>
         </View>
-        <Text style={styles.headline}>Almost! Try again.</Text>
+        <Text style={styles.headline}>{different ? "Let's try again" : score > 0 ? `Almost! ${percent(score)}%` : "Almost! Try again."}</Text>
+        {score > 0 ? <ScoreMeter value={score} style={styles.meter} /> : null}
         <Text style={styles.body}>
           {different
-            ? "The computer thought it looked like a different sign. Look at the picture and try once more."
-            : "The computer wasn't sure. Try once more, a bit slower."}
+            ? `${scored}The computer thought it looked like a different sign. Look at the picture and try once more.`
+            : score > 0
+              ? closerText(score, before > 0 ? before : null) ?? `You need ${PASS_PERCENT}% to pass. Try once more, a bit slower.`
+              : "The computer wasn't sure. Try once more, a bit slower."}
         </Text>
         <HowTo sign={sign} media={media} language={language} group={group} show={showHow} onToggle={() => setShowHow((v) => !v)} reduceMotion={reduceMotion} />
       </ScrollView>
@@ -133,6 +146,7 @@ function HowTo({
   onToggle: () => void;
   reduceMotion: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   if (!media) return <Text style={styles.small}>No picture for this sign yet.</Text>;
   // The toggle stays above the picture, so hiding it never needs a scroll.
   return (
@@ -150,7 +164,8 @@ function HowTo({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   card: {
     flex: 1,
@@ -171,6 +186,7 @@ const styles = StyleSheet.create({
   small: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.textOnGlass, textAlign: "left" },
   headline: { fontFamily: fonts.heading, fontSize: 28, lineHeight: 32, color: colors.textPrimary, textAlign: "center" },
   body: { fontFamily: fonts.bodyMedium, fontSize: 17, lineHeight: 25, color: colors.textPrimary, textAlign: "center" },
+  meter: { alignSelf: "center", width: "100%", maxWidth: 320 },
   bigCheck: {
     width: 92,
     height: 92,
@@ -190,7 +206,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.neuBase,
   },
-  slabGlyph: { fontFamily: fonts.heading, fontSize: 64, lineHeight: 70, color: colors.accentCoral },
+  slabGlyph: { fontFamily: fonts.heading, fontSize: 64, lineHeight: 70, color: colors.accentCoralText },
   slabWord: { fontSize: 28, lineHeight: 32 },
   howTo: { gap: 12 },
   howButton: { alignSelf: "flex-start" },

@@ -51,8 +51,8 @@ import {
   SpeakerIcon,
   VideoIcon,
 } from "../../components/icons/UiIcons";
-import { colors, fonts } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, type ThemeColors } from "../../theme/theme";
+import { DarkTheme, useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
 import { isVideoCallSupported, type VideoCall } from "../../hooks/useVideoCall";
 import { useCallSignReader, type SignReading } from "../../hooks/useCallSignReader";
@@ -90,7 +90,20 @@ type Big = { text: string; by: "teacher" | "student" };
 const VIDEO_CSS: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
 const MIRRORED_CSS: React.CSSProperties = { ...VIDEO_CSS, transform: "scaleX(-1)" };
 
-export default function VideoCallScreen({ role, call, self, classId, className, plan, accentColor }: Props) {
+// A call is dark in both modes: it's built around the video stage, which
+// stays near-black like the camera (README §2), and every panel, caption and
+// control sits on or beside it.
+export default function VideoCallScreen(props: Props) {
+  return (
+    <DarkTheme>
+      <CallView {...props} />
+    </DarkTheme>
+  );
+}
+
+function CallView({ role, call, self, classId, className, plan, accentColor }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const {
     remoteSettings,
     sendSettings,
@@ -463,7 +476,7 @@ export default function VideoCallScreen({ role, call, self, classId, className, 
       accentColor={colors.accentCoral}
       renderTrigger={({ open, current }) => (
         <View style={styles.speakWrap}>
-          <Pressable onPress={open} style={[styles.langPill, neuRaised("sm")]} accessibilityRole="button" accessibilityLabel={`Speak in ${current.name}. Change the speech language`}>
+          <Pressable onPress={open} style={[styles.langPill, shadows.neuRaised("sm")]} accessibilityRole="button" accessibilityLabel={`Speak in ${current.name}. Change the speech language`}>
             <SpeakerIcon size={15} color={colors.textOnGlass} />
             <Text style={styles.langText}>{inline ? `Speak in ${current.name}` : current.name}</Text>
             <ChevronDownIcon size={13} color={colors.textOnGlass} />
@@ -490,7 +503,7 @@ export default function VideoCallScreen({ role, call, self, classId, className, 
         setToolsTab("reading");
         setToolsOpen(true);
       }}
-      style={[styles.readingChip, neuRaised("sm")]}
+      style={[styles.readingChip, shadows.neuRaised("sm")]}
       accessibilityRole="button"
       accessibilityLabel={`${readingNote}. Change in Tools`}
     >
@@ -506,22 +519,22 @@ export default function VideoCallScreen({ role, call, self, classId, className, 
         if (!toolsOpen) setToolsTab(practice ? "practice" : toolsTab);
         setToolsOpen((v) => !v);
       }}
-      style={size === "phone" ? styles.phoneCtrl : [styles.toolsBtn, toolsOpen ? [styles.toolsBtnOn, neuInset("sm")] : neuRaised("sm")]}
+      style={size === "phone" ? styles.phoneCtrl : [styles.toolsBtn, toolsOpen ? [styles.toolsBtnOn, shadows.neuInset("sm")] : shadows.neuRaised("sm")]}
       accessibilityRole="button"
       accessibilityLabel={toolsOpen ? "Close Tools" : "Open Tools"}
       accessibilityState={{ expanded: toolsOpen }}
     >
       {size === "phone" ? (
         <>
-          <View style={[styles.phoneCtrlBtn, toolsOpen ? [styles.toolsBtnOn, neuInset("sm")] : neuRaised("sm")]}>
+          <View style={[styles.phoneCtrlBtn, toolsOpen ? [styles.toolsBtnOn, shadows.neuInset("sm")] : shadows.neuRaised("sm")]}>
             <SlidersIcon size={20} color={toolsOpen ? colors.accentCoral : colors.textPrimary} />
           </View>
-          <Text style={[styles.ctrlCaption, toolsOpen && { color: colors.accentCoral }]}>Tools</Text>
+          <Text style={[styles.ctrlCaption, toolsOpen && { color: colors.accentCoralText }]}>Tools</Text>
         </>
       ) : (
         <>
           <SlidersIcon size={17} color={toolsOpen ? colors.accentCoral : colors.textPrimary} />
-          <Text style={[styles.toolsText, toolsOpen && { color: colors.accentCoral }]}>Tools</Text>
+          <Text style={[styles.toolsText, toolsOpen && { color: colors.accentCoralText }]}>Tools</Text>
         </>
       )}
     </Pressable>
@@ -641,7 +654,7 @@ export default function VideoCallScreen({ role, call, self, classId, className, 
           <QualityBars bars={1} color={colors.qualityPoor} />
           {!phone ? <Text style={[styles.bannerStrong, { color: colors.qualityPoor }]}>Weak connection</Text> : null}
           <Text style={styles.bannerText}>The connection is weak. Your video is lowered to keep the call going. Captions still work.</Text>
-          <Pressable onPress={() => setBannerDismissed(true)} accessibilityRole="button" accessibilityLabel="Dismiss" hitSlop={8} style={[styles.bannerClose, neuRaised("sm")]}>
+          <Pressable onPress={() => setBannerDismissed(true)} accessibilityRole="button" accessibilityLabel="Dismiss" hitSlop={8} style={[styles.bannerClose, shadows.neuRaised("sm")]}>
             <CloseIcon size={13} color={colors.textPrimary} />
           </Pressable>
         </View>
@@ -664,7 +677,7 @@ export default function VideoCallScreen({ role, call, self, classId, className, 
             width={layout.caption.width}
           />
           {phone && !isTeacher ? (
-            <Pressable onPress={() => setYourSignsOpen(true)} style={[styles.yourSignsPhone, neuRaised("sm")]} accessibilityRole="button" accessibilityLabel="Your signs">
+            <Pressable onPress={() => setYourSignsOpen(true)} style={[styles.yourSignsPhone, shadows.neuRaised("sm")]} accessibilityRole="button" accessibilityLabel="Your signs">
               <HandIcon size={15} color={colors.textPrimary} />
               <Text style={styles.yourSignsText}>Your signs</Text>
             </Pressable>
@@ -787,11 +800,11 @@ export default function VideoCallScreen({ role, call, self, classId, className, 
                 <Text style={styles.sheetTitle}>Your signs</Text>
                 <PhaseChip phase={readingLocal ? local.phase : "off"} />
                 <View style={styles.flex} />
-                <Pressable onPress={() => setYourSignsOpen(false)} style={[styles.sheetClose, neuRaised("sm")]} accessibilityRole="button" accessibilityLabel="Close" hitSlop={6}>
+                <Pressable onPress={() => setYourSignsOpen(false)} style={[styles.sheetClose, shadows.neuRaised("sm")]} accessibilityRole="button" accessibilityLabel="Close" hitSlop={6}>
                   <CloseIcon size={15} color={colors.textPrimary} />
                 </Pressable>
               </View>
-              <View style={[styles.sheetText, neuInset("sm")]}>
+              <View style={[styles.sheetText, shadows.neuInset("sm")]}>
                 <Text style={[styles.sheetTranscript, !local.text.trim() && styles.sheetPlaceholder]}>
                   {readingLocal || local.text.trim() ? local.text.trim() || localSource.placeholder : localSource.pausedText}
                 </Text>
@@ -812,7 +825,8 @@ export default function VideoCallScreen({ role, call, self, classId, className, 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background, overflow: "hidden" },
   flex: { flex: 1 },
   flexShrink: { flexShrink: 1, minWidth: 0 },

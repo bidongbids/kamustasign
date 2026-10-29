@@ -4,11 +4,11 @@
 //  - CallNotesCard (teacher): the notes saved from past calls with this class.
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { DashboardCard, dashboardStyles as ds } from "./DashboardShell";
+import { DashboardCard, useDashboardStyles } from "./DashboardShell";
 import { ActionButton, ConfirmInline } from "./ManageKit";
 import { CheckIcon, PhoneIcon, TrashIcon, VideoIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, spacing } from "../../theme/theme";
-import { useTheme } from "../../theme/ThemeProvider";
+import { fonts, spacing, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import type { CallNoteRow, MissedCallRow } from "../../lib/queries";
 import type { PresenceStatus } from "../../lib/callSignaling";
 import { signName } from "../../lib/signNames";
@@ -22,8 +22,8 @@ export function presenceLabel(status: PresenceStatus | undefined): string {
  * Online, a diamond for On a call, an outlined ring for Offline.
  */
 export function PresenceDot({ status, withLabel = true, size = 9 }: { status: PresenceStatus | undefined; withLabel?: boolean; size?: number }) {
-  // Themed (classroom theming): the rest of this file follows with the teacher screens.
   const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const text = status === "busy" ? colors.presenceOnCall : status === "available" ? colors.successText : colors.textOnGlass;
   return (
     <View style={styles.presence} accessibilityLabel={presenceLabel(status)}>
@@ -65,6 +65,9 @@ export function MissedCallsCard({
   accentColor: string;
   style?: any;
 }) {
+  const ds = useDashboardStyles();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   if (calls.length === 0) return null;
   // One line per caller: their latest missed call, and how many.
   const byCaller = new Map<string, { latest: MissedCallRow; ids: string[] }>();
@@ -76,7 +79,7 @@ export function MissedCallsCard({
   return (
     <DashboardCard style={[styles.missed, style]}>
       <View style={styles.missedHead}>
-        <PhoneIcon size={18} color={colors.accentCoral} />
+        <PhoneIcon size={18} color={colors.accentCoralText} />
         <Text style={styles.missedTitle}>
           {calls.length === 1 ? "You missed a call" : `You missed ${calls.length} calls`}
         </Text>
@@ -123,6 +126,8 @@ export function CallNotesCard({
   onDelete: (id: string) => Promise<void>;
   loading?: boolean;
 }) {
+  const ds = useDashboardStyles();
+  const styles = useThemedStyles(makeStyles);
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -193,7 +198,8 @@ export function CallNotesCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   card: { marginTop: spacing.md },

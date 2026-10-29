@@ -15,7 +15,8 @@
 // per mode and are passed in by the caller.
 import React, { useState } from "react";
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, spacing, typography } from "../theme/theme";
+import { spacing, typography, type ThemeColors } from "../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 import GlassCard from "./GlassCard";
 import { PlayIcon } from "./icons/UiIcons";
 
@@ -66,6 +67,8 @@ export default function TranslatorPanel({
   speakLabel,
   speakIcon,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [container, setContainer] = useState({ width: 0, height: 0 });
 
   function onContainerLayout(e: LayoutChangeEvent) {
@@ -142,7 +145,8 @@ export default function TranslatorPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   // Fills whatever space the screen gives it (instrumentBody) and centers
   // the scaled-footprint box inside that space.
   scaleContainer: {
@@ -180,7 +184,7 @@ const styles = StyleSheet.create({
   rule: {
     width: 1,
     alignSelf: "stretch",
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.12)" : colors.border,
   },
   bay1: {
     width: 588,
@@ -233,7 +237,7 @@ const styles = StyleSheet.create({
   },
   bay3Rule: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.12)" : colors.border,
     marginTop: 20,
     marginBottom: 20,
   },
@@ -267,7 +271,7 @@ const styles = StyleSheet.create({
   },
   stripRule: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.12)" : colors.border,
   },
   strip: {
     flexGrow: 0,
@@ -281,6 +285,6 @@ const styles = StyleSheet.create({
   stripDivider: {
     width: 1,
     height: 74,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.12)" : colors.border,
   },
 });

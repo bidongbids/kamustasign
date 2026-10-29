@@ -4,8 +4,8 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import { colors, kidTypography, radii, sizes } from "../../theme/theme";
-import { neuRaised } from "../../theme/shadows";
+import { kidTypography, radii, sizes, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
   sign: string;
@@ -18,6 +18,8 @@ type Props = {
 };
 
 export default function TargetCard({ sign, showRing, holdProgress, compact, reduceMotion }: Props) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const size = compact ? sizes.targetSlabMobile : sizes.targetSlab;
   const p = Math.max(0, Math.min(1, reduceMotion ? Math.floor(holdProgress * 4) / 4 : holdProgress));
   const r = 88;
@@ -32,7 +34,7 @@ export default function TargetCard({ sign, showRing, holdProgress, compact, redu
 
   return (
     <View
-      style={[styles.slab, { width: size, height: size }, neuRaised("lg")]}
+      style={[styles.slab, { width: size, height: size }, shadows.neuRaised("lg")]}
       accessibilityRole="header"
       accessibilityLabel={`Target sign: ${sign}`}
     >
@@ -59,7 +61,7 @@ export default function TargetCard({ sign, showRing, holdProgress, compact, redu
         style={[
           isGlyph ? kidTypography.kidTarget : kidTypography.kidTargetWord,
           {
-            color: colors.accentCoral,
+            color: colors.accentCoralText,
             fontSize: isGlyph ? glyphSize : wordSize,
             lineHeight: (isGlyph ? glyphSize : wordSize) * (isGlyph ? 1 : 1.1),
           },
@@ -73,7 +75,8 @@ export default function TargetCard({ sign, showRing, holdProgress, compact, redu
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   slab: {
     backgroundColor: colors.neuBase,
     borderRadius: radii.lg,

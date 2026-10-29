@@ -46,7 +46,7 @@ export default function JoinClassCard({
     <GlassCard radius={radii.lg} padding={18} style={style} contentStyle={contentStyle}>
       <View style={styles.head}>
         <View style={[styles.icon, shadows.neuInset("sm")]}>
-          <HandIcon size={24} color={colors.accentCoral} />
+          <HandIcon size={24} color={colors.accentCoralText} />
         </View>
         <View style={styles.flex}>
           <Text style={styles.title}>Join your class</Text>

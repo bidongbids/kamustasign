@@ -13,8 +13,8 @@ import { Bar } from "./TeacherToday";
 import CurriculumTabs, { availableGroupFor } from "./CurriculumTabs";
 import { StarRow } from "../../components/learn/Stars";
 import { BookIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon, TrashIcon, VideoIcon } from "../../components/icons/UiIcons";
-import { colors, fonts, radii } from "../../theme/theme";
-import { neuInset, neuRaised } from "../../theme/shadows";
+import { fonts, radii, type ThemeColors } from "../../theme/theme";
+import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { computeOverall, getGroup, groupKey, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { moduleSigns, type CallNoteRow, type ClassRow, type ModuleRow, type ProgressEmbed, type StudentProgressSummary } from "../../lib/queries";
 import { starReference, starsText } from "../../lib/starReference";
@@ -55,6 +55,8 @@ export default function StudentDetailDrawer(props: Props) {
 }
 
 function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules, notes, phone, onClose, onCall, onRemove }: Props & { student: StudentProgressSummary }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [language, setLanguage] = useState<SignLanguage>("asl");
   const [group, setGroup] = useState<SignGroup>("letters");
   const [confirm, setConfirm] = useState(false);
@@ -200,7 +202,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
           : "No practice";
         const open = openNote === n.id;
         return (
-          <View key={n.id} style={[styles.note, neuRaised("sm")]}>
+          <View key={n.id} style={[styles.note, shadows.neuRaised("sm")]}>
             <Pressable
               onPress={() => setOpenNote(open ? null : n.id)}
               accessibilityRole="button"
@@ -243,13 +245,13 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
     return (
       <View style={styles.phoneStack}>
         <View style={styles.phoneTop}>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Back to students" style={[styles.backBtn, neuRaised("sm"), webCursor]}>
+          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Back to students" style={[styles.backBtn, shadows.neuRaised("sm"), webCursor]}>
             <ChevronLeftIcon size={16} color={colors.textPrimary} />
           </Pressable>
           {menu}
         </View>
         <View style={styles.identity}>
-          <Avatar name={student.full_name} color={colors.accentCoral} size={56} />
+          <Avatar name={student.full_name} color={colors.accentCoralText} size={56} />
           <View style={styles.flex}>
             <Text style={styles.name} accessibilityRole="header">
               {student.full_name}
@@ -259,7 +261,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
         </View>
         {callButton}
         {confirm ? <ConfirmInline message={removeText(student, klass)} confirmLabel="Remove" busy={removing} onCancel={() => setConfirm(false)} onConfirm={remove} /> : null}
-        <View style={[styles.overall, neuInset("sm")]}>
+        <View style={[styles.overall, shadows.neuInset("sm")]}>
           <Text style={styles.overallValue}>{Math.round(overall * 100)}%</Text>
           <View style={styles.flex}>
             <Bar value={overall} height={8} />
@@ -289,7 +291,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
           onPress={() => setTilesOpen((v) => !v)}
           accessibilityRole="button"
           accessibilityState={{ expanded: tilesOpen }}
-          style={[styles.tilesToggle, neuRaised("sm"), webCursor]}
+          style={[styles.tilesToggle, shadows.neuRaised("sm"), webCursor]}
         >
           <BookIcon size={17} color={colors.textPrimary} />
           <Text style={[styles.noteTitle, styles.flex]}>Letter tiles and stars</Text>
@@ -306,7 +308,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
   return (
     <View>
       <View style={styles.header}>
-        <Avatar name={student.full_name} color={colors.accentCoral} size={60} />
+        <Avatar name={student.full_name} color={colors.accentCoralText} size={60} />
         <View style={styles.flex}>
           <Text style={styles.name} accessibilityRole="header" numberOfLines={1}>
             {student.full_name}
@@ -321,7 +323,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
         <CloseButton onPress={onClose} />
       </View>
       {confirm ? <ConfirmInline message={removeText(student, klass)} confirmLabel="Remove" busy={removing} onCancel={() => setConfirm(false)} onConfirm={remove} /> : null}
-      <View style={[styles.overall, neuInset("sm")]} accessible accessibilityLabel={`Overall ${Math.round(overall * 100)}%. ${groupLine}`}>
+      <View style={[styles.overall, shadows.neuInset("sm")]} accessible accessibilityLabel={`Overall ${Math.round(overall * 100)}%. ${groupLine}`}>
         <View>
           <Text style={styles.overallValue}>{Math.round(overall * 100)}%</Text>
           <Text style={styles.overallLabel}>Overall</Text>
@@ -345,6 +347,8 @@ const removeText = (s: StudentProgressSummary, k: ClassRow) =>
 
 /** The student's tile at teacher size (52 x 60), read-only. State is shape as well as colour. */
 function TeacherTile({ sign, language, group, row }: { sign: string; language: SignLanguage; group: SignGroup; row: ProgressLike | undefined }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const status = tileStatus(row);
   const stars = starsFor(row, starReference(language, group, sign));
   const words = group === "words";
@@ -365,7 +369,7 @@ function TeacherTile({ sign, language, group, row }: { sign: string; language: S
       <Text style={[words ? styles.wordText : styles.glyph, status === "not-started" && styles.glyphDim]} numberOfLines={1}>
         {name}
       </Text>
-      {status === "not-started" ? <Text style={styles.notYet}>not yet</Text> : <StarRow filled={stars} size={words ? 9 : 10} gap={1} />}
+      {status === "not-started" ? null : <StarRow filled={stars} size={words ? 9 : 10} gap={1} />}
       {status === "learned" ? (
         <View style={styles.tileBadge}>
           <CheckIcon size={10} color={colors.textOnFrosted} strokeWidth={3.6} />
@@ -375,7 +379,8 @@ function TeacherTile({ sign, language, group, row }: { sign: string; language: S
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   fullWidth: { alignSelf: "stretch" },
   header: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 18 },
@@ -402,7 +407,6 @@ const styles = StyleSheet.create({
   glyph: { fontFamily: fonts.heading, fontSize: 19, lineHeight: 22, color: colors.textPrimary },
   wordText: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.textPrimary },
   glyphDim: { color: colors.textOnGlass },
-  notYet: { fontFamily: fonts.body, fontSize: 9.5, color: colors.textOnGlass },
   tileBadge: {
     position: "absolute",
     top: -6,
@@ -414,7 +418,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.success,
     borderWidth: 2,
-    borderColor: "rgba(48,54,68,1)",
+    borderColor: theme.name === "dark" ? "rgba(48,54,68,1)" : colors.surfaceElevated,
   },
   muted: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.textOnGlass },
   cols: { flexDirection: "row", gap: 22, alignItems: "flex-start" },
@@ -440,8 +444,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.04)" : colors.surfacePressed,
   },
   tilesToggle: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52, paddingHorizontal: 16, borderRadius: 18, backgroundColor: colors.neuBase },
 });

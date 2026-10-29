@@ -22,8 +22,7 @@ import GlassCard from "../../components/GlassCard";
 import { AppearanceButton } from "../../components/AppearancePanel";
 import { VideoCameraIcon } from "../../components/icons/RoleIcons";
 import { ChevronRightIcon } from "../../components/icons/UiIcons";
-import { colors, typography, spacing, radii, mobileTypography, ThemeColors } from "../../theme/theme";
-import { neuRaised } from "../../theme/shadows";
+import { typography, spacing, radii, mobileTypography, ThemeColors } from "../../theme/theme";
 import { useResponsive } from "../../theme/responsive";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
 import { Theme, useTheme, useThemedStyles } from "../../theme/ThemeProvider";
@@ -56,8 +55,10 @@ function AmbientBlob({ id, size, color, style }: { id: string; size: number; col
 }
 
 function LogoTile({ size, radius, markSize }: { size: number; radius: number; markSize: number }) {
+  const { colors, shadows } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
-    <View style={[styles.logoTile, { width: size, height: size, borderRadius: radius }, neuRaised("sm")]}>
+    <View style={[styles.logoTile, { width: size, height: size, borderRadius: radius }, shadows.neuRaised("sm")]}>
       <HandLandmarkMark size={markSize} color={colors.primaryTeal} dotColor={colors.accentCoral} animated={false} />
     </View>
   );
@@ -72,6 +73,7 @@ function LoginCard({ children, padding }: { children: React.ReactNode; padding: 
 }
 
 function TranslatorGhostButtonDesktop({ onPress }: { onPress: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       onPress={onPress}
@@ -87,6 +89,7 @@ function TranslatorGhostButtonDesktop({ onPress }: { onPress: () => void }) {
 }
 
 function SkipDivider() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.dividerRow}>
       <View style={styles.dividerRule} />
@@ -207,6 +210,8 @@ export default function StartLayout(props: Props) {
 }
 
 function WideStart({ onOpenTranslator, children }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { isDesktop } = useResponsive();
 
   const fade = useRef(new Animated.Value(0)).current;
@@ -299,7 +304,8 @@ function WideStart({ onOpenTranslator, children }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors, theme: Theme) =>
+  StyleSheet.create({
   // Appearance before signing in (handoff §9: a child can pick dark mode first).
   appearanceCorner: { position: "absolute", top: spacing.lg, right: spacing.lg },
   // ── desktop split layout ─────────────────────────────────────────────
@@ -313,7 +319,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 48,
     justifyContent: "space-between",
     borderRightWidth: 1,
-    borderRightColor: "rgba(255,255,255,0.09)",
+    borderRightColor: theme.name === "dark" ? "rgba(255,255,255,0.09)" : colors.border,
   },
   brandTop: {
     flexDirection: "row",
