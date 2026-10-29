@@ -195,9 +195,9 @@ held out:
 For contrast, the dataset's own split (signers mixed between train and test)
 gives 98.1%. That is the number *not* to quote.
 
-Most-confused: good evening→good afternoon, two→one, wednesday→six,
-friday→nine, pink→red, october→september. Several FSL day names are built on
-number handshapes.
+Most-confused (by the Tagalog names the app shows): magandang gabi→magandang
+hapon, dalawa→isa, Miyerkules→anim, Biyernes→siyam, rosas→pula,
+Oktubre→Setyembre. Several FSL day names are built on number handshapes.
 
 ## 3b. ASL numbers, FSL letters and FSL numbers (2026-10-28)
 

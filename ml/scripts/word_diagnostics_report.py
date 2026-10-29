@@ -34,7 +34,7 @@ MODELS = [
     ("ASL words", "asl_per_word.csv",
      "Test set: our manifest's test split + 2 held-out signers from Google Isolated SLR."),
     ("FSL-105 (signer D held out)", "fsl-105_per_word.csv",
-     "Test set: every clip from signer D, who is never seen in training."),
+     "Test set: every clip from signer D, who is never seen in training. Words in Tagalog, as the app shows them."),
 ]
 
 
@@ -54,11 +54,22 @@ def load_rows(name):
             r[k] = num(r[k])
         for k in ("train_clips", "test_clips", "shown", "shown_ok", "times_predicted"):
             r[k] = int(r[k])
+        r["name"] = r.get("name") or r["word"]  # the shown name (Tagalog for FSL); word is the key
     return rows
 
 
 def pct(v):
     return "-" if v is None else f"{v:.0%}"
+
+
+def shrink_to_fit(tb, col, chars):
+    """Smaller type for the cells in `col` longer than `chars` characters, so
+    a long name (Tagalog FSL words such as "ikinagagalak kitang makilala")
+    stays inside its cell."""
+    for (row, c), cell in tb.get_celld().items():
+        text = cell.get_text()
+        if row and c == col and len(text.get_text()) > chars:
+            text.set_fontsize(text.get_fontsize() * chars / len(text.get_text()))
 
 
 def new_page(pdf_pages, title, subtitle=None):
@@ -153,18 +164,20 @@ def charts_page(pdf, title, note, rows, summary, page_no):
     ax.tick_params(labelsize=7)
     ax.spines[["top", "right"]].set_visible(False)
 
-    ranked = sorted(rows, key=lambda r: (-r["top1"], -(r["f1"] or 0), r["word"]))
+    ranked = sorted(rows, key=lambda r: (-r["top1"], -(r["f1"] or 0), r["name"]))
     best, worst = ranked[:12], ranked[::-1][:12]
 
     def mini(x, title_, items):
         ax = fig.add_axes([x, 0.31, 0.38, 0.27])
         ax.axis("off")
         ax.set_title(title_, fontsize=10, loc="left")
-        tb = ax.table(cellText=[[r["word"], pct(r["top1"]), r["most_confused_with"] or "-"] for r in items],
-                      colLabels=["word", "top-1", "most confused with"], colWidths=[0.36, 0.16, 0.48],
+        tb = ax.table(cellText=[[r["name"], pct(r["top1"]), r["most_confused_with"] or "-"] for r in items],
+                      colLabels=["word", "top-1", "most confused with"], colWidths=[0.42, 0.14, 0.44],
                       loc="upper left", cellLoc="left")
         tb.auto_set_font_size(False)
         tb.set_fontsize(7.5)
+        shrink_to_fit(tb, 0, 21)
+        shrink_to_fit(tb, 2, 22)
         tb.scale(1, 1.25)
         for (r, _), cell in tb.get_celld().items():
             cell.set_edgecolor("#d9e2ec")
@@ -199,7 +212,7 @@ def charts_page(pdf, title, note, rows, summary, page_no):
 
 
 def table_pages(pdf, title, rows, page_no):
-    ranked = sorted(rows, key=lambda r: (-r["top1"], -(r["f1"] or 0), r["word"]))
+    ranked = sorted(rows, key=lambda r: (-r["top1"], -(r["f1"] or 0), r["name"]))
     header = ["#", "word", "train", "test", "top-1", "top-5", "prec.", "F1",
               "conf. right", "conf. wrong", "shown ok", "most confused with"]
     widths = [0.04, 0.17, 0.06, 0.05, 0.065, 0.065, 0.065, 0.065, 0.08, 0.08, 0.075, 0.2]
@@ -210,13 +223,15 @@ def table_pages(pdf, title, rows, page_no):
                        "shown ok = clips shown at the gate and correct / clips shown")
         ax = fig.add_axes([0.04, 0.05, 0.92, 0.86])
         ax.axis("off")
-        cells = [[str(p * ROWS_PER_PAGE + i + 1), r["word"], r["train_clips"], r["test_clips"], pct(r["top1"]),
+        cells = [[str(p * ROWS_PER_PAGE + i + 1), r["name"], r["train_clips"], r["test_clips"], pct(r["top1"]),
                   pct(r["top5"]), pct(r["precision"]), pct(r["f1"]), pct(r["conf_when_right"]),
                   pct(r["conf_when_wrong"]), f"{r['shown_ok']}/{r['shown']}", r["most_confused_with"] or ""]
                  for i, r in enumerate(chunk)]
         tb = ax.table(cellText=cells, colLabels=header, colWidths=widths, loc="upper center", cellLoc="center")
         tb.auto_set_font_size(False)
         tb.set_fontsize(6.8)
+        shrink_to_fit(tb, 1, 22)
+        shrink_to_fit(tb, 11, 26)
         tb.scale(1, 1.12)
         for (ri, ci), cell in tb.get_celld().items():
             cell.set_edgecolor("#e4e7eb")

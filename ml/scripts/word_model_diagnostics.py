@@ -27,11 +27,16 @@ Citizen signers the model never saw at all (HELDOUT_SIGNERS below).
   python scripts/word_model_diagnostics.py asl        one model
 
 Writes models/diagnostics/{asl,fsl}_per_word.csv and a JSON summary.
+FSL words are shown by the Tagalog names the app uses (src/lib/signNames.ts):
+in the printout, the summary's confusions and the CSV's name and
+most_confused_with columns. The CSV's word column keeps the English label,
+the key export_word_practice_order.py and export_star_reference.py look up.
 Per-word figures rest on a handful of test clips each - read the top and
 bottom bands as signal and the ordering inside them as mostly noise.
 """
 
 import os
+import re
 import sys
 import csv
 import json
@@ -45,8 +50,16 @@ ML_DIR = os.path.join(os.path.dirname(__file__), "..")
 DATA_DIR = os.path.join(ML_DIR, "data")
 MODEL_DIR = os.path.join(ML_DIR, "models")
 OUT_DIR = os.path.join(MODEL_DIR, "diagnostics")
+SIGN_NAMES_TS = os.path.join(ML_DIR, "..", "src", "lib", "signNames.ts")
 
 MIN_CONFIDENCE = 0.40  # keep in sync with WordTranslatorScreen.tsx
+
+
+def fsl_tagalog():
+    """FSL word label -> the Tagalog name the app shows (FSL_WORDS_TAGALOG)."""
+    src = open(SIGN_NAMES_TS, encoding="utf-8").read()
+    block = src.split("FSL_WORDS_TAGALOG")[1].split("};")[0]
+    return {q or bare: name for q, bare, name in re.findall(r'^\s*(?:"([^"]+)"|(\w+)):\s*"([^"]*)"', block, re.M)}
 
 
 def load_asl():
@@ -143,9 +156,10 @@ def webcam_clips(classes, include_moved=False, skip=()):
     return np.array(X, dtype="float32"), np.array(y)
 
 
-def run(name, loader, webcam=False):
+def run(name, loader, webcam=False, names=None):
     X, y, train_counts, classes, paths = loader()
     n_cls = len(classes)
+    shown_as = lambda w: (names or {}).get(w, w)
     print(f"\n{'=' * 78}\n{name}: {len(paths)} model(s), {n_cls} words, {len(y)} test clips")
     Xw, yw = webcam_clips(classes) if webcam else (None, None)
     probs, wprobs = [], []
@@ -181,9 +195,9 @@ def run(name, loader, webcam=False):
         confused = ""
         if wrong.any():
             c = np.bincount(pred[wrong], minlength=n_cls)
-            confused = f"{classes[c.argmax()]} ({c.max()})"
+            confused = f"{shown_as(classes[c.argmax()])} ({c.max()})"
         rows.append({
-            "word": w, "train_clips": int(train_counts[i]), "test_clips": n,
+            "word": w, "name": shown_as(w), "train_clips": int(train_counts[i]), "test_clips": n,
             "top1": rec, "top5": float(top5[m].mean()) if n else float("nan"),
             "precision": prec, "f1": f1, "times_predicted": n_pred,
             "conf_when_right": float(conf[m & ok].mean()) if (m & ok).any() else float("nan"),
@@ -201,21 +215,23 @@ def run(name, loader, webcam=False):
 
     tested = [r for r in rows if r["test_clips"]]
     tested.sort(key=lambda r: (-r["top1"], -r["f1"], r["word"]))
-    untested = [r["word"] for r in rows if not r["test_clips"]]
+    untested = [r["name"] for r in rows if not r["test_clips"]]
 
-    print(f"\n{'Word':<18}{'Trn':>4}{'Tst':>4}{'Top1':>6}{'Top5':>6}{'Prec':>6}{'F1':>6}"
+    wide = min(max(18, max(len(r["name"]) for r in rows) + 1), 30)
+    print(f"\n{'Word':<{wide}}{'Trn':>4}{'Tst':>4}{'Top1':>6}{'Top5':>6}{'Prec':>6}{'F1':>6}"
           f"{'Cf+':>5}{'Cf-':>5}{'Gate':>7}  most-confused-with")
     print("-" * 100)
     fmt = lambda v: "  -  " if np.isnan(v) else f"{v:5.0%}"
     for r in tested:
-        print(f"{r['word'][:17]:<18}{r['train_clips']:>4}{r['test_clips']:>4} {fmt(r['top1'])} {fmt(r['top5'])}"
+        print(f"{r['name'][:wide - 1]:<{wide}}{r['train_clips']:>4}{r['test_clips']:>4} {fmt(r['top1'])} {fmt(r['top5'])}"
               f" {fmt(r['precision'])} {fmt(r['f1'])}{fmt(r['conf_when_right'])}{fmt(r['conf_when_wrong'])}"
               f"  {r['shown_ok']}/{r['shown']:<3}  {r['most_confused_with']}")
 
     # Most frequent confusion pairs across the whole test set
     pairs = {}
     for t, p in zip(y[~ok], pred[~ok]):
-        pairs[(classes[t], classes[p])] = pairs.get((classes[t], classes[p]), 0) + 1
+        pair = (shown_as(classes[t]), shown_as(classes[p]))
+        pairs[pair] = pairs.get(pair, 0) + 1
     top_pairs = sorted(pairs.items(), key=lambda kv: -kv[1])[:15]
 
     t1s = np.array([r["top1"] for r in tested])
@@ -266,7 +282,7 @@ def main():
     if which in ("both", "asl"):
         summaries.append(run("ASL words", load_asl, webcam=True))
     if which in ("both", "fsl"):
-        summaries.append(run("FSL-105 (signer D held out)", load_fsl))
+        summaries.append(run("FSL-105 (signer D held out)", load_fsl, names=fsl_tagalog()))
     os.makedirs(OUT_DIR, exist_ok=True)
     json.dump(summaries, open(os.path.join(OUT_DIR, "summary.json"), "w", encoding="utf-8"), indent=2)
     print(f"\nCSV + summary.json written to {os.path.abspath(OUT_DIR)}")
