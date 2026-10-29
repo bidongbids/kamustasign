@@ -82,14 +82,16 @@ import type { CallPeer, PresenceStatus } from "../../lib/callSignaling";
 type Props = {
   accentColor: string;
   onSignOut: () => void;
-  onExitToRoleSelect: () => void;
+  onExitToStart: () => void;
   /** The Account panel changed the name or 2FA - App reloads the profile. */
   onAccountChange: () => void;
+  /** The Translator button in the header. */
+  onOpenTranslator: () => void;
 };
 
 const LOAD_ERROR = { title: "Couldn't load your students", message: "Check the internet connection, then try again. Nothing you saved was lost." };
 
-export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleSelect, onAccountChange }: Props) {
+export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart, onAccountChange, onOpenTranslator }: Props) {
   const { width, isDesktop } = useResponsive();
   const phone = width < 768;
   const compact = isDesktop && width < 1400;
@@ -442,7 +444,8 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToRoleS
     roleLabel: "Teacher",
     userName: profile?.full_name ?? "...",
     onSignOut,
-    onExitToRoleSelect,
+    onExitToStart,
+    onOpenTranslator,
     profile,
     onProfileChange: (p: Profile) => {
       setProfile(p);

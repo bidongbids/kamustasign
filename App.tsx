@@ -1,16 +1,15 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFonts, Baloo2_700Bold, Baloo2_600SemiBold } from "@expo-google-fonts/baloo-2";
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from "@expo-google-fonts/inter";
-import RoleSelectScreen from "./src/screens/RoleSelectScreen";
 import TranslatorHubScreen from "./src/screens/TranslatorHubScreen";
 import AuthNavigator from "./src/navigation/AuthNavigator";
 import StudentDashboard from "./src/screens/dashboard/StudentDashboard";
 import TeacherDashboard from "./src/screens/dashboard/TeacherDashboard";
 import AdminDashboard from "./src/screens/dashboard/AdminDashboard";
 import { useAuthGate } from "./src/lib/authGate";
-import { isPendingTeacher } from "./src/lib/queries";
+import { isPendingApproval, type ProfileRole } from "./src/lib/queries";
 import AccountNoticeScreen from "./src/screens/auth/AccountNoticeScreen";
 import Verify2FAScreen from "./src/screens/auth/Verify2FAScreen";
 import ResetPasswordScreen from "./src/screens/auth/ResetPasswordScreen";
@@ -18,23 +17,26 @@ import { ThemeColors } from "./src/theme/theme";
 import { ThemeProvider, useTheme, useThemedStyles } from "./src/theme/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-type Role = "student" | "teacher" | "admin";
-type Screen = Role | "translator" | null;
+// "start": the login screen (or, with a saved session, who is signed in);
+// "app": the signed-in account's dashboard; "translator": no account needed,
+// opened from either one, and Back returns there.
+type Screen = "start" | "app" | "translator";
 
-const roleAccentFor = (colors: ThemeColors): Record<Role, string> => ({
+const roleAccentFor = (colors: ThemeColors): Record<ProfileRole, string> => ({
   student: colors.accentCoral,
   teacher: colors.primaryTeal,
   admin: colors.adminGray,
 });
 
-// Restores the role the user was mid-signin-as after a Google OAuth redirect
-// or a password-reset email link brings them back (LoginScreen's and
-// ForgotPasswordScreen's redirectTo).
-function roleFromQueryString(): Role | null {
-  if (Platform.OS !== "web" || typeof window === "undefined") return null;
-  const value = new URLSearchParams(window.location.search).get("role");
-  return value === "student" || value === "teacher" || value === "admin" ? value : null;
-}
+// Who has to act on a sign-up (0014_account_approval.sql) and what waits.
+const PENDING_MESSAGE: Record<ProfileRole, string> = {
+  student:
+    "An admin at Liloan Central School needs to approve your account. Until then you can't practise or join a class. Once they have, choose Check again.",
+  teacher:
+    "An admin at Liloan Central School needs to approve your teacher account. Until then you can't make classes or calls. Once they have, choose Check again.",
+  admin: "The LCSign super admin needs to approve your admin account. Until then you can't manage accounts. Once they have, choose Check again.",
+};
+const ROLE_WITH_ARTICLE: Record<ProfileRole, string> = { student: "a student", teacher: "a teacher", admin: "an admin" };
 
 // Installable app / offline shell (public/sw.js). Production web builds only:
 // in dev it would cache Metro's bundles, and Electron's app:// scheme has no
@@ -82,15 +84,17 @@ function AppContent() {
     Inter_600SemiBold,
   });
 
-  const [role, setRole] = useState<Screen>(() => roleFromQueryString());
+  const [screen, setScreen] = useState<Screen>("start");
+  const [translatorFrom, setTranslatorFrom] = useState<Screen>("start");
   const [setupPromptActive, setSetupPromptActive] = useState(false);
   const authGate = useAuthGate();
 
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
-    // ?role= has been read (above), and a failed email link's #error=...
-    // has been read by authGate; neither should come back on a reload.
-    // A successful link's #access_token=... is left for supabase-js.
+    // A failed email link's #error=... has been read by authGate and
+    // shouldn't come back on a reload; links from before the login screen
+    // also carry the old ?role=. A successful link's #access_token=... is
+    // left for supabase-js.
     const url = new URL(window.location.href);
     const failedLink = /[#&]error(_code)?=/.test(url.hash);
     if (!url.searchParams.has("role") && !failedLink) return;
@@ -98,6 +102,22 @@ function AppContent() {
     if (failedLink) url.hash = "";
     window.history.replaceState({}, "", url.toString());
   }, []);
+
+  // Signing in (or finishing 2FA) on the login screen goes straight to the
+  // dashboard. A session restored at launch doesn't: on a shared classroom
+  // computer the start screen first says who is still signed in.
+  const lastStatus = useRef(authGate.status);
+  useEffect(() => {
+    const prev = lastStatus.current;
+    lastStatus.current = authGate.status;
+    if (authGate.status === "authenticated" && (prev === "signedOut" || prev === "needsMfa")) setScreen("app");
+    if (authGate.status === "signedOut") setScreen((s) => (s === "translator" ? s : "start"));
+  }, [authGate.status]);
+
+  const openTranslator = (from: Screen) => {
+    setTranslatorFrom(from);
+    setScreen("translator");
+  };
 
   if (!fontsLoaded || authGate.status === "loading") {
     return (
@@ -111,7 +131,6 @@ function AppContent() {
   // the new password comes before anything else. A 2FA account's session is
   // still aal1, so its code comes first.
   if (authGate.recovering && authGate.status !== "signedOut") {
-    const accent = role && role !== "translator" ? roleAccent[role] : colors.primaryTeal;
     const leave = async () => {
       authGate.endRecovery();
       await authGate.signOut();
@@ -121,88 +140,70 @@ function AppContent() {
         <StatusBar style={statusBarStyle} />
         {authGate.status === "needsMfa" ? (
           <Verify2FAScreen
-            accentColor={accent}
+            accentColor={colors.primaryTeal}
             title="Confirm it's you"
             factorId={authGate.mfaFactorId}
             onVerified={authGate.refresh}
             onCancel={leave}
           />
         ) : (
-          <ResetPasswordScreen accentColor={accent} onDone={authGate.endRecovery} onCancel={leave} />
+          <ResetPasswordScreen accentColor={colors.primaryTeal} onDone={authGate.endRecovery} onCancel={leave} />
         )}
       </>
     );
   }
 
-  if (!role) {
-    const signedIn = authGate.status === "authenticated" ? authGate.profile : null;
+  if (screen === "translator") {
     return (
       <>
         <StatusBar style={statusBarStyle} />
-        <RoleSelectScreen
-          onSelectRole={setRole}
-          onOpenTranslator={() => setRole("translator")}
-          signedInAs={signedIn ? { name: signedIn.full_name, role: signedIn.role } : null}
-          onContinueSignedIn={() => signedIn && setRole(signedIn.role)}
-          onSignOut={() => authGate.signOut()}
-          notice={authGate.linkError}
-          onDismissNotice={authGate.clearLinkError}
+        <TranslatorHubScreen
+          onBack={() => setScreen(translatorFrom)}
+          backLabel={translatorFrom === "app" ? "Back to your dashboard" : "Back to the log-in screen"}
         />
       </>
     );
   }
 
-  if (role === "translator") {
-    return (
-      <>
-        <StatusBar style={statusBarStyle} />
-        <TranslatorHubScreen onBack={() => setRole(null)} />
-      </>
-    );
-  }
+  const signedIn = authGate.status === "authenticated" && !setupPromptActive;
 
-  const showAuthFlow = authGate.status !== "authenticated" || setupPromptActive;
-
-  if (showAuthFlow) {
+  if (!signedIn || screen === "start") {
+    const restored = signedIn ? { name: authGate.profile?.full_name ?? "", role: authGate.profile?.role ?? null } : null;
     return (
       <>
         <StatusBar style={statusBarStyle} />
         <AuthNavigator
-          role={role}
-          accentColor={roleAccent[role]}
+          accentColor={colors.primaryTeal}
           authGate={authGate}
-          onRequestExit={() => setRole(null)}
+          onOpenTranslator={() => openTranslator("start")}
+          signedInAs={restored}
+          onContinueSignedIn={() => setScreen("app")}
           onSetupPromptActive={setSetupPromptActive}
         />
       </>
     );
   }
 
-  // The dashboard follows the account's real role, not the tile that was
-  // tapped - a student who logs in through the Admin tile gets the student
-  // dashboard. (RLS is what actually protects the data either way.)
+  // The dashboard follows the account's role in the database. (RLS is what
+  // actually protects the data either way.)
   const profile = authGate.profile;
-  if (!profile || isPendingTeacher(profile)) {
+  if (!profile || isPendingApproval(profile)) {
     return (
       <>
         <StatusBar style={statusBarStyle} />
         <AccountNoticeScreen
-          accentColor={roleAccent[profile?.role ?? role]}
+          accentColor={profile ? roleAccent[profile.role] : colors.primaryTeal}
           title={profile ? "Waiting for approval" : "Can't open your account"}
-          message={
-            profile
-              ? "An admin at Liloan Central School needs to approve your teacher account. Until then you can't make classes or calls. Once they have, choose Check again."
-              : authGate.profileError ?? "Couldn't load your profile."
-          }
+          message={profile ? PENDING_MESSAGE[profile.role] : authGate.profileError ?? "Couldn't load your profile."}
           kind={profile ? "pending" : "error"}
           detail={
             profile
-              ? `Signed up ${new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${
-                  authGate.session?.user.email ? ` as ${authGate.session.user.email}` : ""
-                }`
+              ? `Signed up ${new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })} as ${
+                  ROLE_WITH_ARTICLE[profile.role]
+                }${authGate.session?.user.email ? ` · ${authGate.session.user.email}` : ""}`
               : undefined
           }
-          footnote={profile ? "Signed up as a student by mistake? Ask an admin to change your role." : undefined}
+          footnote={profile ? "Picked the wrong kind of account? Whoever approves you can change it." : undefined}
           onCheckAgain={authGate.refresh}
           onSignOut={() => authGate.signOut()}
         />
@@ -213,15 +214,15 @@ function AppContent() {
   const dashboardProps = {
     accentColor: roleAccent[profile.role],
     onSignOut: () => authGate.signOut(),
-    onExitToRoleSelect: () => setRole(null),
+    onExitToStart: () => setScreen("start"),
     onAccountChange: authGate.refresh,
   };
 
   return (
     <>
       <StatusBar style={statusBarStyle} />
-      {profile.role === "student" && <StudentDashboard {...dashboardProps} />}
-      {profile.role === "teacher" && <TeacherDashboard {...dashboardProps} />}
+      {profile.role === "student" && <StudentDashboard {...dashboardProps} onOpenTranslator={() => openTranslator("app")} />}
+      {profile.role === "teacher" && <TeacherDashboard {...dashboardProps} onOpenTranslator={() => openTranslator("app")} />}
       {profile.role === "admin" && <AdminDashboard {...dashboardProps} />}
     </>
   );

@@ -1,144 +1,38 @@
-// src/screens/RoleSelectScreen.tsx
-// Entry screen. Per docs/design/design_handoff_kamustasign_material_pass/README.md
-// ("1. Role Select"): the Translator is no longer a 4th peer card — it's
-// demoted to a bordered ghost button below an "OR SKIP SIGN-IN" rule, since
-// skipping sign-in entirely is a categorically different action from
-// choosing a role. Same destination (`onOpenTranslator`), no routing change.
-// Desktop gets a two-pane split (432px brand pane + role cards); tablet is a
+// src/screens/auth/StartLayout.tsx
+// The start screen's frame, around the login card (LoginScreen). It used to
+// be the role select (design_handoff_kamustasign_material_pass/README.md
+// "1. Role Select"); there's no role to pick before signing in any more, so
+// the role cards became the login card and the rest stayed: the Translator
+// as a ghost button below an "OR SKIP SIGN-IN" rule, since skipping sign-in
+// is a categorically different action from signing in.
+// Desktop gets a two-pane split (432px brand pane + the card); tablet is a
 // single scrolling column with the ghost button pinned to the bottom. Phones
-// (<768) get the docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md layout (PhoneRoleSelect):
-// a "Kamusta!" greeting over a 2x2 grid of role tiles, Translator in the
-// bottom-right cell, in the light or dark theme.
+// (<768) get the docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md layout (PhoneStart):
+// a "Kamusta!" greeting over the card and a full-width Translator button, in
+// the light or dark theme.
 
 import React, { useEffect, useRef } from "react";
-import { Animated, View, Text, StyleSheet, ScrollView, Pressable, Platform, ViewStyle, useWindowDimensions } from "react-native";
+import { Animated, View, Text, StyleSheet, ScrollView, Pressable, Platform, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, RadialGradient, Stop, Rect } from "react-native-svg";
-import RoleCard from "../components/RoleCard";
-import HandLandmarkMark from "../components/HandLandmarkMark";
-import Wordmark from "../components/Wordmark";
-import GradientBackground from "../components/GradientBackground";
-import RoleTile from "../components/RoleTile";
-import { AppearanceButton } from "../components/AppearancePanel";
-import { GraduationCapIcon, ClipboardCheckIcon, GearIcon, VideoCameraIcon } from "../components/icons/RoleIcons";
-import { colors, typography, spacing, mobileTypography, ThemeColors } from "../theme/theme";
-import { neuRaised } from "../theme/shadows";
-import { useResponsive } from "../theme/responsive";
-import { useReduceMotion } from "../hooks/useReduceMotion";
-import { Theme, useTheme, useThemedStyles } from "../theme/ThemeProvider";
-
-type Role = "student" | "teacher" | "admin";
+import HandLandmarkMark from "../../components/HandLandmarkMark";
+import Wordmark from "../../components/Wordmark";
+import GradientBackground from "../../components/GradientBackground";
+import GlassCard from "../../components/GlassCard";
+import { AppearanceButton } from "../../components/AppearancePanel";
+import { VideoCameraIcon } from "../../components/icons/RoleIcons";
+import { ChevronRightIcon } from "../../components/icons/UiIcons";
+import { colors, typography, spacing, radii, mobileTypography, ThemeColors } from "../../theme/theme";
+import { neuRaised } from "../../theme/shadows";
+import { useResponsive } from "../../theme/responsive";
+import { useReduceMotion } from "../../hooks/useReduceMotion";
+import { Theme, useTheme, useThemedStyles } from "../../theme/ThemeProvider";
 
 type Props = {
-  onSelectRole: (role: Role) => void;
   onOpenTranslator: () => void;
-  /** Someone is still signed in on this device (sessions survive reloads). */
-  signedInAs?: { name: string; role: Role } | null;
-  onContinueSignedIn?: () => void;
-  onSignOut?: () => void;
-  /** A one-off message, e.g. an expired email link. */
-  notice?: string | null;
-  onDismissNotice?: () => void;
+  /** The login form, or whose session this is; shown in a frosted card. */
+  children: React.ReactNode;
 };
-
-const ROLES: { role: Role; label: string; description: string; mobileDescription: string; accentColor: string }[] = [
-  {
-    role: "student",
-    label: "Student",
-    description: "Practice signs with your camera and earn stars",
-    mobileDescription: "Practice signs, earn stars",
-    accentColor: colors.accentCoral,
-  },
-  {
-    role: "teacher",
-    label: "Teacher",
-    description: "Run classes, choose what to learn, follow progress, call students",
-    mobileDescription: "Classes, progress, calls",
-    accentColor: colors.primaryTeal,
-  },
-  {
-    role: "admin",
-    label: "Administrator",
-    description: "Manage accounts and approve teachers",
-    mobileDescription: "Accounts and approvals",
-    accentColor: colors.adminGray,
-  },
-];
-
-const ROLE_LABELS: Record<Role, string> = { student: "Student", teacher: "Teacher", admin: "Admin" };
-
-const makeBannerStyles = (c: ThemeColors) =>
-  StyleSheet.create({
-    stack: { gap: spacing.sm, marginBottom: spacing.md },
-    card: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
-      gap: spacing.sm,
-      paddingVertical: spacing.sm + 2,
-      paddingHorizontal: spacing.md,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: c.hairline,
-      backgroundColor: c.surface,
-    },
-    who: { flex: 1, minWidth: 150 },
-    label: { ...typography.meta, color: c.textSecondary },
-    name: { ...typography.label, color: c.textPrimary, marginTop: 2 },
-    text: { ...typography.bodySm, flex: 1, minWidth: 150, color: c.textPrimary },
-    actions: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-    continueBtn: {
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 999,
-      backgroundColor: c.primaryTeal,
-    },
-    continueText: { ...typography.label, color: c.onPrimary },
-    link: { ...typography.bodySm, color: c.primaryTealText, textDecorationLine: "underline" },
-  });
-
-// A session survives reloads, so on a shared classroom computer the next
-// child would tap "Student" and land in the previous child's account. Say
-// who is signed in, with the way out right next to it.
-function SessionBanner({ signedInAs, onContinueSignedIn, onSignOut, notice, onDismissNotice }: Props) {
-  const styles = useThemedStyles(makeBannerStyles);
-  if (!signedInAs && !notice) return null;
-  return (
-    <View style={styles.stack}>
-      {notice ? (
-        <View style={styles.card} accessibilityRole="alert">
-          <Text style={styles.text}>{notice}</Text>
-          <Pressable onPress={onDismissNotice} accessibilityRole="button" hitSlop={8}>
-            <Text style={styles.link}>Dismiss</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {signedInAs ? (
-        <View style={styles.card}>
-          <View style={styles.who}>
-            <Text style={styles.label}>Signed in as</Text>
-            <Text style={styles.name} numberOfLines={1}>
-              {signedInAs.name || "Your account"} · {ROLE_LABELS[signedInAs.role]}
-            </Text>
-          </View>
-          <View style={styles.actions}>
-            <Pressable
-              onPress={onContinueSignedIn}
-              style={styles.continueBtn}
-              accessibilityRole="button"
-              accessibilityLabel={`Continue as ${signedInAs.name || "this account"}`}
-            >
-              <Text style={styles.continueText}>Continue</Text>
-            </Pressable>
-            <Pressable onPress={onSignOut} accessibilityRole="button" hitSlop={8}>
-              <Text style={styles.link}>Not you? Sign out</Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
-    </View>
-  );
-}
 
 // Ambient background glow — RN has no `filter: blur()`, so the softness is
 // baked into the radial gradient's own stops (transparent well before the
@@ -169,6 +63,14 @@ function LogoTile({ size, radius, markSize }: { size: number; radius: number; ma
   );
 }
 
+function LoginCard({ children, padding }: { children: React.ReactNode; padding: number }) {
+  return (
+    <GlassCard tint="frosted" dropShadow radius={radii.lg} padding={padding}>
+      {children}
+    </GlassCard>
+  );
+}
+
 function TranslatorGhostButtonDesktop({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
@@ -196,7 +98,6 @@ function SkipDivider() {
 
 // ── phone layout ────────────────────────────────────────────────────────
 const PHONE_GUTTER = spacing.md;
-const PHONE_GAP = spacing.md;
 
 const makePhoneStyles = (c: ThemeColors, theme: Theme) =>
   StyleSheet.create({
@@ -217,33 +118,42 @@ const makePhoneStyles = (c: ThemeColors, theme: Theme) =>
     greeting: { marginTop: spacing.lg, marginBottom: spacing.lg, gap: spacing.xs },
     hero: { ...mobileTypography.hero, color: c.textPrimary },
     sub: { ...mobileTypography.body, color: c.textSecondary },
-    grid: { flexDirection: "row", flexWrap: "wrap", gap: PHONE_GAP },
+    divider: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.lg, marginBottom: spacing.md },
+    rule: { flex: 1, height: 1, backgroundColor: c.border },
+    dividerLabel: { ...mobileTypography.caption, color: c.textMuted, letterSpacing: 1 },
+    // The old 2x2 role grid's Translator tile, as one full-width row.
+    translator: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      minHeight: 72,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.lg,
+      backgroundColor: c.surface,
+      ...theme.shadows.neuRaised("md"),
+    },
+    translatorPressed: theme.shadows.neuPressed(),
+    iconTile: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.surfaceSelected,
+    },
+    translatorText: { flex: 1, gap: 2 },
+    translatorLabel: { ...mobileTypography.heading, color: c.textPrimary },
+    translatorHint: { ...mobileTypography.caption, color: c.textSecondary },
     footer: { ...mobileTypography.caption, color: c.textMuted, marginTop: "auto", paddingTop: spacing.xl, textAlign: "center" },
   });
 
-function PhoneRoleSelect(props: Props) {
-  const { onSelectRole, onOpenTranslator } = props;
+function PhoneStart({ onOpenTranslator, children }: Props) {
   const { colors: c } = useTheme();
   const styles = useThemedStyles(makePhoneStyles);
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const tileWidth = Math.floor((width - 2 * PHONE_GUTTER - PHONE_GAP) / 2);
-  const tiles = [
-    { key: "student", label: "Student", description: "Practice signs and see your stars", icon: <GraduationCapIcon color={c.accentCoralText} />, onPress: () => onSelectRole("student") },
-    { key: "teacher", label: "Teacher", description: "Classes, modules and calls", icon: <ClipboardCheckIcon color={c.primaryTealText} />, onPress: () => onSelectRole("teacher") },
-    { key: "admin", label: "Admin", description: "Accounts and approvals", icon: <GearIcon color={c.adminGray} />, onPress: () => onSelectRole("admin") },
-    {
-      key: "translator",
-      label: "Translator",
-      description: "No account needed",
-      icon: <VideoCameraIcon color={c.successText} />,
-      onPress: onOpenTranslator,
-      accessibilityLabel: "Open the Translator, no account needed",
-    },
-  ];
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: spacing.lg + insets.bottom }]}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: spacing.lg + insets.bottom }]} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <View style={styles.brand}>
             <View style={styles.logoTile}>
@@ -258,16 +168,31 @@ function PhoneRoleSelect(props: Props) {
           <Text style={styles.hero} accessibilityRole="header">
             Kamusta!
           </Text>
-          <Text style={styles.sub}>Who's using LCSign?</Text>
+          <Text style={styles.sub}>Log in to LCSign.</Text>
         </View>
 
-        <SessionBanner {...props} />
+        <LoginCard padding={spacing.lg}>{children}</LoginCard>
 
-        <View style={styles.grid}>
-          {tiles.map(({ key, ...t }) => (
-            <RoleTile key={key} width={tileWidth} {...t} />
-          ))}
+        <View style={styles.divider}>
+          <View style={styles.rule} />
+          <Text style={styles.dividerLabel}>OR SKIP SIGN-IN</Text>
+          <View style={styles.rule} />
         </View>
+        <Pressable
+          onPress={onOpenTranslator}
+          accessibilityRole="button"
+          accessibilityLabel="Open the Translator, no account needed"
+          style={({ pressed }) => [styles.translator, pressed && styles.translatorPressed]}
+        >
+          <View style={styles.iconTile}>
+            <VideoCameraIcon color={c.successText} />
+          </View>
+          <View style={styles.translatorText}>
+            <Text style={styles.translatorLabel}>Translator</Text>
+            <Text style={styles.translatorHint}>No account needed</Text>
+          </View>
+          <ChevronRightIcon size={16} color={c.textSecondary} />
+        </Pressable>
 
         <Text style={styles.footer}>Real-time ASL and FSL interpretation for Liloan Central School.</Text>
       </ScrollView>
@@ -275,15 +200,14 @@ function PhoneRoleSelect(props: Props) {
   );
 }
 
-export default function RoleSelectScreen(props: Props) {
+export default function StartLayout(props: Props) {
   const { isMobile } = useResponsive();
-  if (isMobile) return <PhoneRoleSelect {...props} />;
-  return <WideRoleSelect {...props} />;
+  if (isMobile) return <PhoneStart {...props} />;
+  return <WideStart {...props} />;
 }
 
-function WideRoleSelect(props: Props) {
-  const { onSelectRole, onOpenTranslator } = props;
-  const { isDesktop, isMobile } = useResponsive();
+function WideStart({ onOpenTranslator, children }: Props) {
+  const { isDesktop } = useResponsive();
 
   const fade = useRef(new Animated.Value(0)).current;
   const reduceMotion = useReduceMotion();
@@ -319,30 +243,14 @@ function WideRoleSelect(props: Props) {
           </View>
         </Animated.View>
 
-        <ScrollView contentContainerStyle={styles.rightPaneScroll}>
+        <ScrollView contentContainerStyle={styles.rightPaneScroll} keyboardShouldPersistTaps="handled">
           <Animated.View
             style={[
               styles.rightPaneInner,
               { opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] },
             ]}
           >
-            <SessionBanner {...props} />
-            <Text style={[typography.meta, styles.eyebrow]}>SIGN IN AS</Text>
-
-            <View style={styles.cardsCol}>
-              {ROLES.map((r, i) => (
-                <RoleCard
-                  key={r.role}
-                  index={i}
-                  label={r.label}
-                  description={r.description}
-                  accentColor={r.accentColor}
-                  isPrimary={i === 0}
-                  onPress={() => onSelectRole(r.role)}
-                />
-              ))}
-            </View>
-
+            <LoginCard padding={spacing.xl}>{children}</LoginCard>
             <SkipDivider />
             <TranslatorGhostButtonDesktop onPress={onOpenTranslator} />
           </Animated.View>
@@ -356,7 +264,7 @@ function WideRoleSelect(props: Props) {
 
   return (
     <GradientBackground variant="full" style={styles.mobileRoot}>
-      <ScrollView contentContainerStyle={styles.mobileScroll}>
+      <ScrollView contentContainerStyle={styles.mobileScroll} keyboardShouldPersistTaps="handled">
         <View style={styles.statusBarSpacer} />
 
         <Animated.View style={[styles.mobileBrand, { opacity: fade }]}>
@@ -367,21 +275,8 @@ function WideRoleSelect(props: Props) {
           </Text>
         </Animated.View>
 
-        <SessionBanner {...props} />
-
-        <View style={styles.mobileCards}>
-          {ROLES.map((r, i) => (
-            <RoleCard
-              key={r.role}
-              index={i}
-              isMobile
-              label={r.label}
-              description={r.mobileDescription}
-              accentColor={r.accentColor}
-              isPrimary={i === 0}
-              onPress={() => onSelectRole(r.role)}
-            />
-          ))}
+        <View style={styles.mobileCard}>
+          <LoginCard padding={spacing.lg}>{children}</LoginCard>
         </View>
 
         <View style={styles.mobileBottom}>
@@ -465,14 +360,7 @@ const styles = StyleSheet.create({
   },
   rightPaneInner: {
     width: "100%",
-    maxWidth: 620,
-  },
-  eyebrow: {
-    color: colors.textTertiary,
-    marginBottom: spacing.md,
-  },
-  cardsCol: {
-    gap: 14,
+    maxWidth: 460,
   },
 
   // ── shared: divider + translator ghost ──────────────────────────────
@@ -516,7 +404,7 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
   },
 
-  // ── mobile / tablet ──────────────────────────────────────────────────
+  // ── tablet ───────────────────────────────────────────────────────────
   mobileRoot: {
     flex: 1,
   },
@@ -526,7 +414,10 @@ const styles = StyleSheet.create({
   statusBarSpacer: {
     height: Platform.OS === "web" ? 24 : 52,
   },
+  // One centred column, as wide as the card: a full-width form is too wide
+  // on a tablet.
   mobileBrand: {
+    alignItems: "center",
     paddingHorizontal: 22,
     paddingVertical: 26,
   },
@@ -536,16 +427,22 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     maxWidth: 250,
     marginTop: spacing.sm,
+    textAlign: "center",
   },
-  mobileCards: {
+  mobileCard: {
+    alignSelf: "center",
     paddingHorizontal: 22,
-    gap: spacing.md,
+    width: "100%",
+    maxWidth: 504,
   },
   mobileBottom: {
+    alignSelf: "center",
     marginTop: "auto",
     paddingHorizontal: 22,
     paddingBottom: 34,
     paddingTop: spacing.lg,
+    width: "100%",
+    maxWidth: 504,
   },
   translatorGhostMobile: {
     width: "100%",

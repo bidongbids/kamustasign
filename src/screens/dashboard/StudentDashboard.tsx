@@ -92,9 +92,11 @@ import type { CallPeer } from "../../lib/callSignaling";
 type Props = {
   accentColor: string;
   onSignOut: () => void;
-  onExitToRoleSelect: () => void;
+  onExitToStart: () => void;
   /** The Account panel changed the name or 2FA - App reloads the profile. */
   onAccountChange: () => void;
+  /** The Translator button in the header. */
+  onOpenTranslator: () => void;
 };
 
 type Tab = "today" | "signs" | "teacher";
@@ -125,7 +127,7 @@ function dueDay(date: string): { short: string; days: number } {
 }
 const inDays = (n: number) => (n === 0 ? "today" : n === 1 ? "tomorrow" : n > 1 ? `in ${n} days` : n === -1 ? "yesterday" : `${-n} days ago`);
 
-export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleSelect, onAccountChange }: Props) {
+export default function StudentDashboard({ accentColor, onSignOut, onExitToStart, onAccountChange, onOpenTranslator }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { isDesktop, isMobile } = useResponsive();
@@ -899,7 +901,8 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToRoleS
       roleLabel="Student"
       userName={profile?.full_name ?? "..."}
       onSignOut={onSignOut}
-      onExitToRoleSelect={onExitToRoleSelect}
+      onExitToStart={onExitToStart}
+      onOpenTranslator={onOpenTranslator}
       profile={profile}
       onProfileChange={(p) => {
         setProfile(p);

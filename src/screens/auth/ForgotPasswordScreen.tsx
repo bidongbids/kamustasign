@@ -11,17 +11,15 @@ import AuthScreenShell from "./AuthScreenShell";
 import { supabase } from "../../lib/supabase";
 import { friendlyAuthError, isEmailShaped } from "../../lib/authForms";
 import { authStyles as s } from "./authStyles";
-import type { Role } from "./LoginScreen";
 
 type Props = {
-  role: Role;
   accentColor: string;
   initialEmail?: string;
   /** Back to the login form, pre-filled with `email`. */
   onBack: (email?: string) => void;
 };
 
-export default function ForgotPasswordScreen({ role, accentColor, initialEmail = "", onBack }: Props) {
+export default function ForgotPasswordScreen({ accentColor, initialEmail = "", onBack }: Props) {
   const [email, setEmail] = useState(initialEmail);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,9 +34,8 @@ export default function ForgotPasswordScreen({ role, accentColor, initialEmail =
       return;
     }
     setLoading(true);
-    // ?role= brings them back to the same sign-in tile, like Google sign-in.
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-      redirectTo: `${window.location.origin}${window.location.pathname}?role=${role}`,
+      redirectTo: `${window.location.origin}${window.location.pathname}`,
     });
     setLoading(false);
     if (resetError) {

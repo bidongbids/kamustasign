@@ -6,9 +6,12 @@
 // Note: there's no "create/delete account" action here - profiles.id
 // references auth.users(id), and auth users can only be created or deleted
 // through Supabase's Admin API (a service-role key), which this client-only
-// app deliberately doesn't have. People sign up themselves as a student or a
-// teacher; a teacher sign-up waits here for an admin's approval
-// (0011_auth_hardening.sql), and only an admin can make someone an admin.
+// app deliberately doesn't have. People sign up themselves as a student, a
+// teacher or an admin, and every sign-up waits here for approval
+// (0014_account_approval.sql): admins approve students and teachers, and only
+// the super admin (the LCSign owner) approves admins or changes anyone's
+// admin role. "Turn down" deletes a sign-up that is still waiting
+// (decline_signup), never an approved account.
 //
 // Layout (design_handoff_teacher_admin_videocall A1-A5): the approvals inbox
 // on top only while someone is waiting; then search, the role filter with
@@ -28,9 +31,10 @@ import { neuInset, neuRaised } from "../../theme/shadows";
 import { useResponsive } from "../../theme/responsive";
 import {
   adminListAccounts,
-  approveTeacher,
+  approveAccount,
+  declineSignup,
   getMyProfile,
-  isPendingTeacher,
+  isPendingApproval,
   listAllClasses,
   updateProfileName,
   updateProfileRole,
@@ -62,12 +66,12 @@ const INBOX_SHOWN = 3;
 type Props = {
   accentColor: string;
   onSignOut: () => void;
-  onExitToRoleSelect: () => void;
+  onExitToStart: () => void;
   /** The Account panel changed the name or 2FA - App reloads the profile. */
   onAccountChange: () => void;
 };
 
-export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSelect, onAccountChange }: Props) {
+export default function AdminDashboard({ accentColor, onSignOut, onExitToStart, onAccountChange }: Props) {
   const { width } = useResponsive();
   const phone = width < 768;
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -105,8 +109,11 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSel
   }, [load]);
 
   const replace = (next: AccountRow) => setAccounts((prev) => prev.map((p) => (p.id === next.id ? next : p)));
+  const remove = (id: string) => setAccounts((prev) => prev.filter((p) => p.id !== id));
   const nameOf = useCallback((id: string) => accounts.find((a) => a.id === id)?.full_name ?? null, [accounts]);
-  const pending = accounts.filter(isPendingTeacher);
+  const isSuper = profile?.superadmin === true;
+  // Admin sign-ups wait for the super admin only.
+  const pending = accounts.filter((a) => isPendingApproval(a) && (a.role !== "admin" || isSuper));
   const counts = useMemo(() => {
     const c = { all: accounts.length, student: 0, teacher: 0, admin: 0 } as Record<RoleFilter, number>;
     for (const a of accounts) c[a.role] += 1;
@@ -125,10 +132,10 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSel
   return (
     <DashboardShell
       accentColor={accentColor}
-      roleLabel="Admin"
+      roleLabel={isSuper ? "Super admin" : "Admin"}
       userName={profile?.full_name ?? "..."}
       onSignOut={onSignOut}
-      onExitToRoleSelect={onExitToRoleSelect}
+      onExitToStart={onExitToStart}
       profile={profile}
       onProfileChange={(p) => {
         setProfile(p);
@@ -145,7 +152,7 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSel
       <Notice notice={notice} onDismiss={() => setNotice(null)} />
 
       {!loading ? (
-        <ApprovalsInbox accounts={pending} phone={phone} accentColor={accentColor} setNotice={setNotice} onSaved={replace} />
+        <ApprovalsInbox accounts={pending} isSuper={isSuper} phone={phone} accentColor={accentColor} setNotice={setNotice} onSaved={replace} onRemoved={remove} />
       ) : null}
 
       {!emailsAvailable ? <Text style={styles.migrationNote}>Emails are hidden until the 0008_class_management.sql migration is run in the Supabase SQL Editor.</Text> : null}
@@ -217,6 +224,7 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSel
       <AccountDrawer
         account={editing}
         selfId={profile?.id ?? null}
+        isSuper={isSuper}
         classes={classes}
         nameOf={nameOf}
         accentColor={accentColor}
@@ -230,18 +238,28 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToRoleSel
 
 // ── approvals inbox (A1, A3) ────────────────────────────────────────────
 
+const APPROVED_TEXT: Record<ProfileRole, string> = {
+  student: "can now practise and join a class.",
+  teacher: "can now use the teacher dashboard.",
+  admin: "can now manage accounts.",
+};
+
 function ApprovalsInbox({
   accounts,
+  isSuper,
   phone,
   accentColor,
   setNotice,
   onSaved,
+  onRemoved,
 }: {
   accounts: AccountRow[];
+  isSuper: boolean;
   phone: boolean;
   accentColor: string;
   setNotice: (n: NoticeState) => void;
   onSaved: (a: AccountRow) => void;
+  onRemoved: (id: string) => void;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -258,7 +276,7 @@ function ApprovalsInbox({
 
   const act = async (a: AccountRow, approve: boolean) => {
     setBusyId(a.id);
-    const { error } = approve ? await approveTeacher(a.id) : await updateProfileRole(a.id, "student");
+    const { error } = approve ? await approveAccount(a.id) : await declineSignup(a.id);
     setBusyId(null);
     const name = a.full_name || a.email || "That account";
     if (error) {
@@ -266,13 +284,14 @@ function ApprovalsInbox({
       return;
     }
     setConfirmId(null);
-    onSaved(approve ? { ...a, approved: true } : { ...a, role: "student", class_id: null });
-    setNotice({ kind: "success", message: approve ? `${name} can now use the teacher dashboard.` : `${name} is now a student account.` });
+    if (approve) onSaved({ ...a, approved: true });
+    else onRemoved(a.id);
+    setNotice({ kind: "success", message: approve ? `${name} ${APPROVED_TEXT[a.role]}` : `${name}'s sign-up was deleted.` });
   };
 
   const shown = showAll ? accounts : accounts.slice(0, INBOX_SHOWN);
   return (
-    <View style={[styles.card, styles.inbox]} accessibilityLabel={`${accounts.length} teacher account${accounts.length === 1 ? "" : "s"} waiting for approval`}>
+    <View style={[styles.card, styles.inbox]} accessibilityLabel={`${accounts.length} account${accounts.length === 1 ? "" : "s"} waiting for approval`}>
       <View style={styles.inboxHead}>
         <InboxIcon size={20} color={colors.attention} />
         <Text style={styles.inboxTitle} accessibilityRole="header">
@@ -284,41 +303,44 @@ function ApprovalsInbox({
       </View>
       {!phone ? (
         <Text style={styles.inboxBody}>
-          Approve only people you know are teachers. An approved teacher can see the names and emails of students who aren't in a class yet.
+          Approve only people you know, as the kind of account they really are. An approved teacher can see the names and emails of students who aren't in a
+          class yet{isSuper ? ", and an approved admin can manage every account. Only you can approve admins." : "."} To approve someone as a different kind of
+          account, edit them in the list below.
         </Text>
       ) : null}
       {shown.map((a) => {
         const name = a.full_name || a.email || "(no name)";
         const first = firstOf(name);
+        const approveLabel = `Approve ${ROLE_TEXT[a.role].title.toLowerCase()}`;
         return (
           <View key={a.id} style={styles.inboxRow}>
             <View style={[styles.inboxPerson, phone && styles.inboxPersonPhone]}>
-              <Avatar name={name} color={ROLE_COLORS.teacher} size={42} />
+              <Avatar name={name} color={ROLE_COLORS[a.role]} size={42} />
               <View style={styles.flex}>
                 <Text style={styles.name} numberOfLines={1}>
                   {name}
                 </Text>
                 <Text style={styles.meta} numberOfLines={2}>
-                  {[a.email, `signed up ${joinedText(a.created_at)}, as a teacher`].filter(Boolean).join(" · ")}
+                  {[a.email, `signed up ${joinedText(a.created_at)}, as ${roleWithArticle(a.role)}`].filter(Boolean).join(" · ")}
                 </Text>
               </View>
               {!phone ? (
                 <View style={styles.row8}>
-                  <ActionButton label="Approve teacher" variant="primary" size="md" accentColor={accentColor} icon={(c) => <CheckIcon size={15} color={c} />} loading={busyId === a.id && confirmId !== a.id} disabled={busyId !== null} onPress={() => void act(a, true)} />
+                  <ActionButton label={approveLabel} variant="primary" size="md" accentColor={accentColor} icon={(c) => <CheckIcon size={15} color={c} />} loading={busyId === a.id && confirmId !== a.id} disabled={busyId !== null} onPress={() => void act(a, true)} />
                   <ActionButton label="Turn down…" size="md" style={styles.turnDown} disabled={busyId !== null} onPress={() => setConfirmId(a.id)} />
                 </View>
               ) : null}
             </View>
             {phone ? (
               <View style={styles.row8}>
-                <ActionButton label="Approve teacher" variant="primary" size="md" accentColor={accentColor} loading={busyId === a.id && confirmId !== a.id} disabled={busyId !== null} onPress={() => void act(a, true)} />
+                <ActionButton label={approveLabel} variant="primary" size="md" accentColor={accentColor} loading={busyId === a.id && confirmId !== a.id} disabled={busyId !== null} onPress={() => void act(a, true)} />
                 <ActionButton label="Turn down…" size="md" style={styles.turnDown} disabled={busyId !== null} onPress={() => setConfirmId(a.id)} />
               </View>
             ) : null}
             {confirmId === a.id ? (
               <ConfirmInline
-                message={`Turn down ${name}? The account becomes a student account with no class. ${first} can still sign in, and you can make ${first} a teacher later.`}
-                confirmLabel="Make student"
+                message={`Turn down ${name}? The sign-up is deleted and ${first} can't sign in. ${first} can sign up again.`}
+                confirmLabel="Delete sign-up"
                 busy={busyId === a.id}
                 onCancel={() => setConfirmId(null)}
                 onConfirm={() => void act(a, false)}
@@ -475,6 +497,7 @@ function AccountsList({
 function AccountDrawer({
   account,
   selfId,
+  isSuper,
   classes,
   nameOf,
   accentColor,
@@ -484,6 +507,7 @@ function AccountDrawer({
 }: {
   account: AccountRow | null;
   selfId: string | null;
+  isSuper: boolean;
   classes: ClassRow[];
   nameOf: (id: string) => string | null;
   accentColor: string;
@@ -498,6 +522,7 @@ function AccountDrawer({
           key={account.id}
           a={account}
           self={account.id === selfId}
+          isSuper={isSuper}
           classes={classes}
           nameOf={nameOf}
           accentColor={accentColor}
@@ -513,6 +538,7 @@ function AccountDrawer({
 function AccountForm({
   a,
   self,
+  isSuper,
   classes,
   nameOf,
   accentColor,
@@ -522,6 +548,7 @@ function AccountForm({
 }: {
   a: AccountRow;
   self: boolean;
+  isSuper: boolean;
   classes: ClassRow[];
   nameOf: (id: string) => string | null;
   accentColor: string;
@@ -539,6 +566,16 @@ function AccountForm({
   const roleChanged = role !== a.role;
   const nameChanged = name.trim() !== a.full_name && name.trim().length > 0;
   const consequences = roleChangeConsequences({ ...a, full_name: name || a.full_name }, role, { classes, nameOf });
+  // Only the super admin makes, approves or unmakes admins, and the super
+  // admin's own account changes only in the database (0014).
+  const lockReason = a.superadmin
+    ? "This is the super admin account. Its role can only be changed in the database."
+    : self
+      ? "You can't change your own role. Ask another admin to do it."
+      : !isSuper && a.role === "admin"
+        ? "Only the super admin can change an admin account."
+        : null;
+  const roleLocked = (r: ProfileRole) => r !== a.role && (lockReason !== null || (!isSuper && r === "admin"));
 
   const save = async () => {
     const nextName = name.trim();
@@ -567,7 +604,7 @@ function AccountForm({
         });
         return;
       }
-      next = { ...next, role, class_id: role === "student" ? next.class_id : null, approved: role === "teacher" ? true : next.approved };
+      next = { ...next, role, class_id: role === "student" ? next.class_id : null, approved: true };
     }
     setSaving(false);
     onSaved(next);
@@ -602,7 +639,7 @@ function AccountForm({
           <View style={styles.cards} accessibilityRole="radiogroup">
             {ROLES.map((r) => {
               const on = r === role;
-              const locked = self && r !== a.role;
+              const locked = roleLocked(r);
               return (
                 <Pressable
                   key={r}
@@ -622,10 +659,10 @@ function AccountForm({
               );
             })}
           </View>
-          {self ? (
+          {lockReason || !isSuper ? (
             <View style={styles.lockNote}>
               <ShieldIcon size={15} color={colors.textOnFrosted} />
-              <Text style={styles.lockText}>You can't change your own role. Ask another admin to do it.</Text>
+              <Text style={[styles.lockText, styles.flex]}>{lockReason ?? "Only the super admin can make someone an admin."}</Text>
             </View>
           ) : null}
         </View>

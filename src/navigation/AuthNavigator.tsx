@@ -3,14 +3,19 @@
 // already uses elsewhere in this codebase — see docs/KamustaSign_UI_CRUD_Handoff.md
 // Section 4. Wiring the installed-but-unused @react-navigation stack is a
 // separate, later step (Section 6, step 3), not folded in here.
+//
+// The login step is the app's start screen: there's no role to pick before
+// signing in (the account's role decides the dashboard), and the sign-up
+// form asks for the kind of account instead.
 import React, { useEffect, useState } from "react";
 import { Platform, View, StyleSheet } from "react-native";
-import LoginScreen, { Role } from "../screens/auth/LoginScreen";
+import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
 import Verify2FAScreen from "../screens/auth/Verify2FAScreen";
 import Setup2FAScreen from "../screens/auth/Setup2FAScreen";
 import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
 import type { AuthGateState } from "../lib/authGate";
+import type { ProfileRole } from "../lib/queries";
 
 type Step = "login" | "register" | "verify2fa" | "setup2fa" | "forgot";
 
@@ -24,20 +29,21 @@ const passwordResetEnabled =
   window.location.protocol.startsWith("http");
 
 type Props = {
-  role: Role;
   accentColor: string;
   authGate: AuthGateState;
-  onRequestExit: () => void;
+  onOpenTranslator: () => void;
+  /** A session survived a reload: the start screen says whose it is. */
+  signedInAs: { name: string; role: ProfileRole | null } | null;
+  onContinueSignedIn: () => void;
   onSetupPromptActive: (active: boolean) => void;
 };
 
-export default function AuthNavigator({ role, accentColor, authGate, onRequestExit, onSetupPromptActive }: Props) {
+export default function AuthNavigator({ accentColor, authGate, onOpenTranslator, signedInAs, onContinueSignedIn, onSetupPromptActive }: Props) {
   // A reload mid-2FA keeps the password step's (aal1) session, so start at
   // the code instead of asking for the password again.
   const [step, setStep] = useState<Step>(authGate.status === "needsMfa" ? "verify2fa" : "login");
   // Carries the typed email between Login, Register and Forgot password.
   const [emailHint, setEmailHint] = useState("");
-  const canRegister = role !== "admin";
 
   useEffect(() => {
     if (authGate.status === "needsMfa") setStep("verify2fa");
@@ -52,9 +58,7 @@ export default function AuthNavigator({ role, accentColor, authGate, onRequestEx
     <View style={styles.flex}>
       {step === "login" && (
         <LoginScreen
-          role={role}
           accentColor={accentColor}
-          canRegister={canRegister}
           initialEmail={emailHint}
           onNavigateRegister={() => setStep("register")}
           onNeedsMfa={() => setStep("verify2fa")}
@@ -66,20 +70,24 @@ export default function AuthNavigator({ role, accentColor, authGate, onRequestEx
                 }
               : undefined
           }
-          onBack={onRequestExit}
+          onOpenTranslator={onOpenTranslator}
+          signedInAs={signedInAs}
+          onContinueSignedIn={onContinueSignedIn}
+          onSignOut={() => authGate.signOut()}
+          notice={authGate.linkError}
+          onDismissNotice={authGate.clearLinkError}
         />
       )}
 
-      {step === "register" && role !== "admin" && (
+      {step === "register" && (
         <RegisterScreen
-          role={role}
           accentColor={accentColor}
           onNavigateLogin={toLogin}
-          onRegistered={() => {
+          onRegistered={(role) => {
             // Fresh account, session already exists, no factor enrolled yet.
-            // Teachers are offered 2FA before the dashboard; students go
-            // straight in (Setup2FAScreen explains why).
-            if (role === "teacher") {
+            // Teachers and admins are offered 2FA before the approval
+            // notice; students go straight there (Setup2FAScreen explains why).
+            if (role !== "student") {
               onSetupPromptActive(true);
               setStep("setup2fa");
             }
@@ -87,9 +95,7 @@ export default function AuthNavigator({ role, accentColor, authGate, onRequestEx
         />
       )}
 
-      {step === "forgot" && (
-        <ForgotPasswordScreen role={role} accentColor={accentColor} initialEmail={emailHint} onBack={toLogin} />
-      )}
+      {step === "forgot" && <ForgotPasswordScreen accentColor={accentColor} initialEmail={emailHint} onBack={toLogin} />}
 
       {step === "verify2fa" && (
         <Verify2FAScreen

@@ -29,14 +29,16 @@ export type Profile = {
   full_name: string;
   role: ProfileRole;
   class_id: string | null;
-  /** False for a teacher sign-up an admin hasn't approved yet (0011). */
+  /** False for a sign-up nobody has approved yet: no role's powers (0014). */
   approved?: boolean;
+  /** The LCSign owner: the only one who approves and changes admins (0014). */
+  superadmin?: boolean;
   created_at: string;
 };
 
-/** A teacher account an admin hasn't approved yet - no teacher powers (0011). */
-export function isPendingTeacher(p: Pick<Profile, "role" | "approved">) {
-  return p.role === "teacher" && p.approved === false;
+/** A sign-up waiting for approval - by an admin, or for an admin sign-up, the super admin (0014). */
+export function isPendingApproval(p: Pick<Profile, "approved">) {
+  return p.approved === false;
 }
 
 export type ClassRow = {
@@ -256,16 +258,21 @@ export async function setModuleOrder(moduleIds: string[]) {
 
 // Only students belong to a class through profiles.class_id, so changing an
 // account away from student also takes it out of its class (the database
-// enforces this too, 0011). An admin making someone a teacher is also their
-// approval.
+// enforces this too, 0011). An admin choosing someone's role also approves
+// them as that role. Only the super admin can make or unmake admins (0014).
 export async function updateProfileRole(profileId: string, role: ProfileRole) {
-  const patch: { role: ProfileRole; class_id?: null; approved?: true } =
-    role === "student" ? { role } : role === "teacher" ? { role, class_id: null, approved: true } : { role, class_id: null };
+  const patch: { role: ProfileRole; approved: true; class_id?: null } =
+    role === "student" ? { role, approved: true } : { role, approved: true, class_id: null };
   return supabase.from("profiles").update(patch).eq("id", profileId).select().single();
 }
 
-export async function approveTeacher(profileId: string) {
+export async function approveAccount(profileId: string) {
   return supabase.from("profiles").update({ approved: true }).eq("id", profileId).select().single();
+}
+
+/** Deletes a sign-up that is still waiting (decline_signup, 0014). */
+export async function declineSignup(profileId: string) {
+  return supabase.rpc("decline_signup", { p_profile_id: profileId });
 }
 
 export async function updateProfileName(profileId: string, fullName: string) {

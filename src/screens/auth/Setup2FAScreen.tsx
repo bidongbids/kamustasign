@@ -1,6 +1,6 @@
-// Offered once, right after a TEACHER signs up (AuthNavigator). A teacher
-// account can see students' names, emails and progress, so it's worth the
-// extra step. Students aren't asked: a child who loses the phone would be
+// Offered once, right after a TEACHER or ADMIN signs up (AuthNavigator).
+// Those accounts can see students' names, emails and progress, so it's worth
+// the extra step. Students aren't asked: a child who loses the phone would be
 // locked out, and only an admin with database access can undo 2FA.
 // Teachers and admins can also turn it on later in the Account panel.
 import React from "react";

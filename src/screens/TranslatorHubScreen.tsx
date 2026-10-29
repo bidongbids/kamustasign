@@ -22,6 +22,7 @@ import { ChevronDownIcon, ChevronLeftIcon, HelpCircleIcon } from "../components/
 import { useSharedCameraStream } from "../hooks/useSharedCameraStream";
 import { useSharedLandmarkers } from "../hooks/useSharedLandmarkers";
 import { findLanguage } from "../lib/languages";
+import { useBackHandler } from "../lib/backNavigation";
 import { colors, spacing, typography } from "../theme/theme";
 import { neuInset, neuRaised } from "../theme/shadows";
 import { useResponsive } from "../theme/responsive";
@@ -44,15 +45,19 @@ const HELP_TEXT: Record<Mode, string> = {
 
 type Props = {
   onBack?: () => void;
+  /** Where Back goes, for screen readers, e.g. "Back to your dashboard". */
+  backLabel?: string;
 };
 
-export default function TranslatorHubScreen({ onBack }: Props) {
+export default function TranslatorHubScreen({ onBack, backLabel = "Back" }: Props) {
   const [mode, setMode] = useState<Mode>("fingerspelling");
   const { isDesktop } = useResponsive();
   const [targetLanguage, setTargetLanguage] = useSelectedLanguage();
   const currentLanguageName = findLanguage(targetLanguage)?.name ?? "English";
   const { getCameraStream } = useSharedCameraStream();
   const { createHandLandmarker, createHolisticLandmarker, releaseLandmarker } = useSharedLandmarkers();
+  // The browser's and Android's back return where the Translator was opened from.
+  useBackHandler(onBack ?? null);
 
   return (
     <GradientBackground variant="subtle" style={styles.root}>
@@ -73,7 +78,7 @@ export default function TranslatorHubScreen({ onBack }: Props) {
               onPress={onBack}
               style={[styles.helpButton, neuRaised("sm")]}
               accessibilityRole="button"
-              accessibilityLabel="Back to role select"
+              accessibilityLabel={backLabel}
             >
               <ChevronLeftIcon size={16} color={colors.textSecondary} />
             </Pressable>

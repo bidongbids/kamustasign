@@ -7,8 +7,8 @@
 // change away from student clears class_id, 0009 / updateProfileRole); a
 // teacher's classes keep their teacher_id when that person stops being a
 // teacher, but every class action needs is_teacher() (0011), so nobody can
-// manage those classes until they're a teacher again; an admin-made teacher
-// is approved.
+// manage those classes until they're a teacher again; choosing a role for a
+// sign-up that is waiting also approves it (0014).
 import type { AccountRow, ClassRow, ProfileRole } from "./queries";
 
 export const firstOf = (name: string | null | undefined) => (name ?? "").trim().split(/\s+/)[0] || "This person";
@@ -29,6 +29,7 @@ export function roleChangeConsequences(
   if (next === a.role) return [];
   const first = firstOf(a.full_name || a.email);
   const out: string[] = [];
+  if (a.approved === false) out.push(`This also approves ${first}'s sign-up.`);
   if (a.role === "student" && a.class_id) {
     const klass = ctx.classes.find((c) => c.id === a.class_id);
     out.push(`${first} leaves ${klass?.name ?? "their class"}. Only students are in classes.`);
@@ -45,7 +46,6 @@ export function roleChangeConsequences(
         } students, but nobody can manage ${taught.length === 1 ? "it" : "them"} until ${first} is a teacher again.`
       );
     }
-    if (a.approved === false && next === "student") out.push(`${first} can still sign in, and you can make ${first} a teacher later.`);
   }
   if (a.role === "admin") out.push(`${first} can no longer manage accounts.`);
   if (next === "teacher") {
@@ -61,16 +61,16 @@ export type ClassCell = { text: string; tone: "normal" | "pending" | "muted" };
 
 /** The "Class" column: a student's class, what a teacher teaches, or that they await approval. */
 export function classCell(a: AccountRow, classes: ClassRow[]): ClassCell {
+  if (a.approved === false) return { text: a.role === "admin" ? "Awaiting super admin approval" : "Awaiting approval", tone: "pending" };
   if (a.role === "student") {
     const klass = a.class_id ? classes.find((c) => c.id === a.class_id) : null;
     return klass ? { text: klass.name, tone: "normal" } : a.class_id ? { text: "Unknown class", tone: "muted" } : { text: "No class", tone: "muted" };
   }
   if (a.role === "teacher") {
-    if (a.approved === false) return { text: "Awaiting approval", tone: "pending" };
     const taught = classesTaughtBy(a.id, classes);
     return taught.length ? { text: `Teaches ${taught.map((c) => c.name).join(", ")}`, tone: "normal" } : { text: "No classes yet", tone: "muted" };
   }
-  return { text: "—", tone: "muted" };
+  return a.superadmin ? { text: "Super admin", tone: "normal" } : { text: "—", tone: "muted" };
 }
 
 export type RoleFilter = "all" | ProfileRole;

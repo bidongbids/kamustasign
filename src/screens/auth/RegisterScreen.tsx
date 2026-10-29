@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import AuthTextField from "../../components/auth/AuthTextField";
 import AuthButton from "../../components/auth/AuthButton";
 import AuthScreenShell from "./AuthScreenShell";
@@ -7,17 +7,24 @@ import { CheckBox } from "../dashboard/ManageKit";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 import { NAME_MAX, friendlyAuthError, isEmailShaped, isExistingAccountError, newPasswordProblem } from "../../lib/authForms";
 import { authStyles as s } from "./authStyles";
-import { spacing } from "../../theme/theme";
-
-type Role = "student" | "teacher";
+import type { ProfileRole } from "../../lib/queries";
+import { colors, fonts, radii, spacing } from "../../theme/theme";
 
 type Props = {
-  role: Role;
   accentColor: string;
   /** `email` pre-fills the login form ("Log in instead"). */
   onNavigateLogin: (email?: string) => void;
-  onRegistered: () => void;
+  onRegistered: (role: ProfileRole) => void;
 };
+
+// Every sign-up waits for approval (0014_account_approval.sql), and whoever
+// approves it can still change the kind of account, so Student is a safe
+// default for the children who make most accounts.
+const ROLE_CHOICES: { role: ProfileRole; label: string; note: string }[] = [
+  { role: "student", label: "Student", note: "Practise signs with your camera and earn stars. An admin approves your account first." },
+  { role: "teacher", label: "Teacher", note: "Run classes, follow progress and call students. An admin approves teacher accounts first." },
+  { role: "admin", label: "Admin", note: "Manage LCSign accounts. The LCSign super admin approves admin accounts first." },
+];
 
 // What LCSign keeps and who sees it, in words a parent can check against the
 // app: the data a sign-up creates, the RLS rules on who reads it (0002-0013),
@@ -28,7 +35,8 @@ const PRIVACY_NOTE =
   "you join a class. Sign recognition runs on this device, so camera video is never uploaded or saved, and a " +
   "video call is shared only with the person you're calling. Ask an admin to correct or delete your data.";
 
-export default function RegisterScreen({ role, accentColor, onNavigateLogin, onRegistered }: Props) {
+export default function RegisterScreen({ accentColor, onNavigateLogin, onRegistered }: Props) {
+  const [role, setRole] = useState<ProfileRole>("student");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,8 +49,6 @@ export default function RegisterScreen({ role, accentColor, onNavigateLogin, onR
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
-
-  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
 
   const handleRegister = async () => {
     if (loading) return;
@@ -91,7 +97,7 @@ export default function RegisterScreen({ role, accentColor, onNavigateLogin, onR
       setConfirmationSentTo(email.trim());
       return;
     }
-    onRegistered();
+    onRegistered(role);
   };
 
   if (confirmationSentTo) {
@@ -108,15 +114,38 @@ export default function RegisterScreen({ role, accentColor, onNavigateLogin, onR
 
   return (
     <AuthScreenShell accentColor={accentColor} onBack={() => onNavigateLogin()} backLabel="Back to Log In">
-      <Text style={[s.title, { color: accentColor }]}>{roleLabel} Sign Up</Text>
-      <Text style={s.subtitle}>
-        {role === "teacher"
-          ? "Create your LCSign account. An admin approves new teacher accounts before you can set up classes."
-          : "Create your LCSign account"}
-      </Text>
+      <Text style={[s.title, { color: accentColor }]}>Sign Up</Text>
+      <Text style={s.subtitle}>Create your LCSign account</Text>
       {!isSupabaseConfigured && (
         <Text style={s.errorText}>No Supabase project connected yet — this screen is UI-only for now.</Text>
       )}
+
+      <Text style={styles.label}>I am a…</Text>
+      <View style={styles.roleRow} accessibilityRole="radiogroup" accessibilityLabel="Kind of account">
+        {ROLE_CHOICES.map((c) => {
+          const on = c.role === role;
+          return (
+            <Pressable
+              key={c.role}
+              onPress={() => setRole(c.role)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: on }}
+              accessibilityLabel={`${c.label}. ${c.note}`}
+              style={({ focused }: any) => [
+                styles.roleOption,
+                on ? { backgroundColor: accentColor, borderColor: accentColor } : styles.roleOptionOff,
+                focused && styles.focused,
+                webCursor,
+              ]}
+            >
+              <Text style={[styles.roleText, on && styles.roleTextOn]}>{c.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={styles.roleNote} accessibilityLiveRegion="polite">
+        {ROLE_CHOICES.find((c) => c.role === role)!.note}
+      </Text>
 
       <AuthTextField
         label="Full name"
@@ -210,3 +239,32 @@ export default function RegisterScreen({ role, accentColor, onNavigateLogin, onR
     </AuthScreenShell>
   );
 }
+
+const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as object) : null;
+
+// On the frosted card: dark text only, like the rest of the form.
+const styles = StyleSheet.create({
+  label: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.textOnFrosted, marginBottom: spacing.xs + 2 },
+  roleRow: { flexDirection: "row", gap: spacing.sm },
+  roleOption: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: radii.pill,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+  },
+  roleOptionOff: { borderColor: "rgba(30,31,38,0.3)" },
+  roleText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textOnFrosted },
+  roleTextOn: { color: colors.textOnPrimary },
+  roleNote: {
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: colors.textOnFrostedMuted,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  focused: { outlineColor: colors.focusRing, outlineStyle: "solid", outlineWidth: 2, outlineOffset: 2 } as object,
+});

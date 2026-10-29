@@ -1,7 +1,8 @@
 // Shared chrome for the Student/Teacher/Admin dashboards. The header
 // (design_handoff_classroom_theming §4), left to right: Back, the LCSign
-// mark, Appearance, and the account chip, whose menu holds "Your account"
-// (the Account panel) and "Sign out".
+// mark, the Translator (student and teacher dashboards), Appearance, and the
+// account chip, whose menu holds "Your account" (the Account panel) and
+// "Sign out".
 //
 // Optional slots (design_handoff_teacher_admin_videocall): `rail` - a
 // column beside the content on desktop (>= 1100), full height, that doesn't
@@ -16,6 +17,7 @@ import GlassCard from "../../components/GlassCard";
 import BackButton from "../../components/BackButton";
 import { AppearanceButton } from "../../components/AppearancePanel";
 import { ChevronDownIcon, SignOutIcon, UserIcon } from "../../components/icons/UiIcons";
+import { VideoCameraIcon } from "../../components/icons/RoleIcons";
 import AccountPanel from "./AccountPanel";
 import { ConfirmInline } from "./ManageKit";
 import type { Profile } from "../../lib/queries";
@@ -31,7 +33,7 @@ type Props = {
   roleLabel: string;
   userName: string;
   onSignOut: () => void;
-  onExitToRoleSelect: () => void;
+  onExitToStart: () => void;
   children: React.ReactNode;
   /** Desktop content width; the student learning plan uses 880 (default 720). */
   contentMaxWidth?: number;
@@ -54,6 +56,8 @@ type Props = {
   backLabel?: string;
   /** Set while leaving would lose something: Back asks this first (handoff B1). */
   leaveGuard?: string | null;
+  /** Shows the Translator button; it leaves the dashboard, so leaveGuard asks first. */
+  onOpenTranslator?: () => void;
 };
 
 /** The role's colour in the scheme (handoff §4: primary / accent / neutral). */
@@ -76,7 +80,7 @@ export default function DashboardShell({
   roleLabel,
   userName,
   onSignOut,
-  onExitToRoleSelect,
+  onExitToStart,
   children,
   contentMaxWidth,
   profile,
@@ -90,6 +94,7 @@ export default function DashboardShell({
   onBack,
   backLabel = "Back",
   leaveGuard,
+  onOpenTranslator,
 }: Props) {
   const theme = useTheme();
   const { colors } = theme;
@@ -102,18 +107,20 @@ export default function DashboardShell({
   const insets = useSafeAreaInsets();
   const [accountOpen, setAccountOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmLeave, setConfirmLeave] = useState(false);
+  // Where a guarded leave goes once confirmed: Back, or the Translator.
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
   const canOpenAccount = Boolean(profile && onProfileChange);
   const showRail = Boolean(rail) && isDesktop;
   const showTabs = Boolean(tabs?.length) && !isDesktop;
   // 1100-1399 (a 1366 laptop): a narrower rail, so nothing in the content wraps.
   const railWidth = width >= 1400 ? 248 : 216;
 
-  const leave = onBack ?? onExitToRoleSelect;
-  const back = () => (leaveGuard ? setConfirmLeave(true) : leave());
+  const leave = onBack ?? onExitToStart;
+  const guarded = (go: () => void) => (leaveGuard ? setPendingLeave(() => go) : go());
+  const back = () => guarded(leave);
   useBackHandler(back);
   useEffect(() => {
-    if (!leaveGuard) setConfirmLeave(false);
+    if (!leaveGuard) setPendingLeave(null);
   }, [leaveGuard]);
   const backA11y = onBack ? `Back to ${backLabel === "Back" ? "the previous screen" : backLabel}` : "Back to the start screen";
   const role = roleColor(colors, roleLabel);
@@ -127,6 +134,18 @@ export default function DashboardShell({
           <Text style={[styles.brandWordmark, isMobile && styles.brandWordmarkPhone]}>LCSign</Text>
         </View>
         <View style={styles.flex} />
+        {onOpenTranslator ? (
+          <Pressable
+            onPress={() => guarded(onOpenTranslator)}
+            accessibilityRole="button"
+            accessibilityLabel="Open the Translator"
+            hitSlop={4}
+            style={(s: any) => [styles.translator, isMobile && styles.translatorIcon, s.pressed && styles.translatorOn, s.focused && styles.focused]}
+          >
+            <VideoCameraIcon size={18} color={colors.successText} />
+            {isMobile ? null : <Text style={styles.translatorText}>Translator</Text>}
+          </Pressable>
+        ) : null}
         <AppearanceButton compact={isMobile} />
         <Pressable
           onPress={() => setMenuOpen(true)}
@@ -216,16 +235,16 @@ export default function DashboardShell({
           >
             {children}
           </ScrollView>
-          {confirmLeave && leaveGuard ? (
+          {pendingLeave && leaveGuard ? (
             <View style={styles.leaveBar} accessibilityLiveRegion="polite">
               <ConfirmInline
                 message={leaveGuard}
                 cancelLabel="Keep editing"
                 confirmLabel="Leave"
-                onCancel={() => setConfirmLeave(false)}
+                onCancel={() => setPendingLeave(null)}
                 onConfirm={() => {
-                  setConfirmLeave(false);
-                  leave();
+                  setPendingLeave(null);
+                  pendingLeave();
                 }}
               />
             </View>
@@ -385,6 +404,21 @@ const makeStyles = (colors: ThemeColors, theme: Theme) => {
       ...webCursor,
     },
     chipPhone: { width: 44, height: 44, paddingLeft: 0, paddingRight: 0, justifyContent: "center", borderWidth: 0 },
+    // Same pill as the Appearance button next to it.
+    translator: {
+      height: 44,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 16,
+      borderRadius: radii.pill,
+      backgroundColor: colors.surfaceRaised,
+      ...theme.shadows.neuRaised("sm"),
+      ...webCursor,
+    },
+    translatorIcon: { width: 44, paddingHorizontal: 0, justifyContent: "center" },
+    translatorOn: { backgroundColor: colors.well, ...theme.shadows.neuInset("sm") },
+    translatorText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
     chipPressed: { opacity: 0.75 },
     focused: { outlineColor: colors.focusRing, outlineStyle: "solid", outlineWidth: 2, outlineOffset: 2 } as object,
     avatar: {

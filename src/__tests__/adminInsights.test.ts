@@ -38,6 +38,11 @@ describe("role change consequences", () => {
     expect(roleChangeConsequences(ana, "student", { classes, nameOf })).toEqual([]);
   });
 
+  it("choosing a role for a waiting sign-up approves it", () => {
+    const pia = account("s3", "Pia Reyes", "student", { approved: false });
+    expect(roleChangeConsequences(pia, "teacher", { classes, nameOf })[0]).toBe("This also approves Pia's sign-up.");
+  });
+
   it("an admin who stops being one loses account management", () => {
     expect(roleChangeConsequences(account("a1", "Teresa Gomez", "admin"), "teacher", { classes, nameOf })[0]).toBe("Teresa can no longer manage accounts.");
   });
@@ -55,6 +60,9 @@ describe("class cell and filters", () => {
     expect(classCell(paolo, classes).text).toBe("No classes yet");
     expect(classCell(ana, classes).text).toBe("Grade 5 - Mabini");
     expect(classCell(kyla, classes).text).toBe("No class");
+    expect(classCell(account("s4", "Pia Reyes", "student", { approved: false }), classes)).toEqual({ text: "Awaiting approval", tone: "pending" });
+    expect(classCell(account("a2", "Pat Cruz", "admin", { approved: false }), classes).text).toBe("Awaiting super admin approval");
+    expect(classCell(account("a3", "Owner", "admin", { superadmin: true }), classes).text).toBe("Super admin");
   });
 
   it("filters by role, class and search", () => {
