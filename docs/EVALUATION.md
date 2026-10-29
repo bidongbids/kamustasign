@@ -9,9 +9,9 @@ numbers here go stale otherwise.
 | ASL letters (since 2026-10-28) | 26 + del/space | **ASL-HG signers held out**, 2 per fold (25,983 photos) | **93.9%** | 100% (top-3) |
 | ASL letters | | **105 WLASL webcam clips** of 21 letters | **64.8%** per clip | 56.0% per frame |
 | *ASL letters before 2026-10-28* | | *10 ASL-HG signers / the same WLASL clips* | *71.5% / 34.3% per clip* | |
-| ASL words (4-seed ensemble, 2026-10-29) | 344 | Test split + 2 held-out GISLR signers (9,579 clips) | 59.2% | 83.2% |
+| ASL words (4-seed ensemble, 2026-10-29) | 344 | Test split + 2 held-out GISLR signers (9,171 clips not trained on, see §2) | 57.6% | 82.5% |
 | ASL words | | **Held-out webcam clips** (1,630; mostly signers also in training, see §2) | **61.5%** | 85.6% |
-| *ASL words before 2026-10-29* | | *Same 9,579 / same 1,630 clips* | *58.6% / 30.9%* | *82.7% / 53.1%* |
+| *ASL words before 2026-10-29* | | *Same 9,171 / same 1,630 clips* | *57.8% / 30.9%* | *82.3% / 53.1%* |
 | FSL-105 words (4-seed ensemble) | 105 | **Signer D, never seen in training** (534 clips) | **75.3%** | 94.9% |
 | ASL numbers (2026-10-28) | 0–9 | **Webcam clips of ASL Citizen / WLASL / MS-ASL signers** (338 clips) | **97.9%** per clip | 83.1% per frame |
 | ASL numbers | | ASL-HG, 2 signers held out per fold (10,000 photos) | 100% | |
@@ -85,11 +85,12 @@ the same clips:
 
 | Metric | Before | After |
 |---|---|---|
-| Test clips (9,579) top-1 / top-5 | 58.6% / 82.7% | **59.2% / 83.2%** |
-| Macro top-1 / macro F1 | 62.1% / 0.597 | 65.1% / 0.633 |
-| Words at 100% / ≥ 80% / < 50% / 0% | 30 / 99 / 101 / 6 | 47 / 113 / 90 / 3 |
-| Shown at the app's 40% gate / precision when shown | 65.0% / 76.4% | 63.6% / 77.3% |
-| Mean confidence when right / wrong | 0.69 / 0.36 | 0.68 / 0.35 |
+| Test clips, without the 408 moved into training (9,171) top-1 / top-5 | 57.8% / 82.3% | 57.6% / 82.5% |
+| *All 9,579 test clips (408 of them trained on by the new model)* | *58.6% / 82.7%* | *59.2% / 83.2%* |
+| Macro top-1 / macro F1 *(all 9,579; the new model's are flattered by the 408)* | 62.1% / 0.597 | 65.1% / 0.633 |
+| Words at 100% / ≥ 80% / < 50% / 0% *(all 9,579; the new model's are flattered by the 408)* | 30 / 99 / 101 / 6 | 47 / 113 / 90 / 3 |
+| Shown at the app's 40% gate / precision when shown *(all 9,579; the new model's are flattered by the 408)* | 65.0% / 76.4% | 63.6% / 77.3% |
+| Mean confidence when right / wrong *(all 9,579; the new model's are flattered by the 408)* | 0.69 / 0.36 | 0.68 / 0.35 |
 | **Held-out webcam clips** (the half kept out, 1,630, trimmed like the app) top-1 / top-5 | 30.9% / 53.1% | **61.5% / 85.6%** |
 | … the 976 clips of words the old model read worst (≤ 25%) | 4.9% / 30.0% | 47.4% / 80.1% |
 | … the other 654 | 69.6% / 87.5% | 82.4% / 93.7% |
@@ -104,8 +105,13 @@ few to quote a number from. A live webcam test with new people is the
 honest check.
 
 The test split is mostly Google Isolated SLR (GISLR) portrait phone clips,
-which flatters the 211 words learned mainly from that dataset; it barely
-moved, so the extra webcam data did not cost accuracy there.
+which flatters the 211 words learned mainly from that dataset. It did not
+move (57.8% → 57.6%), so the extra webcam data neither cost nor gained
+accuracy there. **Correction (2026-10-29):** `--webcam-extra` drew its
+clips from every webcam clip not used for training, which included 408 of
+the 865 webcam clips in the test split itself; the first figure published
+for the new model (59.2%) counted them. The rows above leave them out. The
+webcam rows were never affected (they skip every moved clip).
 
 Most-confused pairs now (true → predicted, clips): awake→wake 21, milk→car 20,
 my/mine→please 20, lips→say 17, cheek→eye 16, pen→pencil 16, because→ear 16,

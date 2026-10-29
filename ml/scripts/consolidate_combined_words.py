@@ -50,20 +50,30 @@ folds the same zeroing into the deployed graph, so the app needs no change.
 
 Output (float16 to fit ~100k clips in RAM):
   data/combined_word_landmarks.npz
-    X_train, y_train, X_val, y_val, X_test, y_test, src_{train,val,test}
+    X_train, y_train, X_val, y_val, X_test, y_test, src_{train,val,test},
+    id_{train,val,test} (clip id of our / webcam / YouTube clips, "" for the new dataset's)
     (src: 0 = our clips, 1 = new dataset)
   data/combined_word_classes.json
 
 Extra webcam clips (--webcam-extra, 2026-10-28): the 211 words learned
 from the new dataset have webcam clips on disk (ASL Citizen / WLASL / MS-ASL)
 that were only ever a test set, and they score ~0-25% on them - the gap is
-camera/signer domain, not the word. With this flag, half of every word's
-held-out webcam clips (a fixed half, by hash of the clip id) go into training,
-listed in data/webcam_train_extra.json so word_model_diagnostics.py never
-scores them; the other half stays the webcam test. The YouTube dictionary
-segments that harvest_youtube_signs.py verify kept are added too. Both are
-counted EXTRA_REPEAT times, since a word has a few of them against ~300 phone
-clips. src: 2 = moved webcam clip, 3 = YouTube.
+camera/signer domain, not the word. With this flag those clips go into
+training, listed in data/webcam_train_extra.json so word_model_diagnostics.py
+never scores them. The YouTube dictionary segments that
+harvest_youtube_signs.py verify kept are added too. Both are counted
+EXTRA_REPEAT times, since a word has a few of them against ~300 phone clips.
+src: 2 = moved webcam clip, 3 = YouTube.
+
+Which webcam clips stay out (2026-10-29): everything by the five ASL Citizen
+participants in word_model_diagnostics.HELDOUT_SIGNERS - including their
+clips in our manifest's train/val split, which are dropped from training -
+so the webcam check scores people the model has never seen. Our manifest's
+test clips are never moved either: they are part of the main test split.
+(The 2026-10-28 version moved a hash half of every word's clips instead,
+which shared signers between the halves and moved 408 test-split clips
+into training.) Run extract_webcam_word_clips.py first so every clip on
+disk has landmarks.
 
 Run with the main venv:
   cd ml
@@ -223,23 +233,24 @@ EXTRA_REPEAT = 2
 YOUTUBE_DIR = os.path.join(DATA_DIR, "youtube_signs")
 
 
-def webcam_extra(words, idx):
-    """(X, y, src) of the extra training clips, and writes the moved-clip list."""
-    import hashlib
+def webcam_extra(words, idx, manifest_ids):
+    """(X, y, src, ids) of the extra training clips; writes the moved-clip list and
+    the person-split marker word_model_diagnostics.py reads."""
     import word_model_diagnostics as wd
-    by_word = {}
-    for vid, i, cached in wd.webcam_clip_files(words):
-        by_word.setdefault(i, []).append((hashlib.md5(vid.encode()).hexdigest(), vid, cached))
-    moved, X, y, src = [], [], [], []
-    for i, clips in by_word.items():
-        clips.sort()
-        for _, vid, cached in clips[:len(clips) // 2]:  # a word with one clip keeps it as a test
-            moved.append(vid)
-            X.append(normalize(np.load(cached)).astype(np.float16))
-            y.append(i)
-            src.append(2)
+    held = set(wd.HELDOUT_SIGNERS)
+    moved, X, y, src, ids = [], [], [], [], []
+    for vid, i, cached in wd.vocab_clip_files(words):
+        if vid in manifest_ids or wd.citizen_signer(vid) in held:
+            continue
+        moved.append(vid)
+        ids.append(vid)
+        X.append(normalize(np.load(cached)).astype(np.float16))
+        y.append(i)
+        src.append(2)
     with open(wd.WEBCAM_TRAIN_LIST, "w") as f:
         json.dump(sorted(moved), f, indent=0)
+    with open(wd.WEBCAM_SPLIT, "w") as f:
+        json.dump({"heldout_signers": sorted(held)}, f, indent=1)
     n_web = len(X)
     verified = os.path.join(YOUTUBE_DIR, "verified.csv")
     if os.path.exists(verified):
@@ -249,9 +260,10 @@ def webcam_extra(words, idx):
                     X.append(normalize(np.load(os.path.join(YOUTUBE_DIR, "segments", r["file"]))).astype(np.float16))
                     y.append(idx[r["word"]])
                     src.append(3)
-    print(f"  extra: {n_web} held-out webcam clips moved to training (list in {os.path.basename(wd.WEBCAM_TRAIN_LIST)}), "
+                    ids.append(r["file"])
+    print(f"  extra: {n_web} webcam clips moved to training (list in {os.path.basename(wd.WEBCAM_TRAIN_LIST)}), "
           f"{len(X) - n_web} YouTube segments, each x{EXTRA_REPEAT}")
-    return X * EXTRA_REPEAT, y * EXTRA_REPEAT, src * EXTRA_REPEAT
+    return X * EXTRA_REPEAT, y * EXTRA_REPEAT, src * EXTRA_REPEAT, ids * EXTRA_REPEAT
 
 
 def main():
@@ -284,18 +296,26 @@ def main():
     print(f"  in both sources: {len(shared)}")
     idx = {w: i for i, w in enumerate(words)}
 
-    out = {s: ([], [], []) for s in ("train", "val", "test")}
+    import word_model_diagnostics as wd
+    out = {s: ([], [], [], []) for s in ("train", "val", "test")}
+    held = set(wd.HELDOUT_SIGNERS) if WEBCAM_EXTRA else set()
+    dropped = 0
     for r in ours:
-        X, y, src = out[r["split"]]
+        if r["split"] != "test" and wd.citizen_signer(r["video_id"]) in held:
+            dropped += 1  # a held-out webcam signer: none of their clips train
+            continue
+        X, y, src, ids = out[r["split"]]
         X.append(normalize(np.load(os.path.join(CACHE_DIR, f"{r['video_id']}.npy"))).astype(np.float16))
         y.append(idx[r["word"]])
         src.append(0)
+        ids.append(r["video_id"])
 
     if WEBCAM_EXTRA:
-        Xe, ye, se = webcam_extra(words, idx)
-        out["train"][0].extend(Xe)
-        out["train"][1].extend(ye)
-        out["train"][2].extend(se)
+        print(f"  left out {dropped} of our train/val clips by the held-out webcam signers {sorted(held)}")
+        with open(MANIFEST_CSV, newline="", encoding="utf-8") as f:
+            manifest_ids = {r["video_id"] for r in csv.DictReader(f)}
+        for lst, extra in zip(out["train"], webcam_extra(words, idx, manifest_ids)):
+            lst.extend(extra)
 
     g_split = np.where(np.isin(g_part, list(TEST_PARTICIPANTS)), "test",
                        np.where(np.isin(g_part, list(VAL_PARTICIPANTS)), "val", "train"))
@@ -306,18 +326,24 @@ def main():
     del g_X
 
     arrays = {}
-    for s, (X, y, src) in out.items():
+    for s, (X, y, src, ids) in out.items():
         m = g_split == s
         X = [np.stack(X)] if X else []
         X.append(g_norm[m])
         y = y + [idx[w] for w in g_signs[m]]
         src = src + [1] * int(m.sum())
+        ids = ids + [""] * int(m.sum())
         arrays[f"X_{s}"] = np.concatenate(X)
         arrays[f"y_{s}"] = np.array(y, dtype=np.int32)
         arrays[f"src_{s}"] = np.array(src, dtype=np.int8)
+        arrays[f"id_{s}"] = np.array(ids)
         print(f"{s}: {len(y)} clips ({sum(1 for v in src if v == 0)} ours, {sum(1 for v in src if v == 1)} new"
               f"{f', {sum(1 for v in src if v >= 2)} extra webcam/YouTube' if WEBCAM_EXTRA else ''})")
 
+    if not WEBCAM_EXTRA:  # nothing moved: an old list would hide clips from the webcam check
+        for stale in (wd.WEBCAM_TRAIN_LIST, wd.WEBCAM_SPLIT):
+            if os.path.exists(stale):
+                os.remove(stale)
     np.savez(OUTPUT_NPZ, **arrays)
     with open(OUTPUT_CLASSES, "w", encoding="utf-8") as f:
         json.dump(words, f, indent=2)

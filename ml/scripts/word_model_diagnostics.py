@@ -18,7 +18,8 @@ flatters the words learned only from it. The webcam check scores every
 landscape webcam clip on disk (ASL Citizen / WLASL / MS-ASL, filed under the
 word) that was not used for training or validation, trimmed to the
 hand-active span as the app trims a recording - the closest thing here to a
-child at a laptop camera.
+child at a laptop camera. Since 2026-10-29 those are the clips of five ASL
+Citizen signers the model never saw at all (HELDOUT_SIGNERS below).
 
   cd ml
   .\venv\Scripts\Activate.ps1
@@ -67,17 +68,36 @@ def load_fsl():
     return d["X"][test], d["y"][test], np.bincount(d["y"][train], minlength=len(classes)), classes, paths
 
 
-# Since 2026-10-28 half of each word's held-out webcam clips may be moved into
-# training (consolidate_combined_words.py --webcam-extra); they are listed here
-# and never scored, so the webcam check stays a test of unseen clips.
+# Webcam clips moved into training by consolidate_combined_words.py
+# --webcam-extra are listed here and never scored, so the webcam check stays a
+# test of unseen clips. 2026-10-28: a hash half of each word's clips.
+# Since 2026-10-29 the split is by PERSON (WEBCAM_SPLIT is written): every clip
+# by HELDOUT_SIGNERS - five of ASL Citizen's own test-split participants - stays
+# out of training, including their clips in our manifest's train/val split, and
+# only theirs are scored; every other webcam clip not in our manifest trains.
 WEBCAM_TRAIN_LIST = os.path.join(DATA_DIR, "webcam_train_extra.json")
+WEBCAM_SPLIT = os.path.join(DATA_DIR, "webcam_split.json")
+HELDOUT_SIGNERS = ("P35", "P9", "P48", "P15", "P42")
+
+_citizen_signers = None
 
 
-def webcam_clip_files(classes):
-    """[(video_id, class index, cache path)] of every held-out webcam clip on disk."""
+def citizen_signer(video_id):
+    """ASL Citizen participant ID of a clip id ("citizen_<file stem>"), or None."""
+    global _citizen_signers
+    if _citizen_signers is None:
+        _citizen_signers = {}
+        for split in ("train", "val", "test"):
+            with open(os.path.join(DATA_DIR, "ASL_Citizen", "splits", f"{split}.csv"), newline="", encoding="utf-8") as f:
+                for r in csv.DictReader(f):
+                    _citizen_signers["citizen_" + os.path.splitext(r["Video file"])[0]] = r["Participant ID"]
+    return _citizen_signers.get(video_id)
+
+
+def vocab_clip_files(classes):
+    """[(video_id, class index, cache path)] of every webcam clip on disk with
+    landmarks, filed under a vocabulary word or a numbered variant of it."""
     import select_asl_word_references as sel
-    with open(os.path.join(DATA_DIR, "word_manifest.csv"), newline="", encoding="utf-8") as f:
-        used = {r["video_id"] for r in csv.DictReader(f) if r["split"] in ("train", "val")}
     folders = {sel.key(d): d for d in os.listdir(sel.SL_DIR)}
     out = []
     for i, w in enumerate(classes):
@@ -87,16 +107,31 @@ def webcam_clip_files(classes):
             for f in sorted(os.listdir(os.path.join(sel.SL_DIR, d))) if d else []:
                 vid = os.path.splitext(f)[0]
                 cached = os.path.join(sel.CACHE_DIR, vid + ".npy")
-                if f.endswith(".mp4") and vid not in used and os.path.exists(cached):
+                if f.endswith(".mp4") and os.path.exists(cached):
                     out.append((vid, i, cached))
     return out
 
 
-def webcam_clips(classes, include_moved=False):
-    """(X, y) of the held-out webcam clips for the ASL webcam check."""
+def webcam_clip_files(classes):
+    """[(video_id, class index, cache path)] of the webcam clips the webcam
+    check may score: with the person split, every clip by a held-out signer;
+    before it, every clip not in our manifest's train/val split."""
+    clips = vocab_clip_files(classes)
+    if os.path.exists(WEBCAM_SPLIT):
+        held = set(json.load(open(WEBCAM_SPLIT))["heldout_signers"])
+        return [c for c in clips if citizen_signer(c[0]) in held]
+    with open(os.path.join(DATA_DIR, "word_manifest.csv"), newline="", encoding="utf-8") as f:
+        used = {r["video_id"] for r in csv.DictReader(f) if r["split"] in ("train", "val")}
+    return [c for c in clips if c[0] not in used]
+
+
+def webcam_clips(classes, include_moved=False, skip=()):
+    """(X, y) of the held-out webcam clips for the ASL webcam check. skip: clip
+    ids to leave out as well (e.g. ones an older model trained on)."""
     import extract_word_landmarks as ex
     from consolidate_combined_words import trim_to_hand_span
     moved = set() if include_moved or not os.path.exists(WEBCAM_TRAIN_LIST) else set(json.load(open(WEBCAM_TRAIN_LIST)))
+    moved |= set(skip)
     X, y = [], []
     for vid, i, cached in webcam_clip_files(classes):
         if vid in moved:

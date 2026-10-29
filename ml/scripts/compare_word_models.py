@@ -5,11 +5,15 @@ Before/after for an ASL word retrain: two ensembles on the same clips.
   .\\venv\\Scripts\\python.exe scripts\\compare_word_models.py models\\asl_combined_v3_flip models
   .\\venv\\Scripts\\python.exe scripts\\compare_word_models.py models\\asl_combined_v3_flip models --seeds 0
       (one seed on each side: a quick read after training only seed 0)
+  ... --skip models\asl_combined_v5_webcam\seen_clips.json
+      (leave out clip ids an older model trained on, so neither side has seen
+      any scored clip; needs the id_test array consolidate_combined_words.py
+      writes since 2026-10-29)
 
 Scores each folder's asl_combined_seed[0-9].keras (averaged, like the app) on
   - the test split of data/combined_word_landmarks.npz (mostly GISLR phone clips), and
   - the held-out webcam clips (word_model_diagnostics.webcam_clips) - after a
-    --webcam-extra consolidation, only the half that stayed out of training,
+    --webcam-extra consolidation, only the held-out signers' clips,
 split into the words the webcam check reads worst before (WEAK: <= 25% top-1
 in models/diagnostics/asl_per_word.csv) and the rest. Writes
 models/diagnostics/word_model_comparison.json.
@@ -32,6 +36,7 @@ ML = os.path.join(HERE, "..")
 
 
 SEEDS = sys.argv[sys.argv.index("--seeds") + 1] if "--seeds" in sys.argv else "0-9"
+SKIP = set(json.load(open(sys.argv[sys.argv.index("--skip") + 1]))) if "--skip" in sys.argv else set()
 
 
 def ensemble(folder, X):
@@ -53,8 +58,11 @@ def main():
     old_dir, new_dir = sys.argv[1], sys.argv[2]
     d = np.load(os.path.join(ML, "data", "combined_word_landmarks.npz"))
     classes = json.load(open(os.path.join(ML, "data", "combined_word_classes.json"), encoding="utf-8"))
-    Xt, yt = d["X_test"].astype("float32"), d["y_test"]
-    Xw, yw = wd.webcam_clips(classes)
+    keep = ~np.isin(d["id_test"], list(SKIP)) if SKIP else np.ones(len(d["y_test"]), bool)
+    Xt, yt = d["X_test"][keep].astype("float32"), d["y_test"][keep]
+    Xw, yw = wd.webcam_clips(classes, skip=SKIP)
+    if SKIP:
+        print(f"skipping {len(SKIP)} clip ids: {int((~keep).sum())} test-split clips left out")
     with open(os.path.join(ML, "models", "diagnostics", "asl_per_word.csv"), newline="", encoding="utf-8") as f:
         weak = {r["word"] for r in csv.DictReader(f) if r["webcam_top1"] not in ("", "nan") and float(r["webcam_top1"]) <= 0.25}
     weak_ids = np.array([classes[i] in weak for i in range(len(classes))])
