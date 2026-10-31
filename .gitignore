@@ -44,3 +44,6 @@ ml/SignAvatars/
 _pptx_edit/
 ml/ab_test/*.keras
 ml/ab_test/*.npy
+
+# Database backups (npm run db:backup) - names, emails, password hashes
+backups/

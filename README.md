@@ -79,6 +79,30 @@ These live in the dashboard, not in the migrations:
   SQL editor and ask the person to change it in the Account panel:
   `update auth.users set encrypted_password = extensions.crypt('Temporary-Pass-123', extensions.gen_salt('bf')) where email = 'student@example.com';`
 
+### Backups and keeping the project awake
+
+Supabase's free plan keeps **no backups** and **pauses a project after 7
+days without activity** (logins, classes and progress stop until it is
+restored in the dashboard; the translator keeps working).
+
+- **Backups:** `npm run db:backup` saves accounts (with their 2FA apps),
+  classes, progress, modules and call notes to `backups/lcsign-<date>.sql`.
+  It needs `SUPABASE_DB_URL` in `.env`: dashboard → **Connect** → "Session
+  pooler" connection string, with the database password in place of
+  `[YOUR-PASSWORD]`. Run it before a demo or defense and every week or so,
+  and copy the file off the computer (USB drive). The file holds names,
+  emails and password hashes: `backups/` is git-ignored, and it doesn't
+  belong on GitHub or a shared drive.
+- **Restoring:** make a new Supabase project, run every migration, then
+  `npm run db:restore -- backups/lcsign-<date>.sql` with that project's
+  `SUPABASE_DB_URL`. It refuses a project that already has accounts, so it
+  can't overwrite anything. People log in with their usual passwords.
+- **Staying awake:** `.github/workflows/keep-supabase-awake.yml` asks the
+  database a small question every other day. It needs the repository
+  secrets `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the two `EXPO_PUBLIC_`
+  values from `.env`), and runs only once it is on `main`. A failed run
+  (GitHub emails you) usually means the project is already paused.
+
 ### Offline use
 
 Everything the translator needs is in `public/`: the TF.js models
@@ -110,6 +134,8 @@ versus seconds from disk.
 | `npm run electron:install` | Install the Electron shell's dependencies (once) |
 | `npm run electron:dev` | Web dev server + Electron window |
 | `npm run electron:build` | Static web export + Windows installer (`electron/dist`) |
+| `npm run db:backup` | Copy of the whole database to `backups/` (see [Backups](#backups-and-keeping-the-project-awake)) |
+| `npm run db:restore -- <file>` | Put a backup into an empty project |
 | `npm run android` / `ios` | Expo native (camera recognition is web-only for now) |
 
 ## Project layout
@@ -152,6 +178,9 @@ trains the classifiers, and exports them to TF.js.
 npm test             # curriculum/progress rules, practice flow, sign segmenter
 npm run typecheck
 ```
+
+GitHub runs both on every push and pull request
+(`.github/workflows/checks.yml`); a red X on a commit means one failed.
 
 RLS: run `supabase/tests/rls_test.sql` against a **non-production** database
 (it creates and rolls back its own test users). It raises an exception on the

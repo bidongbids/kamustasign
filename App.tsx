@@ -16,6 +16,7 @@ import ResetPasswordScreen from "./src/screens/auth/ResetPasswordScreen";
 import { ThemeColors } from "./src/theme/theme";
 import { ThemeProvider, useTheme, useThemedStyles } from "./src/theme/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import CrashBoundary from "./src/components/CrashBoundary";
 
 // "start": the login screen (or, with a saved session, who is signed in);
 // "app": the signed-in account's dashboard; "translator": no account needed,
@@ -63,11 +64,15 @@ if (
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <CrashBoundary plain>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <CrashBoundary>
+            <AppContent />
+          </CrashBoundary>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </CrashBoundary>
   );
 }
 
