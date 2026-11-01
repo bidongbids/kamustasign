@@ -101,6 +101,28 @@ export function resampleSequence(
   return out;
 }
 
+// Puts a recording into the 4:3 frame shape both word models learned from:
+// 640x480 webcams, FSL-105 letterboxed to 640x480 before tracking, and the
+// Google dataset's portrait clips stretched to match (match_webcam_aspect in
+// consolidate_combined_words.py). MediaPipe gives x as a fraction of the
+// frame's width and y of its height (z in width units, like x), so a phone
+// held upright (3:4) squeezes every sign sideways. Stretching y by
+// (4/3)/aspect undoes that; on a 4:3 webcam it changes nothing. Offline, on
+// the 1,435 held-out webcam clips cropped to 3:4 with both hands kept in
+// view: ASL top-1 76.8% without this, 81.7% with it (82.4% as filmed).
+// Missing landmarks are zeros and stay zeros. Apply before normalizeSequence,
+// which derives the wrist-relative hand blocks from these values.
+export function matchTrainingAspect(frames: Float32Array[], aspect: number): Float32Array[] {
+  const f = 4 / 3 / aspect;
+  if (!(aspect > 0) || Math.abs(f - 1) < 1e-3) return frames;
+  return frames.map((frame) => {
+    const out = frame.slice();
+    for (let i = 0; i < NUM_POSE; i++) out[i * 4 + 1] *= f;
+    for (let i = 0; i < 2 * NUM_HAND; i++) out[NUM_POSE * 4 + i * 3 + 1] *= f;
+    return out;
+  });
+}
+
 /** Frames kept either side of the hand-active span (~0.1 s at 30 fps). */
 export const TRIM_MARGIN = 3;
 // ASL is trimmed with no margin: the new dataset's training clips start and

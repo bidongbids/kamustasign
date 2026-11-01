@@ -17,11 +17,13 @@ import {
   trimToHandSpan,
   TRIM_MARGIN,
   ASL_TRIM_MARGIN,
+  matchTrainingAspect,
   resampleSequence,
   normalizeSequence,
   SEQUENCE_LENGTH,
   MODEL_FEATURES_PER_FRAME,
 } from "../ml/wordLandmarks";
+import { frameAspect } from "../ml/handshapeInput";
 import { SignSegmenter } from "../ml/signSegmenter";
 import { typography, type ThemeColors } from "../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
@@ -546,7 +548,8 @@ export default function WordTranslatorScreen({
     };
     // Both word models score clips trimmed to the hand-active span (see
     // trimToHandSpan), so the sign fills the same 40 frames as in training.
-    const clip = trimToHandSpan(raw, lang === "fsl" ? TRIM_MARGIN : ASL_TRIM_MARGIN);
+    // A phone held upright gives a tall frame; matchTrainingAspect evens it out.
+    const clip = matchTrainingAspect(trimToHandSpan(raw, lang === "fsl" ? TRIM_MARGIN : ASL_TRIM_MARGIN), frameAspect(videoRef.current));
     const resampled = resampleSequence(clip, SEQUENCE_LENGTH);
     const normalized = normalizeSequence(resampled);
 

@@ -22,6 +22,7 @@ import * as tf from "@tensorflow/tfjs";
 import { loadAlphabet, loadWordModels, type Alphabet, type SignLanguage } from "../ml/modelLoader";
 import {
   landmarksToVector,
+  matchTrainingAspect,
   normalizeSequence,
   resampleSequence,
   trimToHandSpan,
@@ -194,7 +195,7 @@ export function useCallSignReader(
         classifying = true;
         setPhase("checking");
         try {
-          const clip = trimToHandSpan(frames, language === "fsl" ? TRIM_MARGIN : ASL_TRIM_MARGIN);
+          const clip = matchTrainingAspect(trimToHandSpan(frames, language === "fsl" ? TRIM_MARGIN : ASL_TRIM_MARGIN), frameAspect(videoRef.current));
           const norm = normalizeSequence(resampleSequence(clip, SEQUENCE_LENGTH));
           const flat = new Float32Array(SEQUENCE_LENGTH * MODEL_FEATURES_PER_FRAME);
           norm.forEach((f, i) => flat.set(f, i * MODEL_FEATURES_PER_FRAME));
