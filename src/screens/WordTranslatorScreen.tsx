@@ -1,14 +1,20 @@
-// Word Translator ("Words" mode): record a clip -> classify -> ranked top-5
-// word predictions -> auto-translate and speak in the standing target
-// language. Visual pass per docs/design/design_handoff_kamustasign_material_pass/
-// README.md section 3 ("Word Translator") — the MediaPipe Holistic capture/
-// classification pipeline below is unchanged from the working version, only
-// the chrome around it moved to the material system (glass panels, a
-// neumorphic top-matches list + record button, the shared skeuomorphic
-// CameraDevice). TranslatorHubScreen now owns the GradientBackground and the
-// language picker; this screen only renders its two-column body.
+// Word Translator ("Words" mode): sign a word (hands-free, or Record/Stop) ->
+// classify -> ranked top-5 word predictions -> auto-translate and speak in
+// the standing target language.
+//
+// Layout: the Letters / Numbers design (docs/design/
+// design_handoff_translator_fingerspelling) applied to Words. Desktop: the
+// camera is the hero in the slim housing, its status on the video; the right
+// column holds "Now signing" (the Record button, or the hands-free light,
+// with one sentence of what to do) and the top match (big, with confidence,
+// translation, the other matches and Speak / Show to someone / Clear).
+// Below 1100 wide: the phone stack with a bottom bar. The camera sits at the
+// same place in the tree in both layouts, so the <video> never remounts.
+// TranslatorHubScreen owns the header, the tabs and Auto / Manual.
+// variant="practice" is the classroom's and keeps its own layout.
 import React, { useEffect, useRef, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as tf from "@tensorflow/tfjs";
 import { loadWordModels, type SignLanguage } from "../ml/modelLoader";
@@ -29,26 +35,23 @@ import { typography, type ThemeColors } from "../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 import { useResponsive } from "../theme/responsive";
 import GlassCard from "../components/GlassCard";
-import CameraDevice from "../components/CameraDevice";
-import HandednessPicker, { useHandedness } from "../components/HandednessPicker";
-import ClipLengthControl, { useClipLength } from "../components/ClipLengthControl";
-import TranslatorPanel from "../components/TranslatorPanel";
-import { SpeakerIcon } from "../components/icons/UiIcons";
+import CameraDevice, { type CameraState } from "../components/CameraDevice";
+import { NowSigningCard } from "../components/FingerspellCards";
+import { MatchesCard, PhoneMatchCard, RecordDisc, type WordMatch } from "../components/WordCards";
+import TranslatorButton from "../components/TranslatorButton";
+import ShowToSomeone from "../components/ShowToSomeone";
+import { useTranslatorDisplay } from "../components/TranslatorSettings";
+import { CloseIcon, ExpandIcon, SpeakerIcon } from "../components/icons/UiIcons";
+import { useReduceMotion } from "../hooks/useReduceMotion";
 import { findLanguage } from "../lib/languages";
 import { signName } from "../lib/signNames";
 import { PASS_CONFIDENCE, UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
 import { drawHandSkeleton } from "../lib/handSkeleton";
 import PracticeCameraOverlay from "../components/learn/PracticeCameraOverlay";
 import { useTranslateAndSpeak } from "../hooks/useTranslateAndSpeak";
-import { fpsLabel, useFpsMeter } from "../hooks/useFpsMeter";
+import { useFpsMeter } from "../hooks/useFpsMeter";
 
 const TOP_K = 5;
-// Visual-only target the frame meter / REC pill count toward on mobile
-// (unaffected by this handoff). Desktop's control strip exposes this as the
-// "Clip length" setting (ClipLengthControl) - a PROPOSAL from the design
-// handoff, default Standard = 60 frames, same value this constant held
-// before the control existed.
-const FRAME_TARGET = 60;
 
 // Pose keypoints sit behind the hands, so they are deliberately dimmer and
 // cooler than the mint hand skeleton rather than competing with it.
@@ -101,7 +104,13 @@ type Props = {
   onRetry?: () => void;
   /** Practice mode: shown to the right of the record button (PracticeScreen's feedback). */
   practiceAside?: React.ReactNode;
+  /** Full: the signed-in person's name, for "{name} signed" on the big view. */
+  signerName?: string;
 };
+
+/** What the last attempt left to say, shown in "Now signing" until the next sign. */
+type Notice = "unsure" | "brief" | "short" | "failed" | null;
+type Problem = "blocked" | "camera" | "reader" | null;
 
 export type CaptureMode = "auto" | "manual";
 
@@ -129,26 +138,33 @@ export default function WordTranslatorScreen({
   onRecordingStateChange,
   onRetry,
   practiceAside,
+  signerName,
 }: Props) {
-  const { colors, shadows, name } = useTheme();
-  // Graphite dark's greys; light mode needs them a step darker to read on a card.
-  const dimText = name === "dark" ? "#8F98A6" : colors.textTertiary;
-  const meter = name === "dark" ? { on: "#4B5364", onAlt: "#5B647A", off: "#3F4655" } : { on: colors.textTertiary, onAlt: colors.controlBorder, off: colors.border };
+  const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const recordingRef = useRef(false);
   const framesRef = useRef<Float32Array[]>([]);
 
-  const { isDesktop } = useResponsive();
-  const [handedness, setHandedness] = useHandedness();
-  const [clipLengthFrames, setClipLengthFrames] = useClipLength();
-  // The classification loop reads FRAME_TARGET's mobile-fixed value below
-  // (unaffected by this handoff); desktop's REC pill / frame meter read the
-  // live clip-length setting instead.
-  const frameTarget = isDesktop ? clipLengthFrames : FRAME_TARGET;
+  const { isDesktop, isMobile, width: winW, height: winH } = useResponsive();
 
   const [status, setStatus] = useState("Starting...");
+  // Full layout state: what failed (camera / reader), the retry counter,
+  // whether hands are in view, and what the last attempt left to say.
+  const [problem, setProblem] = useState<Problem>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [handsSeen, setHandsSeen] = useState(false);
+  const handsSeenRef = useRef(false);
+  const [notice, setNotice] = useState<Notice>(null);
+  const [showBig, setShowBig] = useState(false);
+  const reduceMotion = useReduceMotion();
+  const [display] = useTranslatorDisplay();
+  const displayRef = useRef(display);
+  displayRef.current = display;
+  const variantRef = useRef(variant);
+  variantRef.current = variant;
   const { fps, tick: fpsTick } = useFpsMeter();
   // The word models load in the background, separately from the camera. The
   // ref mirrors the state so setup()'s async flow can read it without
@@ -192,6 +208,7 @@ export default function WordTranslatorScreen({
     segmenterRef.current.reset();
     pendingSegmentRef.current = null;
     setSegmentActive(false);
+    setNotice(null);
     if (mode === "auto" && recordingRef.current) {
       // Switched to Auto mid-recording: drop the manual clip.
       recordingRef.current = false;
@@ -233,19 +250,20 @@ export default function WordTranslatorScreen({
         );
       })
       .catch((e: any) => {
-        if (!cancelled) setStatus(`Word model load failed: ${e?.message ?? e}`);
+        if (cancelled) return;
+        setProblem("reader");
+        setStatus(`Word model load failed: ${e?.message ?? e}`);
       });
     return () => {
       cancelled = true;
     };
-  }, [language]);
+  }, [language, attempt]);
   // The camera preview comes up before the landmarker is built (see setup()),
   // but frames are only captured once loop() is running - so Record stays
   // off until then instead of silently recording an empty or truncated clip.
   const [detectorReady, setDetectorReady] = useState(false);
-  // The desktop and mobile layouts render CameraDevice in different tree
-  // positions, so crossing the breakpoint mounts a fresh, empty <video>.
-  // Kept here so the effect below can re-attach the shared stream to it.
+  // Kept so the effect below can re-attach the shared stream if the <video>
+  // is replaced (Practice's grown-up view switches variant).
   const streamRef = useRef<MediaStream | null>(null);
   const [recording, setRecording] = useState(false);
   const [classifying, setClassifying] = useState(false);
@@ -267,6 +285,8 @@ export default function WordTranslatorScreen({
     let animationId: any = null;
     let stream: MediaStream | null = null;
     let stopped = false;
+    // Set when getting the camera itself failed (vs. building the reader).
+    let cameraFailed = false;
 
     async function setup() {
       // The word models are NOT loaded here - see the effect keyed on
@@ -315,7 +335,10 @@ export default function WordTranslatorScreen({
       // with the OS/driver actually freeing the device (docs/CAMERA_BUG_HANDOFF.md
       // H1), which is what caused the black panel on the first tab switch.
       trace("awaiting shared camera stream...");
-      stream = await getCameraStream();
+      stream = await getCameraStream().catch((err) => {
+        cameraFailed = true;
+        throw err;
+      });
       trace(
         "camera stream resolved; tracks:",
         stream.getTracks().map((t) => `${t.kind}/${t.readyState}/${t.label}`)
@@ -412,8 +435,15 @@ export default function WordTranslatorScreen({
         if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
         if (ctx) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          drawLandmarks(ctx, canvas, result);
+          // "Hand points" (Settings) only hides the drawing.
+          if (variantRef.current === "practice" || displayRef.current.points) drawLandmarks(ctx, canvas, result);
         }
+      }
+
+      const handsNow = handsIn(result);
+      if (handsNow !== handsSeenRef.current) {
+        handsSeenRef.current = handsNow;
+        setHandsSeen(handsNow);
       }
 
       if (modeRef.current === "auto") {
@@ -421,6 +451,7 @@ export default function WordTranslatorScreen({
         const event = seg.push(landmarksToVector(result), capturedAt);
         if (event?.type === "start") {
           setSegmentActive(true);
+          setNotice(null);
           setStatus("Reading sign...");
         } else if (event?.type === "end") {
           setSegmentActive(false);
@@ -429,6 +460,7 @@ export default function WordTranslatorScreen({
         } else if (event?.type === "discard") {
           setSegmentActive(false);
           setFrameCount(0);
+          setNotice("brief");
           setStatus("Too brief to read as a sign - " + readyText().charAt(0).toLowerCase() + readyText().slice(1));
         }
         if (seg.isActive) setFrameCount(seg.length);
@@ -441,6 +473,15 @@ export default function WordTranslatorScreen({
     trace("MOUNT");
     setup().catch((err) => {
       trace("setup() THREW:", err);
+      if (stopped) return;
+      const name = err?.name;
+      setProblem(
+        !cameraFailed
+          ? "reader"
+          : name === "NotAllowedError" || name === "SecurityError" || name === "PermissionDeniedError"
+            ? "blocked"
+            : "camera"
+      );
       setStatus("ERROR: " + (err && err.message ? err.message : String(err)));
     });
 
@@ -473,10 +514,12 @@ export default function WordTranslatorScreen({
       // (reading 'backend')"). The models are an app-lifetime resource,
       // not something scoped to a single component mount.
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt]);
 
-  // setup() attaches the stream once; after a breakpoint crossing swaps in a
-  // new <video> (see streamRef), attach it again or the panel stays black.
+  // setup() attaches the stream once; if a new <video> replaced the old one
+  // (Practice's grown-up view switches variant), attach it again or the
+  // panel stays black.
   useEffect(() => {
     const video = videoRef.current;
     const stream = streamRef.current;
@@ -484,7 +527,14 @@ export default function WordTranslatorScreen({
       video.srcObject = stream;
       video.play().catch(() => {});
     }
-  }, [isDesktop, variant]);
+  }, [variant]);
+
+  function retry() {
+    setProblem(null);
+    setDetectorReady(false);
+    setStatus("Starting...");
+    setAttempt((a) => a + 1);
+  }
 
   // Hands-free ("auto") counts a sign the segmenter is reading as recording.
   const recordingState: "idle" | "recording" | "classifying" =
@@ -540,6 +590,7 @@ export default function WordTranslatorScreen({
   async function classifyBuffer(raw: Float32Array[] = framesRef.current, auto = false) {
     if (raw.length < 3) {
       setStatus("Too few frames captured - try signing a bit longer.");
+      setNotice("short");
       setPredictions([]);
       setClassifying(false);
       return;
@@ -612,6 +663,7 @@ export default function WordTranslatorScreen({
         // read as the answer to this sign.
         setPredictions([]);
         resetSpeech();
+        setNotice("unsure");
         settle(
           auto
             ? "Not sure what that was - try the sign again."
@@ -620,6 +672,7 @@ export default function WordTranslatorScreen({
         return;
       }
       setPredictions(ranked);
+      setNotice(null);
       settle(readyText());
       if (auto) {
         const now = performance.now();
@@ -634,6 +687,7 @@ export default function WordTranslatorScreen({
       // saying a misrecognised word aloud would read as a verdict.
       if (variant !== "practice") speak(ranked[0].word);
     } catch (e: any) {
+      setNotice("failed");
       settle(`Classification failed: ${e?.message ?? e}`);
     } finally {
       inputTensor?.dispose();
@@ -648,6 +702,7 @@ export default function WordTranslatorScreen({
       framesRef.current = [];
       setFrameCount(0);
       setPredictions([]);
+      setNotice(null);
       resetSpeech();
       recordingRef.current = true;
       setRecording(true);
@@ -659,9 +714,8 @@ export default function WordTranslatorScreen({
     }
   }
 
-  // Desktop-only bay-3 action (design handoff PROPOSAL): discards the
-  // buffered clip and the ranked matches, returning the bay to its empty
-  // state. No backspace equivalent on Words - nothing accumulates.
+  // Clear: discards the buffered clip and the ranked matches. No backspace
+  // equivalent on Words - nothing accumulates.
   function handleClear() {
     segmenterRef.current.reset();
     pendingSegmentRef.current = null;
@@ -669,9 +723,41 @@ export default function WordTranslatorScreen({
     framesRef.current = [];
     setFrameCount(0);
     setPredictions([]);
+    setNotice(null);
     resetSpeech();
     setStatus(readyText());
   }
+
+  function speakTop() {
+    const first = predictions[0];
+    if (first) speak(first.word);
+  }
+
+  // Keyboard (web, full translator): Space records / stops (Manual), Enter
+  // speaks, Escape clears (or closes the big view). A focused button keeps
+  // Space and Enter for itself, and another open dialog keeps every key.
+  useEffect(() => {
+    if (Platform.OS !== "web" || variant !== "full") return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (showBig) {
+        if (e.key === "Escape") setShowBig(false);
+        else if (e.key === "Enter") speakTop();
+        return;
+      }
+      if (typeof document !== "undefined" && document.querySelector('[aria-modal="true"]')) return;
+      const onButton = !!t?.closest?.('button,[role="button"],[role="tab"],[role="radio"],[role="switch"]');
+      if (e.key === "Escape") handleClear();
+      else if (e.key === "Enter" && !onButton) speakTop();
+      else if (e.key === " " && !onButton && modeRef.current === "manual") {
+        e.preventDefault();
+        toggleRecording();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   if (Platform.OS !== "web") {
     return (
@@ -688,110 +774,12 @@ export default function WordTranslatorScreen({
   // "Capturing" = frames are being gathered for a classification: a manual
   // recording, or in auto mode a sign the segmenter is currently reading.
   const capturing = isAuto ? segmentActive : recording;
-  const emptyText = isAuto
-    ? "No sign yet - sign a word and the top 5 matches appear here."
-    : "No prediction yet - record a sign to see the top 5 matches here.";
-  const recordTitle = isAuto
-    ? segmentActive ? "Reading sign" : classifying ? "Classifying" : "Hands-free"
-    : recording ? "Recording" : classifying ? "Classifying" : "Ready to record";
-  const visibleRanks = isDesktop ? predictions : predictions.slice(0, 4);
   const top = predictions[0];
-  const spokenLine = speechStatus === "translating" ? "Translating..." : translatedText || (top ? signName(language, top.word) : undefined);
 
+  // Practice keeps its material record button (PracticeScreen's layout).
   const recordButtonSize = isDesktop ? 74 : 88;
   const recordCapSize = isDesktop ? 56 : 66;
   const glyphSize = isDesktop ? 18 : 20;
-  const meterBarCount = isDesktop ? 12 : 9;
-  const activeBars = Math.min(meterBarCount, Math.round((frameCount / frameTarget) * meterBarCount));
-
-  const topMatchesPanel = (
-    <GlassCard radius={22} padding={isDesktop ? 24 : 18} style={styles.panel}>
-      <View style={styles.panelHeaderRow}>
-        <Text style={[typography.meta, styles.eyebrow]}>TOP MATCHES</Text>
-        <Text style={[typography.caption, { fontSize: 10, color: colors.textTertiary }]}>
-          {frameCount > 0 ? `${frameCount} frames` : ""}
-        </Text>
-      </View>
-
-      {!top ? (
-        <Text style={[typography.bodySm, styles.emptyMatches]}>
-          {emptyText}
-        </Text>
-      ) : (
-        <>
-          <View
-            style={[
-              styles.rankOneSlab,
-              { borderRadius: isDesktop ? 18 : 16, padding: isDesktop ? 18 : 14 },
-              shadows.neuRaised("md"),
-            ]}
-          >
-            <View style={styles.rankOneRow}>
-              <Text style={[typography.h1, { fontSize: isDesktop ? 32 : 26, color: colors.textPrimary }]} numberOfLines={1}>
-                {signName(language, top.word)}
-              </Text>
-              <Text style={[typography.h3, { fontSize: isDesktop ? 20 : 17, color: colors.success }]}>
-                {top.confidence.toFixed(0)}%
-              </Text>
-            </View>
-            <View style={[styles.trough, { height: isDesktop ? 12 : 11 }, shadows.neuInset("sm")]}>
-              <LinearGradient
-                colors={["#2E9A58", "#3FB56A"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[
-                  styles.troughFill,
-                  {
-                    width: `${Math.max(2, Math.min(100, top.confidence))}%`,
-                    boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 10, color: "rgba(63,181,106,0.55)" }],
-                  } as any,
-                ]}
-              />
-            </View>
-            <View style={styles.rankOneFooter}>
-              <View style={styles.successDot} />
-              <Text style={[typography.caption, { fontSize: 11, color: colors.textSecondary }]} numberOfLines={1}>
-                {spokenLine} · spoken in {languageName}
-              </Text>
-            </View>
-            {speechError && (
-              <Text style={[typography.caption, { fontSize: 10.5, color: colors.needsPractice, marginTop: 4 }]}>
-                {speechError}
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.ranksList}>
-            {visibleRanks.slice(1).map((p, i) => {
-              const rank = i + 2; // ranks list starts at #2
-              const dim = rank >= 4;
-              return (
-                <View key={p.word + rank} style={styles.rankRow}>
-                  <View style={styles.rankLabelRow}>
-                    <Text style={[typography.label, { color: dim ? dimText : colors.textPrimary }]}>{signName(language, p.word)}</Text>
-                    <Text style={[typography.labelSm, { color: dim ? dimText : colors.textSecondary }]}>
-                      {p.confidence.toFixed(0)}%
-                    </Text>
-                  </View>
-                  <View style={[styles.trough, { height: 8 }, shadows.neuInset("sm")]}>
-                    <View
-                      style={[
-                        styles.troughFill,
-                        {
-                          width: `${Math.max(2, Math.min(100, p.confidence))}%`,
-                          backgroundColor: dim ? colors.primaryTealDark : colors.primaryTeal,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </>
-      )}
-    </GlassCard>
-  );
 
   const recordButton = (
     <Pressable
@@ -805,140 +793,18 @@ export default function WordTranslatorScreen({
         colors={["#3A414F", "#1A1E26"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.6, y: 1 }}
-        style={[
-          styles.recordBezelFill,
-          { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize },
-        ]}
+        style={[styles.recordBezelFill, { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize }]}
       >
         <LinearGradient
           colors={["#E0525F", "#A8303C"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={[
-            styles.recordCap,
-            { width: recordCapSize, height: recordCapSize, borderRadius: recordCapSize },
-          ]}
+          style={[styles.recordCap, { width: recordCapSize, height: recordCapSize, borderRadius: recordCapSize }]}
         >
-          {capturing ? (
-            <View style={{ width: glyphSize, height: glyphSize, borderRadius: 5, backgroundColor: "#FFFFFF" }} />
-          ) : (
-            <View
-              style={{
-                width: glyphSize,
-                height: glyphSize,
-                borderRadius: glyphSize,
-                backgroundColor: "#FFFFFF",
-              }}
-            />
-          )}
+          <View style={{ width: glyphSize, height: glyphSize, borderRadius: capturing ? 5 : glyphSize, backgroundColor: "#FFFFFF" }} />
         </LinearGradient>
       </LinearGradient>
     </Pressable>
-  );
-
-  const recordingPanel = (
-    <GlassCard radius={22} padding={isDesktop ? 18 : 16} contentStyle={styles.recordingContent} style={isDesktop ? styles.recordingPanelDesktop : undefined}>
-      {recordButton}
-
-      <View style={styles.recordTextBlock}>
-        <Text style={[typography.h3, { fontSize: 17, color: colors.textPrimary }]}>
-          {recordTitle}
-        </Text>
-        <Text style={[typography.bodySm, { color: colors.textSecondary }]} numberOfLines={1}>
-          {recording ? "Hold the sign steady. Tap again to classify." : status}
-        </Text>
-        <View style={[styles.frameMeter, { height: 18 }]}>
-          {Array.from({ length: meterBarCount }).map((_, i) => {
-            const height = 30 + ((i * 37) % 71); // deterministic 30-100% spread
-            const isActive = i < activeBars;
-            const isCurrent = capturing && i === activeBars - 1;
-            const isMarker = !capturing && i === Math.floor(meterBarCount * 0.6);
-            const barColor = isCurrent
-              ? colors.needsPractice
-              : isMarker
-                ? colors.primaryTeal
-                : isActive
-                  ? i % 2 === 0 ? meter.on : meter.onAlt
-                  : meter.off;
-            return (
-              <View
-                key={i}
-                style={[styles.frameBar, { height: `${height}%`, backgroundColor: barColor }]}
-              />
-            );
-          })}
-        </View>
-      </View>
-    </GlassCard>
-  );
-
-  const leftColumn = (
-    <View style={styles.leftColMobile}>
-      {topMatchesPanel}
-      {recordingPanel}
-    </View>
-  );
-
-  // Desktop overlays are REC pill + hand plate only - translation moved into
-  // bay 3 (the shared panel shell) for the instrument-panel handoff, so the
-  // on-video translation bar below is mobile-only now (unaffected screen).
-  const cameraOverlays = (
-    <>
-      {capturing && (
-        <GlassCard
-          overVideo
-          radius={999}
-          padding={0}
-          style={[styles.recPill, isDesktop ? styles.recPillDesktop : styles.recPillMobile]}
-          contentStyle={styles.recPillContent}
-        >
-          <View style={styles.recDot} />
-          <Text style={[typography.labelSm, { color: "#FFFFFF" }]}>{isAuto ? "READING" : "REC"}</Text>
-          <Text style={[typography.caption, { fontSize: 11, color: "rgba(255,255,255,0.72)" }]}>
-            {isAuto
-              ? `${frameCount} frames`
-              : isDesktop ? `${frameCount} / ${frameTarget} frames` : `${frameCount}/${frameTarget}`}
-          </Text>
-        </GlassCard>
-      )}
-
-      <GlassCard
-        overVideo
-        radius={999}
-        padding={0}
-        style={[styles.handPlate, isDesktop ? styles.handPlateDesktop : styles.handPlateMobile]}
-        contentStyle={styles.handPlateContent}
-      >
-        <Text style={[typography.meta, { fontSize: 11, color: "rgba(255,255,255,0.8)" }]}>
-          {handedness.toUpperCase()} HAND
-        </Text>
-      </GlassCard>
-
-      {!isDesktop && top && (
-        <GlassCard
-          overVideo
-          radius={14}
-          padding={12}
-          style={[styles.translationBar, styles.translationBarMobile]}
-          contentStyle={styles.translationBarContent}
-        >
-          <View style={styles.translationTextBlock}>
-            <Text style={[typography.meta, { fontSize: 9.5, color: "rgba(255,255,255,0.7)" }]}>TRANSLATION</Text>
-            <Text style={[typography.h1, { fontSize: 20, color: "#FFFFFF" }]} numberOfLines={1}>
-              {spokenLine}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => speak(top.word)}
-            style={styles.speakPill}
-            accessibilityRole="button"
-            accessibilityLabel={`Speak ${signName(language, top.word)}`}
-          >
-            <SpeakerIcon size={16} color={colors.textOnAccent} />
-          </Pressable>
-        </GlassCard>
-      )}
-    </>
   );
 
   if (variant === "practice") {
@@ -1000,235 +866,167 @@ export default function WordTranslatorScreen({
     );
   }
 
-  if (isDesktop) {
-    const translationTag =
-      speechStatus === "translating" ? "translating…" : speechStatus === "speaking" ? "speaking…" : "ready";
+  // ---- Full translator ----
+  const wide = isDesktop;
+  const dense = wide && (winH < 860 || winW < 1400);
+  const tight = wide && winH < 700;
+  const gutter = wide ? (dense ? 20 : 24) : isMobile ? 14 : 24;
+  const cameraHeight = isMobile ? 300 : Math.round(Math.min(520, (winW - gutter * 2) * 0.6));
 
-    const bay2 = (
-      <View style={styles.bay2ColumnWords}>
-        <View style={styles.panelHeaderRow}>
-          <Text style={[typography.meta, styles.eyebrow]}>TOP MATCHES</Text>
-          <Text style={[typography.caption, { fontSize: 10, color: colors.textTertiary }]}>
-            {frameCount > 0 ? `${frameCount} frames` : ""}
-          </Text>
-        </View>
+  const cameraState: CameraState = problem === "blocked" ? "blocked" : problem ? "error" : detectorReady ? "live" : "loading";
+  const discState = capturing ? "capturing" : classifying ? "checking" : "idle";
+  const frames = `${frameCount} frame${frameCount === 1 ? "" : "s"}`;
+  const chip: { text: string; dot: "on" | "off" | "rec" | "wait" | "busy" } = capturing
+    ? isAuto
+      ? { text: `Reading sign · ${frames}`, dot: "wait" }
+      : { text: `Recording · ${frames}`, dot: "rec" }
+    : classifying
+      ? { text: "Checking…", dot: "busy" }
+      : handsSeen
+        ? { text: "Hands found", dot: "on" }
+        : { text: "No hands in view", dot: "off" };
 
-        {!top ? (
-          <Text style={[typography.bodySm, styles.emptyMatches]}>
-            {emptyText}
-          </Text>
-        ) : (
-          <>
-            <View style={[styles.rankOneSlab, { borderRadius: 18, padding: 18 }, shadows.neuRaised("md")]}>
-              <View style={styles.rankOneRow}>
-                <Text style={[typography.h1, { fontSize: 32, color: colors.textPrimary }]} numberOfLines={1}>
-                  {signName(language, top.word)}
-                </Text>
-                <Text style={[typography.h3, { fontSize: 20, color: colors.success }]}>
-                  {top.confidence.toFixed(0)}%
-                </Text>
-              </View>
-              <View style={[styles.trough, { height: 12 }, shadows.neuInset("sm")]}>
-                <LinearGradient
-                  colors={["#2E9A58", "#3FB56A"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[
-                    styles.troughFill,
-                    {
-                      width: `${Math.max(2, Math.min(100, top.confidence))}%`,
-                      boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 10, color: "rgba(63,181,106,0.55)" }],
-                    } as any,
-                  ]}
-                />
-              </View>
-              <View style={styles.rankOneFooter}>
-                <View style={styles.successDot} />
-                <Text style={[typography.caption, { fontSize: 11, color: colors.textSecondary }]} numberOfLines={1}>
-                  {spokenLine} · spoken in {languageName}
-                </Text>
-              </View>
-              {speechError && (
-                <Text style={[typography.caption, { fontSize: 10.5, color: colors.needsPractice, marginTop: 4 }]}>
-                  {speechError}
-                </Text>
-              )}
-            </View>
+  // What to do now, in words (nothing here relies on sound).
+  const now: { title: string; hint: string } = problem
+    ? { title: "The camera is off.", hint: "See the message on the camera." }
+    : !detectorReady
+      ? { title: "Getting ready…", hint: "The camera turns on in a moment." }
+      : capturing
+        ? isAuto
+          ? { title: "Reading your sign…", hint: "Lower or still your hands when you finish." }
+          : { title: "Recording… sign the word now.", hint: "Press Stop when you finish." }
+        : classifying
+          ? { title: "Checking…", hint: "Finding the closest words." }
+          : !modelsReady
+            ? { title: "Getting the word reader ready…", hint: "The first time takes a little while." }
+            : notice === "unsure"
+              ? { title: "Not sure what that was.", hint: isAuto ? "Try the sign again." : "Press Record and try again." }
+              : notice === "brief"
+                ? { title: "That was too short to read.", hint: "Sign the whole word, then lower your hands." }
+                : notice === "short"
+                  ? { title: "That was too short to read.", hint: "Sign a bit longer before you press Stop." }
+                  : notice === "failed"
+                    ? { title: "Something went wrong reading that.", hint: "Please sign it again." }
+                    : isAuto
+                      ? { title: top ? "Sign the next word." : "Sign a word.", hint: "Then lower your hands. It's read when they settle." }
+                      : { title: "Press Record, then sign.", hint: "Press Stop when you finish the word." };
 
-            <View style={styles.ranksList}>
-              {visibleRanks.slice(1).map((p, i) => {
-                const rank = i + 2;
-                const dim = rank >= 4;
-                return (
-                  <View key={p.word + rank} style={styles.rankRow}>
-                    <View style={styles.rankLabelRow}>
-                      <Text style={[typography.label, { color: dim ? dimText : colors.textPrimary }]}>{signName(language, p.word)}</Text>
-                      <Text style={[typography.labelSm, { color: dim ? dimText : colors.textSecondary }]}>
-                        {p.confidence.toFixed(0)}%
-                      </Text>
-                    </View>
-                    <View style={[styles.trough, { height: 8 }, shadows.neuInset("sm")]}>
-                      <View
-                        style={[
-                          styles.troughFill,
-                          {
-                            width: `${Math.max(2, Math.min(100, p.confidence))}%`,
-                            backgroundColor: dim ? colors.primaryTealDark : colors.primaryTeal,
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </>
-        )}
-      </View>
-    );
+  const topMatch: WordMatch | null = top ? { name: signName(language, top.word), confidence: top.confidence } : null;
+  const others: WordMatch[] = predictions.slice(1).map((p) => ({ name: signName(language, p.word), confidence: p.confidence }));
+  const translation =
+    topMatch && translatedText && translatedText.trim().toLowerCase() !== topMatch.name.trim().toLowerCase() ? translatedText.trim() : "";
+  const speechLine =
+    speechStatus === "translating" ? "Translating…" : translation ? `“${translation}” in ${languageName}` : `Spoken in ${languageName}`;
+  const speakText = speechStatus === "speaking" ? "Speaking…" : speechStatus === "translating" ? "Translating…" : "Speak it aloud";
+  const speakShort = speechStatus === "speaking" ? "Speaking…" : speechStatus === "translating" ? "Translating…" : "Speak";
+  const keysHint = isAuto ? "Keys: Enter speaks · Esc clears" : "Keys: Space records / stops · Enter speaks · Esc clears";
 
-    const recordingCell = (
-      <View style={styles.recordingCell}>
-        <Pressable
-          onPress={toggleRecording}
-          disabled={isAuto || (!recording && !detectorReady)}
-          accessibilityRole="button"
-          accessibilityLabel={isAuto ? "Hands-free: signs are detected automatically" : recording ? "Stop recording" : "Start recording"}
-          style={[styles.recordBezel, { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize }, ((isAuto && !capturing) || (!recording && !detectorReady)) && styles.recordDisabled]}
-        >
-          <LinearGradient
-            colors={["#3A414F", "#1A1E26"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0.6, y: 1 }}
-            style={[styles.recordBezelFill, { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize }]}
-          >
-            <LinearGradient
-              colors={["#E0525F", "#A8303C"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={[styles.recordCap, { width: recordCapSize, height: recordCapSize, borderRadius: recordCapSize }]}
-            >
-              {capturing ? (
-                <View style={{ width: glyphSize, height: glyphSize, borderRadius: 5, backgroundColor: "#FFFFFF" }} />
-              ) : (
-                <View style={{ width: glyphSize, height: glyphSize, borderRadius: glyphSize, backgroundColor: "#FFFFFF" }} />
-              )}
-            </LinearGradient>
-          </LinearGradient>
-        </Pressable>
+  const disc = (size: number) => (
+    <RecordDisc mode={mode} state={discState} size={size} disabled={!isAuto && !recording && !detectorReady} onPress={toggleRecording} />
+  );
 
-        <View style={styles.recordTextBlock}>
-          <Text style={[typography.h3, { fontSize: 16, color: colors.textPrimary }]}>
-            {recordTitle}
-          </Text>
-          <Text style={styles.recordSubtitle} numberOfLines={1}>
-            {recording ? "Tap again to classify." : status}
-          </Text>
-          <View style={[styles.frameMeter, { height: 16 }]}>
-            {Array.from({ length: meterBarCount }).map((_, i) => {
-              const height = 30 + ((i * 37) % 71);
-              const isActive = i < activeBars;
-              const isCurrent = capturing && i === activeBars - 1;
-              const isMarker = !capturing && i === Math.floor(meterBarCount * 0.6);
-              const barColor = isCurrent
-                ? colors.needsPractice
-                : isMarker
-                  ? colors.primaryTeal
-                  : isActive
-                    ? i % 2 === 0 ? meter.on : meter.onAlt
-                    : meter.off;
-              return <View key={i} style={[styles.frameBar, { height: `${height}%`, backgroundColor: barColor }]} />;
-            })}
-          </View>
-        </View>
-      </View>
-    );
-
-    const signingHandCell = (
-      <View style={styles.stripCellFlexWords}>
-        <View style={styles.stripCellHeader}>
-          <Text style={[typography.meta, styles.eyebrow]}>SIGNING HAND</Text>
-          <Text style={styles.stripCellAccent}>affects accuracy</Text>
-        </View>
-        <HandednessPicker value={handedness} onChange={setHandedness} />
-      </View>
-    );
-
-    const clipLengthCell = (
-      <View style={styles.stripCellFlexWords}>
-        <View style={styles.stripCellHeader}>
-          <Text style={[typography.meta, styles.eyebrow]}>CLIP LENGTH</Text>
-          <Text style={styles.stripCellAccent}>{clipLengthFrames} frames</Text>
-        </View>
-        <ClipLengthControl value={clipLengthFrames} onChange={setClipLengthFrames} />
-      </View>
-    );
-
-    const actionsRow = (
-      <Pressable
-        onPress={handleClear}
-        style={styles.clearButtonFull}
-        accessibilityRole="button"
-        accessibilityLabel="Clear the buffered clip and matches"
-      >
-        <Text style={styles.clearLabel}>Clear</Text>
-      </Pressable>
-    );
-
-    return (
-      <View style={styles.instrumentBody}>
-        <TranslatorPanel
-          cameraDevice={
-            <CameraDevice
-              isDesktop
-              videoRef={videoRef}
-              canvasRef={canvasRef}
-              ledColor={capturing ? colors.needsPractice : colors.success}
-              statusText={
-                capturing || classifying
-                  ? `CLASSIFYING · ${frameCount} FRAMES BUFFERED`
-                  : isAuto ? `HANDS-FREE · ${fpsLabel(fps)}` : `${fpsLabel(fps)} · MODEL READY`
-              }
-              overlays={cameraOverlays}
-              style={styles.cameraDesktopSize}
-            />
-          }
-          bay2={bay2}
-          translationText={top ? spokenLine ?? "—" : "—"}
-          statusLabel={`${languageName} · ${translationTag}`}
-          helperText={
-            isAuto
-              ? "Hands-free: sign a word, then lower or still your hands - it's read and spoken automatically. If the model isn't confident, nothing is shown - just sign it again."
-              : "Record a sign, hold it steady, then stop to classify. If the model isn't confident, nothing is shown. Clear discards the clip and the ranked matches."
-          }
-          onSpeak={() => top && speak(top.word)}
-          speakDisabled={!top}
-          actionsRow={actionsRow}
-          stripCells={[recordingCell, signingHandCell, clipLengthCell]}
-        />
-      </View>
-    );
-  }
+  const camera = (
+    <CameraDevice
+      variant="slim"
+      videoRef={videoRef}
+      canvasRef={canvasRef}
+      cameraState={cameraState}
+      chip="hand"
+      chipText={chip.text}
+      chipDot={chip.dot}
+      fpsText={display.fps ? `${fps > 0 ? fps : "--"} fps · ready` : null}
+      guideState={null}
+      errorTitle={problem === "reader" ? "The word reader didn't load" : undefined}
+      errorBody={problem === "reader" ? "Try again. If it keeps happening, restart LCSign." : undefined}
+      onRetry={retry}
+    />
+  );
 
   return (
-    <View style={[styles.root, styles.rootMobile]}>
-      {leftColumn}
-      <CameraDevice
-        isDesktop={false}
-        videoRef={videoRef}
-        canvasRef={canvasRef}
-        ledColor={capturing ? colors.needsPractice : colors.success}
-        statusText={
-          capturing || classifying
-                  ? `CLASSIFYING · ${frameCount} FRAMES BUFFERED`
-                  : isAuto ? `HANDS-FREE · ${fpsLabel(fps)}` : `${fpsLabel(fps)} · MODEL READY`
-        }
-        mobileScreenHeight={282}
-        overlays={cameraOverlays}
-        style={styles.cameraMobile}
+    <View style={[styles.root, wide ? [styles.rootWide, { paddingHorizontal: gutter, paddingBottom: gutter, gap: dense ? 16 : 20 }] : null]}>
+      {/* Always the first child, in both layouts: the <video> never remounts. */}
+      <View style={wide ? styles.cameraWide : [styles.cameraStack, { height: cameraHeight, marginHorizontal: gutter }]}>{camera}</View>
+
+      {wide ? (
+        <ScrollView
+          style={[styles.side, { width: dense ? 520 : 548 }]}
+          contentContainerStyle={[styles.sideContent, { gap: dense ? 12 : 16 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <NowSigningCard
+            ring={disc(dense ? 96 : 118)}
+            title={now.title}
+            hint={now.hint}
+            footer={capturing ? frames : undefined}
+            dense={dense}
+          />
+          <MatchesCard
+            mode={mode}
+            top={topMatch}
+            others={others}
+            speechLine={speechLine}
+            speechError={speechError}
+            dense={dense}
+            tight={tight}
+            speakLabel={speakText}
+            onSpeak={speakTop}
+            onShow={() => top && setShowBig(true)}
+            onClear={handleClear}
+            keysHint={keysHint}
+          />
+        </ScrollView>
+      ) : (
+        <ScrollView style={styles.stackScroll} contentContainerStyle={[styles.stackContent, { paddingHorizontal: gutter }]}>
+          <NowSigningCard phone ring={disc(76)} title={now.title} footer={capturing ? frames : now.hint} />
+          <PhoneMatchCard top={topMatch} others={others} speechLine={speechLine} />
+        </ScrollView>
+      )}
+
+      {!wide ? (
+        <View style={[styles.bottomBar, { paddingHorizontal: gutter, paddingBottom: Math.max(insets.bottom, 8) + 8 }]}>
+          <TranslatorButton
+            tone="accent"
+            size="lg"
+            grow
+            label={speakShort}
+            icon={(c) => <SpeakerIcon size={18} color={c} />}
+            onPress={speakTop}
+            disabled={!top}
+            accessibilityLabel="Speak it aloud"
+            accessibilityHint={top ? undefined : "Sign a word first"}
+          />
+          <TranslatorButton
+            tone="neu"
+            size="lg"
+            square
+            icon={(c) => <ExpandIcon size={18} color={c} />}
+            onPress={() => top && setShowBig(true)}
+            disabled={!top}
+            accessibilityLabel="Show to someone"
+          />
+          <TranslatorButton tone="neu" size="lg" square icon={(c) => <CloseIcon size={18} color={c} />} onPress={handleClear} accessibilityLabel="Clear the matches" />
+        </View>
+      ) : null}
+
+      <ShowToSomeone
+        visible={showBig}
+        onClose={() => setShowBig(false)}
+        text={topMatch?.name ?? ""}
+        signerName={signerName}
+        translation={translation}
+        languageName={languageName}
+        speakLabel={speakText}
+        onSpeak={speakTop}
+        reduceMotion={reduceMotion}
       />
     </View>
   );
+}
+
+/** Any hand in a Holistic result. */
+function handsIn(result: any): boolean {
+  const count = (points: any) => (!points ? 0 : Array.isArray(points[0]) ? points[0].length : points.length);
+  return count(result?.leftHandLandmarks) > 0 || count(result?.rightHandLandmarks) > 0;
 }
 
 const makeStyles = (colors: ThemeColors, theme: Theme) =>
@@ -1240,11 +1038,27 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
     padding: 24,
     gap: 8,
   },
-  root: {
-    flex: 1,
-    minHeight: 0,
+
+  // ---- Full translator ----
+  root: { flex: 1, minHeight: 0, minWidth: 0 },
+  rootWide: { flexDirection: "row", alignItems: "stretch" },
+  cameraWide: { flex: 1, minWidth: 0, minHeight: 0 },
+  cameraStack: { flexShrink: 0 },
+  side: { flexGrow: 0, flexShrink: 0 },
+  sideContent: { flexGrow: 1 },
+  stackScroll: { flex: 1, minHeight: 0 },
+  stackContent: { gap: 10, paddingTop: 10, paddingBottom: 12 },
+  bottomBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 8,
+    backgroundColor: colors.surfaceElevated,
+    borderTopWidth: 1,
+    borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border,
   },
-  // Practice variant: camera fills the box PracticeScreen gives it, record row below.
+
+  // ---- Practice variant: camera fills the box PracticeScreen gives it, record row below ----
   practiceRoot: {
     flex: 1,
     minHeight: 0,
@@ -1267,105 +1081,6 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
   practiceAside: { flex: 1, minWidth: 0 },
   practiceRecordRow: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  // Desktop root: fills the hub's body. Must STRETCH (not shrink-center) so
-  // TranslatorPanel's own onLayout measurement of this space is accurate -
-  // see LiveTranslatorScreen's instrumentBody for the full rationale.
-  instrumentBody: {
-    flex: 1,
-    minHeight: 0,
-    padding: 16,
-  },
-  cameraDesktopSize: {
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: "auto",
-    width: 540,
-    height: 398,
-  },
-  // column-reverse keeps the CameraDevice instance (declared second in JSX)
-  // mounted in the same tree position across the breakpoint — only its
-  // VISUAL order flips so mobile shows camera above the results without
-  // ever remounting the <video>/<canvas> (see WordTranslatorScreen history:
-  // remounting mid-session drops the live getUserMedia stream).
-  rootMobile: {
-    flexDirection: "column-reverse",
-    alignItems: "stretch",
-    gap: 14,
-    padding: 16,
-  },
-  cameraMobile: {
-    marginHorizontal: 0,
-  },
-  leftColMobile: {
-    flex: 1,
-    minHeight: 0,
-    flexDirection: "column",
-    gap: 14,
-  },
-  panel: {},
-  panelHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  eyebrow: {
-    color: colors.textTertiary,
-  },
-  emptyMatches: {
-    color: colors.textOnGlass,
-  },
-  rankOneSlab: {
-    backgroundColor: colors.neuBase,
-    marginBottom: 16,
-  },
-  rankOneRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  trough: {
-    borderRadius: 999,
-    backgroundColor: colors.neuWell,
-    overflow: "hidden",
-    justifyContent: "center",
-  },
-  troughFill: {
-    height: "100%",
-    borderRadius: 999,
-  },
-  rankOneFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 10,
-  },
-  successDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.success,
-  },
-  ranksList: {
-    gap: 13,
-  },
-  rankRow: {
-    gap: 6,
-  },
-  rankLabelRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-  },
-  recordingPanelDesktop: {
-    marginTop: "auto",
-  },
-  recordingContent: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
@@ -1398,26 +1113,12 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
     minWidth: 0,
     gap: 4,
   },
-  frameMeter: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 3,
-    marginTop: 8,
-  },
-  frameBar: {
-    flex: 1,
-    borderRadius: 2,
-  },
   recPill: {
     position: "absolute",
   },
   recPillDesktop: {
     top: 14,
     left: 16,
-  },
-  recPillMobile: {
-    top: 12,
-    left: 12,
   },
   recPillContent: {
     flexDirection: "row",
@@ -1433,100 +1134,4 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
     backgroundColor: colors.needsPractice,
     boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 8, color: colors.needsPractice }],
   } as any,
-  handPlate: {
-    position: "absolute",
-  },
-  handPlateDesktop: {
-    top: 14,
-    right: 16,
-  },
-  handPlateMobile: {
-    top: 12,
-    right: 12,
-  },
-  handPlateContent: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  translationBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-  },
-  translationBarMobile: {
-    bottom: 12,
-    marginHorizontal: 12,
-  },
-  translationBarContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 18,
-  },
-  translationTextBlock: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  speakPill: {
-    flexShrink: 0,
-    backgroundColor: colors.accentCoral,
-    borderRadius: 999,
-    paddingVertical: 11,
-    paddingHorizontal: 18,
-    boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: "rgba(242,178,62,0.3)" }],
-  } as any,
-
-  // --- Desktop instrument-panel bay 2 (Top matches) ---
-  bay2ColumnWords: {
-    flex: 1,
-    minHeight: 0,
-    flexDirection: "column",
-  },
-
-  // --- Desktop control-strip cells ---
-  recordingCell: {
-    width: 394,
-    flexGrow: 0,
-    flexShrink: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 18,
-  },
-  recordSubtitle: {
-    fontFamily: typography.body.fontFamily,
-    fontSize: 11,
-    lineHeight: 16.5,
-    color: colors.textSecondary,
-  },
-  stripCellFlexWords: {
-    flex: 1,
-    minWidth: 0,
-  },
-  stripCellHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  stripCellAccent: {
-    fontFamily: typography.body.fontFamily,
-    fontSize: 10,
-    color: colors.accentCoralText,
-  },
-
-  // --- Desktop bay-3 action (Clear, full width) ---
-  clearButtonFull: {
-    width: "100%",
-    height: 52,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.22)" : colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  clearLabel: {
-    fontFamily: typography.label.fontFamily,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
 });

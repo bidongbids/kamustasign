@@ -165,6 +165,7 @@ function AppContent() {
         <TranslatorHubScreen
           onBack={() => setScreen(translatorFrom)}
           backLabel={translatorFrom === "app" ? "Back to your dashboard" : "Back to the log-in screen"}
+          signerName={authGate.status === "authenticated" ? authGate.profile?.full_name ?? undefined : undefined}
         />
       </>
     );

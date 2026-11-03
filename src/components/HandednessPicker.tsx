@@ -21,6 +21,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fonts, type ThemeColors } from "../theme/theme";
 import { DarkTheme, useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
+import SegmentedToggle from "./SegmentedToggle";
+import { HandIcon } from "./icons/UiIcons";
 
 const STORAGE_KEY = "kamustasign:handedness";
 export type Handedness = "right" | "left";
@@ -75,6 +77,48 @@ type Props = {
   // text instead of the full-width 62-high desktop one.
   compact?: boolean;
 };
+
+/**
+ * The Translator's signing-hand switch (design_handoff_translator_fingerspelling
+ * §2.2 / §3): Left | Right with hand icons, Left first and its hand mirrored,
+ * in the same segmented style as the tabs beside it. "sm" (36px) for the
+ * Translator's second row, "md" stretched in its Settings.
+ */
+export function HandednessToggle({
+  value,
+  onChange,
+  size = "sm",
+  stretch,
+}: {
+  value: Handedness;
+  onChange: (value: Handedness) => void;
+  size?: "sm" | "md";
+  stretch?: boolean;
+}) {
+  return (
+    <SegmentedToggle
+      kind="radio"
+      size={size}
+      stretch={stretch}
+      accessibilityLabel="Signing hand"
+      value={value}
+      onChange={onChange}
+      options={[
+        {
+          key: "left",
+          label: "Left",
+          accessibilityLabel: "Left-handed signing",
+          icon: (c) => (
+            <View style={{ transform: [{ scaleX: -1 }] }}>
+              <HandIcon size={15} color={c} />
+            </View>
+          ),
+        },
+        { key: "right", label: "Right", accessibilityLabel: "Right-handed signing", icon: (c) => <HandIcon size={15} color={c} /> },
+      ]}
+    />
+  );
+}
 
 // A material object: dark in both modes, like the camera housing.
 export default function HandednessPicker(props: Props) {

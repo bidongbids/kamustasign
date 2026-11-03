@@ -32,7 +32,8 @@ function arrowKeys<T>(items: T[], current: T, pick: (v: T) => void) {
   };
 }
 
-export function AppearanceButton({ compact }: { compact?: boolean }) {
+/** `compact`: icon only, and the panel is a bottom sheet (phones). `iconOnly`: icon only, popover panel. */
+export function AppearanceButton({ compact, iconOnly }: { compact?: boolean; iconOnly?: boolean }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [open, setOpen] = useState(false);
@@ -47,13 +48,13 @@ export function AppearanceButton({ compact }: { compact?: boolean }) {
         hitSlop={4}
         style={(state: any) => [
           styles.button,
-          compact && styles.buttonIcon,
+          (compact || iconOnly) && styles.buttonIcon,
           (open || state.pressed) && styles.buttonOn,
           state.focused && styles.focused,
         ]}
       >
         {modeIcon}
-        {compact ? null : (
+        {compact || iconOnly ? null : (
           <>
             <PaletteIcon size={17} color={colors.textPrimary} />
             <Text style={styles.buttonText}>Appearance</Text>

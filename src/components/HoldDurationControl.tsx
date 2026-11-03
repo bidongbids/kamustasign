@@ -1,16 +1,14 @@
 // src/components/HoldDurationControl.tsx
 // Companion timer to COMMIT_THRESHOLD in LiveTranslatorScreen: how long a
 // handshape must hold steady above the confidence threshold before it's
-// committed to the reading strip. An instant commit logs transient/unsure
+// committed to the word. The Translator's Settings show it as "How long to
+// hold a letter" (TranslatorSettings.tsx). An instant commit logs transient/unsure
 // shapes the moment confidence crosses the threshold for even one frame -
 // this adds a deliberate pause so an uncertain sign can be corrected before
 // it locks in. Persisted the same way as handedness (see HandednessPicker.tsx)
 // - set once, applies to every recognition after that.
-import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fonts, type ThemeColors } from "../theme/theme";
-import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
 
 const STORAGE_KEY = "kamustasign:holdDurationMs";
 
@@ -22,86 +20,33 @@ export const HOLD_PRESETS = [
 
 const DEFAULT_MS = 450;
 
+/** "0.45 s" - the hold time as the Translator's Settings show it. */
+export const holdSeconds = (ms: number) => `${Number((ms / 1000).toFixed(2))} s`;
+
+// Every mounted useHoldDuration() shares one value (as useHandedness does),
+// so the Translator's Settings popover reaches the reader's own instance.
+const holdListeners = new Set<(value: number) => void>();
+
 export function useHoldDuration(): [number, (value: number) => void] {
   const [holdMs, setHoldMs] = useState<number>(DEFAULT_MS);
 
   useEffect(() => {
+    let cancelled = false;
+    holdListeners.add(setHoldMs);
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved != null) setHoldMs(Number(saved));
+      const n = saved == null ? NaN : Number(saved);
+      if (!cancelled && Number.isFinite(n) && n > 0) setHoldMs(n);
     });
+    return () => {
+      cancelled = true;
+      holdListeners.delete(setHoldMs);
+    };
   }, []);
 
   function update(value: number) {
-    setHoldMs(value);
-    AsyncStorage.setItem(STORAGE_KEY, String(value));
+    holdListeners.forEach((listener) => listener(value));
+    AsyncStorage.setItem(STORAGE_KEY, String(value)).catch(() => {});
   }
 
   return [holdMs, update];
 }
-
-type Props = {
-  value: number;
-  onChange: (value: number) => void;
-  compact?: boolean;
-};
-
-export default function HoldDurationControl({ value, onChange, compact = false }: Props) {
-  const { colors, shadows } = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  // Non-compact height/padding/gap match the control-strip segmented-control
-  // spec (design handoff: "UI mockups combining design styles" - 4a control
-  // strip, cell 2): 50 high, padding 5, gap 5. Compact (mobile) is untouched.
-  return (
-    <View style={[styles.row, { height: compact ? 40 : 50, padding: compact ? 4 : 5, gap: compact ? 4 : 5 }]}>
-      {HOLD_PRESETS.map((preset) => {
-        const active = value === preset.ms;
-        return (
-          <Pressable
-            key={preset.label}
-            onPress={() => onChange(preset.ms)}
-            style={[
-              styles.pill,
-              { backgroundColor: active ? colors.surfaceElevated : colors.neuWell },
-              active ? shadows.neuRaised("sm") : shadows.neuInset("sm"),
-            ]}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={`${preset.label} commit speed, ${preset.ms} milliseconds`}
-          >
-            <Text style={[styles.pillLabel, !compact && styles.pillLabelStrip, active && styles.pillLabelActive, compact && styles.pillLabelCompact]}>
-              {preset.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-const makeStyles = (colors: ThemeColors, theme: Theme) =>
-  StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    borderRadius: 999,
-  } as ViewStyle,
-  pill: {
-    flex: 1,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pillLabel: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: theme.name === "dark" ? "#8A93A3" : colors.textTertiary,
-  },
-  pillLabelStrip: {
-    fontSize: 12,
-  },
-  pillLabelActive: {
-    color: colors.textPrimary,
-  },
-  pillLabelCompact: {
-    fontSize: 11,
-  },
-});

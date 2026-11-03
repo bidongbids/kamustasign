@@ -84,6 +84,15 @@ export function BackspaceIcon({ size = 20, color = "#000000" }: IconProps) {
   );
 }
 
+/** The space bar: an open bracket lying down (␣). */
+export function SpaceBarIcon({ size = 20, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 10v4.5h16V10" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 // ---- Student learning layer icons (Graphite Aurora "Kids") ----
 // Same signature and line weight as the icons above. State never relies on
 // colour alone: the star (filled/outline), moon (resting), and check
