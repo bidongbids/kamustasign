@@ -15,6 +15,22 @@
 // calibrated on the FSL-105 landmark cache: hand speed during signs has a
 // median of ~1.7 and a 25th percentile of ~0.66 (holds within a sign), while
 // MediaPipe jitter on a hand at rest is ~0.1-0.4.
+//
+// 2026-11-03, two fixes from replaying recorded signs through this class
+// offline (FSL-105's unseen signer, our own recordings, ASL Citizen's
+// held-out webcam signers) and scoring the segments with the deployed models
+// under the practice pass rule:
+//  - The finished segment no longer keeps the trailing stillness. A student
+//    who pauses with their hands up (as the screen used to ask) added ~0.5 s
+//    of a frozen hand to every clip, squeezing the sign into fewer of the
+//    model's 40 frames: FSL passes fell from 80% to 65%.
+//  - Speed smoothing is per millisecond, not per frame. Tracking runs at
+//    ~12-15 fps on our laptop and less on older PCs; per-frame smoothing
+//    made the speed lag by several frames there, so onsets were cut and a
+//    still hand took over a second to count as still (at 6 fps, almost half
+//    the held signs never finished being read).
+// Together, holding the hands up at 15 fps: FSL 65% -> 76% passed, ASL 30%
+// -> 40%, our recordings 89% -> 96%; at 6 fps FSL 32% -> 74%.
 
 import { FEATURES_PER_FRAME, NUM_HAND, NUM_POSE } from "./wordLandmarks";
 
@@ -31,8 +47,17 @@ export type SegmenterConfig = {
   maxSignMs: number;
   /** Frames from just before the start are kept so the onset isn't lost. */
   prerollMs: number;
-  /** EMA weight for the newest speed sample (0-1). */
-  smoothing: number;
+  /**
+   * Time constant of the speed smoothing (an exponential moving average
+   * weighted by elapsed time, so it behaves the same at any frame rate;
+   * 65 ms gives the newest sample the old 0.4 weight at 30 fps).
+   */
+  smoothingMs: number;
+  /**
+   * Stillness kept at the end of a finished segment. The rest of the
+   * holdMs wait is dropped: it is a frozen hand, not part of the sign.
+   */
+  tailMs: number;
   /**
    * After a sign ends, the next can't start until the hands have left the
    * frame or stayed still this long. Without it, lowering the arm after a
@@ -52,7 +77,8 @@ export const DEFAULT_SEGMENTER_CONFIG: SegmenterConfig = {
   minSignMs: 300,
   maxSignMs: 5000,
   prerollMs: 300,
-  smoothing: 0.4,
+  smoothingMs: 65,
+  tailMs: 100,
   rearmMs: 500,
 };
 
@@ -149,8 +175,10 @@ export class SignSegmenter {
 
   push(frame: Float32Array, t: number): SegmentEvent | null {
     const cfg = this.cfg;
-    const raw = this.prev ? handSpeed(this.prev.frame, frame, t - this.prev.t) : 0;
-    this.speed = cfg.smoothing * raw + (1 - cfg.smoothing) * this.speed;
+    const dt = this.prev ? t - this.prev.t : 0;
+    const raw = this.prev ? handSpeed(this.prev.frame, frame, dt) : 0;
+    const weight = dt > 0 ? 1 - Math.exp(-dt / cfg.smoothingMs) : 0;
+    this.speed = weight * raw + (1 - weight) * this.speed;
     this.prev = { frame, t };
     const stamped = { frame, t };
     const visible = anyHandVisible(frame);
@@ -191,9 +219,12 @@ export class SignSegmenter {
     const settled = this.stillSince !== null && t - this.stillSince >= cfg.holdMs;
     if (!settled && duration < cfg.maxSignMs) return null;
 
-    // Sign over. Duration of actual signing excludes the trailing stillness.
-    const frames = this.segment.map((s) => s.frame);
-    const signingMs = (this.stillSince ?? t) - this.segment[0].t;
+    // Sign over. Duration of actual signing excludes the trailing stillness,
+    // and so do the frames, but for tailMs of it.
+    const stillAt = this.stillSince;
+    const kept = stillAt === null ? this.segment : this.segment.filter((s) => s.t <= stillAt + cfg.tailMs);
+    const frames = kept.map((s) => s.frame);
+    const signingMs = (stillAt ?? t) - this.segment[0].t;
     this.active = false;
     this.segment = [];
     this.stillSince = null;

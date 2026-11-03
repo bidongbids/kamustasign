@@ -855,7 +855,7 @@ export default function WordTranslatorScreen({
             </Text>
             <Text style={[typography.bodySm, { fontSize: 14, lineHeight: 19, color: colors.textSecondary }]}>
               {isAuto
-                ? "Just sign. Pause when you finish."
+                ? "Sign it, then lower your hands."
                 : recording ? "Sign it, then press Stop." : "Press, sign, press again."}
             </Text>
           </View>

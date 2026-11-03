@@ -76,9 +76,46 @@ describe("SignSegmenter", () => {
     ]);
     expect(events.map((x) => x.e.type)).toEqual(["start", "end"]);
     const end = events[1].e as Extract<SegmentEvent, { type: "end" }>;
-    // Includes the pre-roll and the trailing hold, not just the moving frames.
+    // Includes the pre-roll, not just the moving frames...
     expect(end.frames.length).toBeGreaterThan(25);
     expect(seg.isActive).toBe(false);
+  });
+
+  it("drops the trailing stillness from the finished sign (all but tailMs)", () => {
+    const seg = new SignSegmenter();
+    const events = run(seg, [
+      { frames: 10, speed: 0 },
+      { frames: 25, speed: 2 },
+      { frames: 30, speed: 0 }, // the hand stays up, frozen
+    ]);
+    const end = events.find((x) => x.e.type === "end")!.e as Extract<SegmentEvent, { type: "end" }>;
+    // pre-roll (~10 frames) + 25 moving + the speed settling (~4) + tailMs (~3).
+    // Keeping the whole holdMs wait would add ~17 frozen frames more.
+    expect(end.frames.length).toBeLessThanOrEqual(25 + 10 + 4 + 4);
+  });
+
+  it("reads a sign the same way at a low frame rate", () => {
+    // 6 fps, like a slow PC: ~1 s of signing, then a frozen hand.
+    const ms = 167;
+    const seg = new SignSegmenter();
+    const events: { t: number; e: SegmentEvent }[] = [];
+    let x = 0.5;
+    let t = 0;
+    const push = (n: number, speed: number) => {
+      for (let k = 0; k < n; k++, t += ms) {
+        x += speed * SHOULDER_WIDTH * (ms / 1000);
+        const e = seg.push(frame(x), t);
+        if (e) events.push({ t, e });
+      }
+    };
+    push(3, 0);
+    push(6, 2);
+    const stoppedAt = t;
+    push(10, 0);
+    expect(events.map((x) => x.e.type)).toEqual(["start", "end"]);
+    // Ends about holdMs after the hand stops: per-frame smoothing used to
+    // take several extra frames (~0.5 s more) to see the stillness here.
+    expect(events[1].t - stoppedAt).toBeLessThanOrEqual(550 + 2 * ms);
   });
 
   it("keeps a short pause inside one sign", () => {
