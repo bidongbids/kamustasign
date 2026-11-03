@@ -76,7 +76,7 @@ def load_asl():
 def load_fsl():
     d = np.load(os.path.join(DATA_DIR, "fsl_landmarks.npz"))
     classes = json.load(open(os.path.join(DATA_DIR, "fsl_classes.json"), encoding="utf-8"))
-    paths = sorted(glob.glob(os.path.join(MODEL_DIR, "fsl_sequence_classifier_seed*.keras")))
+    paths = sorted(glob.glob(os.path.join(MODEL_DIR, "fsl_sequence_classifier_seed[0-9].keras")))
     test, train = d["split"] == "test", d["split"] == "train"
     return d["X"][test], d["y"][test], np.bincount(d["y"][train], minlength=len(classes)), classes, paths
 
@@ -284,7 +284,15 @@ def main():
     if which in ("both", "fsl"):
         summaries.append(run("FSL-105 (signer D held out)", load_fsl, names=fsl_tagalog()))
     os.makedirs(OUT_DIR, exist_ok=True)
-    json.dump(summaries, open(os.path.join(OUT_DIR, "summary.json"), "w", encoding="utf-8"), indent=2)
+    # A one-language run replaces only its own entry, so `... fsl` doesn't
+    # drop the ASL summary (and vice versa).
+    path = os.path.join(OUT_DIR, "summary.json")
+    fresh = {s["model"] for s in summaries}
+    if os.path.exists(path):
+        kept = [s for s in json.load(open(path, encoding="utf-8")) if s["model"] not in fresh]
+        summaries = [s for s in kept if s["model"].startswith("ASL")] + summaries + \
+                    [s for s in kept if not s["model"].startswith("ASL")]
+    json.dump(summaries, open(path, "w", encoding="utf-8"), indent=2)
     print(f"\nCSV + summary.json written to {os.path.abspath(OUT_DIR)}")
 
 

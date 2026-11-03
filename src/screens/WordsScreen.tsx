@@ -1,6 +1,7 @@
 // Words mode: the ASL and FSL word models, sharing one camera.
 //
-// ASL (the 344-word model) and FSL (FSL-105's 105 words and phrases) are
+// ASL (the 344-word model) and FSL (95 of FSL-105's words and phrases; its
+// number words one..ten are in Numbers instead) are
 // separate ensembles with separate vocabularies - see modelLoader.ts. FSL is
 // the language KamustaSign's users actually sign; ASL stays for comparison
 // and for its larger trained vocabulary.

@@ -20,6 +20,12 @@ does on a signer it has never seen (see build_fsl_manifest.py):
                       train the same way. For comparison only.
                       -> models/fsl_provided_seed{S}.keras
 
+  --holdout NAME[,NAME] also keep signer(s) NAME (e.g. our own recorders,
+                      see build_fsl_manifest.py) out of train and val, and
+                      score the model on NAME's clips as well: does a word we
+                      added recordings for work for a person it never saw?
+                      -> models/fsl_holdout_no{NAME}_<split name>.keras; results npz gains holdout_*
+
 Validation is always drawn from the training signers, never the test one, so
 early stopping can't peek at the held-out signer.
 
@@ -64,6 +70,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("seed", type=int, nargs="?", default=0)
 parser.add_argument("--split", default="signer")
 parser.add_argument("--no-time-jitter", action="store_true")
+parser.add_argument("--holdout", default="")
 ARGS = parser.parse_args()
 
 SEED = ARGS.seed
@@ -95,6 +102,15 @@ TIME_CROP = 6.0
 
 
 def run_name():
+    base = split_name()
+    if not ARGS.holdout:
+        return base
+    # Never under the deployable fsl_sequence_classifier_seed{S} prefix, so
+    # an experiment can't be swept into the exported ensemble.
+    return f"fsl_holdout_no{ARGS.holdout.replace(',', '-')}_{base[4:]}"
+
+
+def split_name():
     if ARGS.split == "signer":
         return f"fsl_sequence_classifier_seed{SEED}"
     if ARGS.split.startswith("loso:"):
@@ -177,6 +193,11 @@ def main():
     classes = json.load(open(CLASSES_PATH, encoding="utf-8"))
     num_classes = len(classes)
     tr, va, te = make_split(d)
+    # comma-separated: "--holdout ivan,paul,ry" leaves out all three
+    ho = np.isin(d["signer"], ARGS.holdout.split(",")) if ARGS.holdout else np.zeros(len(tr), bool)
+    if ARGS.holdout and not ho.any():
+        raise SystemExit(f"no clips for signer {ARGS.holdout}")
+    tr, va = tr & ~ho, va & ~ho
     X, y = d["X"], d["y"]
     X_train, y_train, X_val, y_val, X_test, y_test = X[tr], y[tr], X[va], y[va], X[te], y[te]
 
@@ -224,12 +245,18 @@ def main():
         "val_top1": hist.history["val_accuracy"][best],
         "test_top1": results["accuracy"], "test_top5": results["top5_accuracy"],
     }
+    extra = {}
+    if ARGS.holdout:
+        hp = model.predict(X[ho], verbose=0)
+        summary["holdout"] = ARGS.holdout
+        summary["holdout_top1"] = float((hp.argmax(1) == y[ho]).mean())
+        extra = {"holdout_probs": hp, "holdout_y": y[ho], "holdout_video_id": d["video_id"][ho]}
     print("\n" + json.dumps(summary, indent=2))
 
     os.makedirs(RESULTS_DIR, exist_ok=True)
     np.savez(os.path.join(RESULTS_DIR, f"{name}.npz"),
              probs=model.predict(X_test, verbose=0), y=y_test, video_id=d["video_id"][te],
-             signer=d["signer"][te])
+             signer=d["signer"][te], **extra)
     with open(os.path.join(RESULTS_DIR, f"{name}.json"), "w") as f:
         json.dump(summary, f, indent=2)
 

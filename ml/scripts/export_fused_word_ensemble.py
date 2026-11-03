@@ -69,7 +69,7 @@ SEEDS = {
     # The 133-word model trained on our clips alone.
     "asl-legacy": lambda: sorted(p for p in glob.glob(os.path.join(MODEL_DIR, "word_sequence_classifier*.keras"))
                                  if "diagnostic" not in p),
-    "fsl": lambda: sorted(glob.glob(os.path.join(MODEL_DIR, "fsl_sequence_classifier_seed*.keras"))),
+    "fsl": lambda: sorted(glob.glob(os.path.join(MODEL_DIR, "fsl_sequence_classifier_seed[0-9].keras"))),
 }
 
 

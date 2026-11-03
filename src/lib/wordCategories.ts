@@ -4,7 +4,10 @@
 // school (noun, pronoun, verb, adjective, adverb, preposition, conjunction,
 // interjection), with interjections and set phrases shown as "Greetings &
 // phrases", question words split out of pronouns/adverbs because they are
-// taught as their own set, and FSL's number words kept together.
+// taught as their own set. FSL's number words (one..ten) left the word model
+// on 2026-11-02: they are taught and recognised in FSL Numbers. 23 ASL words
+// that looked like another word and were right under half the time left the
+// same day (REMOVED_WORDS in ml/scripts/consolidate_combined_words.py).
 //
 // A word that is more than one part of speech (ASL often uses one sign for
 // "drink" and "a drink") is filed under the meaning a child meets first.
@@ -23,7 +26,6 @@ export type WordCategory =
   | "adverb"
   | "preposition"
   | "conjunction"
-  | "number"
   | "other";
 
 /** Display order: the small "starter" sets first, then the big open classes. */
@@ -37,14 +39,13 @@ export const WORD_CATEGORIES: { key: WordCategory; label: string; singular: stri
   { key: "adverb", label: "Adverbs", singular: "adverb" },
   { key: "preposition", label: "Prepositions", singular: "preposition" },
   { key: "conjunction", label: "Conjunctions", singular: "conjunction" },
-  { key: "number", label: "Numbers", singular: "number" },
   { key: "other", label: "Other", singular: "word" },
 ];
 
 const WORDS: Record<SignLanguage, Partial<Record<WordCategory, string[]>>> = {
   asl: {
     greeting: ["bye", "hello", "no", "please", "shhh", "thank you", "yes"],
-    pronoun: ["he/she/it", "my/mine", "that", "we/us", "yourself"],
+    pronoun: ["he/she/it", "that", "we/us", "yourself"],
     question: ["what", "where", "who", "why"],
     noun: [
       // people and family
@@ -52,21 +53,20 @@ const WORDS: Record<SignLanguage, Partial<Record<WordCategory, string[]>>> = {
       "doctor", "family", "fireman", "girl", "grandma", "grandpa", "man", "mother", "person", "police",
       "secretary", "son", "uncle", "wife", "woman",
       // animals
-      "alligator", "animal", "bee", "bird", "bug", "cat", "cow", "dog", "donkey", "duck", "elephant",
-      "fish", "frog", "giraffe", "goose", "hen", "horse", "kitty", "lion", "mouse", "owl", "pig",
+      "alligator", "bird", "bug", "cat", "cow", "dog", "donkey", "duck", "elephant",
+      "fish", "frog", "giraffe", "goose", "hen", "horse", "lion", "mouse", "owl", "pig",
       "puppy", "tiger", "wolf", "zebra",
       // body
-      "arm", "cheek", "chin", "ear", "eye", "face", "feet", "finger", "hair", "head", "lips", "mouth",
-      "nose", "owie", "tongue", "tooth",
+      "arm", "ear", "eye", "face", "hair", "head", "nose", "owie", "tooth",
       // food and drink
-      "apple", "candy", "carrot", "cereal", "chocolate", "corn", "food", "french fries", "gum",
+      "apple", "candy", "carrot", "chocolate", "corn", "food", "french fries", "gum",
       "ice cream", "milk", "nuts", "pizza", "sandwich", "snack", "toast", "water",
       // clothes
-      "hat", "jacket", "jeans", "mitten", "pajamas", "shirt", "shoe", "underwear", "zipper",
+      "hat", "jeans", "mitten", "pajamas", "shirt", "shoe", "underwear", "zipper",
       // home and things
       "TV", "backyard", "balloon", "bath", "bed", "bedroom", "blanket", "book", "chair", "closet",
-      "computer", "doll", "drawer", "dryer", "flag", "garbage", "gift", "home", "lamp", "napkin", "pen",
-      "pencil", "penny", "potty", "puzzle", "radio", "refrigerator", "room", "scissors", "shower",
+      "computer", "doll", "drawer", "dryer", "garbage", "gift", "home", "lamp", "napkin",
+      "pencil", "potty", "puzzle", "radio", "refrigerator", "room", "scissors", "shower",
       "stairs", "table", "toothbrush", "toy", "window",
       // places, vehicles and nature
       "airplane", "bar", "boat", "car", "cloud", "country", "farm", "flower", "grass", "helicopter",
@@ -82,11 +82,11 @@ const WORDS: Record<SignLanguage, Partial<Record<WordCategory, string[]>>> = {
     verb: [
       "add", "argue", "balance", "blow", "call", "call on phone", "can", "catch", "change", "cheat",
       "check", "close", "convince", "cry", "cut", "dance", "delay", "discuss", "dive", "drink", "drop",
-      "fall", "find", "finish", "give", "go", "graduate", "hate", "have", "have to", "hear", "help",
-      "hide", "improve", "inform", "join", "jump", "kiss", "laugh", "leave", "like", "listen", "look",
-      "make", "move", "nap", "open", "order", "play", "point", "pretend", "read", "ride", "say", "see",
-      "sleep", "smile", "stay", "study", "take", "talk", "taste", "tell", "think", "touch", "trade",
-      "vacuum", "vomit", "wait", "wake", "walk", "want", "will", "work", "write",
+      "fall", "find", "finish", "give", "go", "graduate", "hate", "have", "have to", "help",
+      "hide", "improve", "inform", "join", "jump", "laugh", "leave", "like", "listen", "look",
+      "move", "nap", "open", "order", "play", "point", "read", "say", "see",
+      "sleep", "smile", "study", "take", "talk", "taste", "tell", "think", "touch", "trade",
+      "vacuum", "vomit", "wait", "walk", "want", "will", "work", "write",
     ],
     adjective: [
       // colours
@@ -133,7 +133,6 @@ const WORDS: Record<SignLanguage, Partial<Record<WordCategory, string[]>>> = {
       "slow", "wrong",
     ],
     adverb: ["today", "tomorrow", "yesterday"],
-    number: ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"],
   },
 };
 

@@ -187,9 +187,12 @@ def export_fsl(media: dict) -> None:
         # The first clip of the chosen signer (manifest order = file order).
         row = next(r for r in rows if r["word"] == label and r["signer"] == FSL_SIGNER)
         src = os.path.join(FSL_SRC, row["path"])
-        class_dir = row["path"].split("/")[1]
+        # Named by the FSL-105 class number (video_id is <id>_<n>), not by the
+        # folder: the folders under clips/ carry the label since 2026-11-02 and
+        # the app's media table points at <id>.mp4.
+        class_id = row["video_id"].split("_")[0]
         start, end, _ = active_span(src)
-        dst_name = f"{class_dir}.mp4"
+        dst_name = f"{class_id}.mp4"
         cmd = [
             ffmpeg, "-y", "-loglevel", "error",
             "-ss", f"{start:.2f}", "-to", f"{end:.2f}", "-i", src,
@@ -223,6 +226,11 @@ def export_asl_words(media: dict) -> None:
         print(f"skipping ASL words: run select_asl_word_references.py first ({ASL_WORD_PICKS} missing)")
         return
     picks = json.load(open(ASL_WORD_PICKS, encoding="utf-8"))["picks"]
+    # Only words the deployed model has (picks also lists the 23 look-alike
+    # words removed on 2026-11-02, so they can come back if ever restored).
+    with open(os.path.join(ROOT, "public", "word-model", "label_classes.json"), encoding="utf-8") as f:
+        app_labels = set(json.load(f))
+    picks = {w: p for w, p in picks.items() if w in app_labels}
     out = os.path.join(OUT_PUBLIC, "asl-words")
     os.makedirs(out, exist_ok=True)
     ffmpeg = ffmpeg_exe()

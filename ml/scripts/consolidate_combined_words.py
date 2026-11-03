@@ -100,6 +100,21 @@ OUTPUT_CLASSES = os.path.join(DATA_DIR, "combined_word_classes.json")
 
 MIN_EXAMPLES = 10
 
+# Words taken out of the model on 2026-11-02: each was right under 50% of the
+# time (v6 on 9,579 test + 1,435 held-out webcam clips) and most of its
+# misses went to a word whose sign looks alike (checked on the reference
+# videos), so the model can't learn them apart with this data. Removing them
+# lifts the look-alike (say 31% -> 81%, awake 20% -> 56%). prune_asl_word_model.py
+# applied this to the trained v6 seeds without retraining; a full rebuild
+# here leaves them out too. Value = the look-alike that stays.
+REMOVED_WORDS = {
+    "animal": "have", "bee": "close", "cereal": "pizza", "cheek": "eye", "chin": "say",
+    "feet": "down", "finger": "wait", "flag": "before", "hear": "ear", "jacket": "bath",
+    "kiss": "home", "kitty": "cat", "lips": "say", "make": "year", "mouth": "tooth",
+    "my/mine": "please", "pen": "pencil", "penny": "think", "pretend": "will", "ride": "chair",
+    "stay": "same", "tongue": "duck", "wake": "awake",
+}
+
 # Held-out signers from the new dataset (21 in all). Fixed, not random, so
 # every seed of the ensemble is scored on the same people.
 VAL_PARTICIPANTS = {26734, 28656}
@@ -288,13 +303,16 @@ def main():
     print(f"Our clips: {len(ours)}   New-dataset clips: {len(g_signs)} from {len(np.unique(g_part))} signers")
 
     counts = Counter(r["word"] for r in ours) + Counter(g_signs.tolist())
-    words = sorted(w for w, c in counts.items() if c >= MIN_EXAMPLES)
+    words = sorted(w for w, c in counts.items() if c >= MIN_EXAMPLES and w not in REMOVED_WORDS)
     dropped = sorted(w for w, c in counts.items() if c < MIN_EXAMPLES)
+    print(f"Removed (look-alikes, 2026-11-02): {len(REMOVED_WORDS)}")
     print(f"Vocabulary: {len(words)} words with >= {MIN_EXAMPLES} clips"
           + (f" (dropped {len(dropped)}: {dropped})" if dropped else ""))
     shared = sorted(set(our_vocab) & set(g_signs.tolist()))
     print(f"  in both sources: {len(shared)}")
     idx = {w: i for i, w in enumerate(words)}
+    ours = [r for r in ours if r["word"] in idx]  # REMOVED_WORDS
+    g_keep = np.isin(g_signs, words)
 
     import word_model_diagnostics as wd
     out = {s: ([], [], [], []) for s in ("train", "val", "test")}
@@ -327,7 +345,7 @@ def main():
 
     arrays = {}
     for s, (X, y, src, ids) in out.items():
-        m = g_split == s
+        m = (g_split == s) & g_keep
         X = [np.stack(X)] if X else []
         X.append(g_norm[m])
         y = y + [idx[w] for w in g_signs[m]]

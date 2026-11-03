@@ -85,17 +85,7 @@ const FSL_WORDS_TAGALOG: Record<string, string> = {
   cold: "malamig",
   fast: "mabilis",
   slow: "mabagal",
-  // numbers
-  one: "isa",
-  two: "dalawa",
-  three: "tatlo",
-  four: "apat",
-  five: "lima",
-  six: "anim",
-  seven: "pito",
-  eight: "walo",
-  nine: "siyam",
-  ten: "sampu",
+  // (one..ten left the word model on 2026-11-02; FSL Numbers shows them as 1-10)
   // days and time
   today: "ngayon",
   tomorrow: "bukas",

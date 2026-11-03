@@ -64,13 +64,17 @@ def letterbox(frame):
     )
 
 
-def extract_video_sequence(detector, video_path, start_timestamp_ms):
+def extract_video_sequence(detector, video_path, start_timestamp_ms, flip=False):
     """As ex.extract_video_sequence, with letterboxing and frame stride, and
     NOT resampled: returns every kept frame, (T, 258). See module docstring."""
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         return None, start_timestamp_ms
 
+    # FSL-105 is 60 fps (stride 2); our own recordings are 30 fps (stride 1).
+    # Either way the cache ends up at the ~30 fps the live camera gives.
+    fps = cap.get(cv2.CAP_PROP_FPS) or 60
+    stride = max(1, round(fps / 30)) if fps else FRAME_STRIDE
     frame_vectors = []
     timestamp_ms = start_timestamp_ms
     frame_interval_ms = 1000 // 30
@@ -80,8 +84,10 @@ def extract_video_sequence(detector, video_path, start_timestamp_ms):
         if not ok:
             break
         i += 1
-        if (i - 1) % FRAME_STRIDE:
+        if (i - 1) % stride:
             continue
+        if flip:  # a recording saved mirrored (manifest "flip" column)
+            frame = cv2.flip(frame, 1)
         rgb = cv2.cvtColor(letterbox(frame), cv2.COLOR_BGR2RGB)
         result = detector.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), timestamp_ms)
         frame_vectors.append(ex.landmarks_to_vector(result))
@@ -119,7 +125,8 @@ def main():
         if os.path.exists(cache_path):
             skipped += 1
             continue
-        seq, next_ts = extract_video_sequence(detector, os.path.join(VIDEO_ROOT, row["path"]), next_ts)
+        seq, next_ts = extract_video_sequence(detector, os.path.join(VIDEO_ROOT, row["path"]), next_ts,
+                                              flip=row.get("flip") == "1")
         if seq is None:
             failed += 1
             print(f"  [skip] could not read video: {row['path']}", flush=True)

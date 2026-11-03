@@ -263,12 +263,6 @@
     "credit": "asl-citizen",
     "source": "alone/citizen_09996243686090844-ALONE.mp4"
   },
-  "asl/words/animal": {
-    "type": "video",
-    "uri": "/reference/asl-words/animal.mp4",
-    "credit": "asl-citizen",
-    "source": "animal/citizen_17509576385829706-ANIMAL.mp4"
-  },
   "asl/words/another": {
     "type": "video",
     "uri": "/reference/asl-words/another.mp4",
@@ -376,12 +370,6 @@
     "uri": "/reference/asl-words/bedroom.mp4",
     "credit": "asl-citizen",
     "source": "bedroom/citizen_13500964539789773-BEDROOM.mp4"
-  },
-  "asl/words/bee": {
-    "type": "video",
-    "uri": "/reference/asl-words/bee.mp4",
-    "credit": "wlasl",
-    "source": "bee/05682.mp4"
   },
   "asl/words/before": {
     "type": "video",
@@ -533,12 +521,6 @@
     "credit": "wlasl",
     "source": "catch/09464.mp4"
   },
-  "asl/words/cereal": {
-    "type": "video",
-    "uri": "/reference/asl-words/cereal.mp4",
-    "credit": "asl-citizen",
-    "source": "cereal/citizen_101002370930392-CEREAL.mp4"
-  },
   "asl/words/chair": {
     "type": "video",
     "uri": "/reference/asl-words/chair.mp4",
@@ -569,23 +551,11 @@
     "credit": "asl-citizen",
     "source": "check/citizen_2525899141681416-CHECK.mp4"
   },
-  "asl/words/cheek": {
-    "type": "video",
-    "uri": "/reference/asl-words/cheek.mp4",
-    "credit": "asl-citizen",
-    "source": "cheek/citizen_02227757864285973-CHEEK.mp4"
-  },
   "asl/words/child": {
     "type": "video",
     "uri": "/reference/asl-words/child.mp4",
     "credit": "asl-citizen",
     "source": "child/citizen_06754700554069304-CHILD.mp4"
-  },
-  "asl/words/chin": {
-    "type": "video",
-    "uri": "/reference/asl-words/chin.mp4",
-    "credit": "asl-citizen",
-    "source": "chin/citizen_17378200161913648-CHIN 2.mp4"
   },
   "asl/words/chocolate": {
     "type": "video",
@@ -929,12 +899,6 @@
     "credit": "wlasl",
     "source": "fine/21878.mp4"
   },
-  "asl/words/finger": {
-    "type": "video",
-    "uri": "/reference/asl-words/finger.mp4",
-    "credit": "asl-citizen",
-    "source": "finger/citizen_31835717268957353-seedFINGER.mp4"
-  },
   "asl/words/finish": {
     "type": "video",
     "uri": "/reference/asl-words/finish.mp4",
@@ -958,12 +922,6 @@
     "uri": "/reference/asl-words/fish.mp4",
     "credit": "asl-citizen",
     "source": "fish/citizen_22158687515690545-FISH.mp4"
-  },
-  "asl/words/flag": {
-    "type": "video",
-    "uri": "/reference/asl-words/flag.mp4",
-    "credit": "wlasl",
-    "source": "flag/22274.mp4"
   },
   "asl/words/flower": {
     "type": "video",
@@ -1133,12 +1091,6 @@
     "credit": "asl-citizen",
     "source": "head/citizen_209949774531083-HEAD.mp4"
   },
-  "asl/words/hear": {
-    "type": "video",
-    "uri": "/reference/asl-words/hear.mp4",
-    "credit": "wlasl",
-    "source": "hear/26944.mp4"
-  },
   "asl/words/helicopter": {
     "type": "video",
     "uri": "/reference/asl-words/helicopter.mp4",
@@ -1229,12 +1181,6 @@
     "credit": "asl-citizen",
     "source": "interest/citizen_07804429997157225-INTEREST.mp4"
   },
-  "asl/words/jacket": {
-    "type": "video",
-    "uri": "/reference/asl-words/jacket.mp4",
-    "credit": "wlasl",
-    "source": "jacket/30849.mp4"
-  },
   "asl/words/join": {
     "type": "video",
     "uri": "/reference/asl-words/join.mp4",
@@ -1246,18 +1192,6 @@
     "uri": "/reference/asl-words/jump.mp4",
     "credit": "asl-citizen",
     "source": "jump/citizen_039221985382975166-JUMP.mp4"
-  },
-  "asl/words/kiss": {
-    "type": "video",
-    "uri": "/reference/asl-words/kiss.mp4",
-    "credit": "wlasl",
-    "source": "kiss/31752.mp4"
-  },
-  "asl/words/kitty": {
-    "type": "video",
-    "uri": "/reference/asl-words/kitty.mp4",
-    "credit": "asl-citizen",
-    "source": "kitten/citizen_19411610208771402-KITTEN.mp4"
   },
   "asl/words/lamp": {
     "type": "video",
@@ -1313,12 +1247,6 @@
     "credit": "asl-citizen",
     "source": "lion/citizen_013732937506784948-LION.mp4"
   },
-  "asl/words/lips": {
-    "type": "video",
-    "uri": "/reference/asl-words/lips.mp4",
-    "credit": "asl-citizen",
-    "source": "lips/citizen_096938786462343-LIPS.mp4"
-  },
   "asl/words/listen": {
     "type": "video",
     "uri": "/reference/asl-words/listen.mp4",
@@ -1342,12 +1270,6 @@
     "uri": "/reference/asl-words/mad.mp4",
     "credit": "asl-citizen",
     "source": "mad/citizen_0288077178660322-MAD.mp4"
-  },
-  "asl/words/make": {
-    "type": "video",
-    "uri": "/reference/asl-words/make.mp4",
-    "credit": "asl-citizen",
-    "source": "make/citizen_17501981980725656-MAKE.mp4"
   },
   "asl/words/man": {
     "type": "video",
@@ -1397,23 +1319,11 @@
     "credit": "asl-citizen",
     "source": "mouse/citizen_023508418030212752-MOUSE.mp4"
   },
-  "asl/words/mouth": {
-    "type": "video",
-    "uri": "/reference/asl-words/mouth.mp4",
-    "credit": "asl-citizen",
-    "source": "mouth/citizen_08629381582280149-MOUTH.mp4"
-  },
   "asl/words/move": {
     "type": "video",
     "uri": "/reference/asl-words/move.mp4",
     "credit": "asl-citizen",
     "source": "move/citizen_19102817848960396-MOVE.mp4"
-  },
-  "asl/words/my/mine": {
-    "type": "video",
-    "uri": "/reference/asl-words/my-mine.mp4",
-    "credit": "asl-citizen",
-    "source": "my/citizen_02119015136147895-MY.mp4"
   },
   "asl/words/napkin": {
     "type": "video",
@@ -1505,23 +1415,11 @@
     "credit": "asl-citizen",
     "source": "owl/citizen_00646870451616377-OWL.mp4"
   },
-  "asl/words/pen": {
-    "type": "video",
-    "uri": "/reference/asl-words/pen.mp4",
-    "credit": "asl-citizen",
-    "source": "pen/citizen_2628676800017937-PEN.mp4"
-  },
   "asl/words/pencil": {
     "type": "video",
     "uri": "/reference/asl-words/pencil.mp4",
     "credit": "asl-citizen",
     "source": "pencil/citizen_0637696371176184-PENCIL.mp4"
-  },
-  "asl/words/penny": {
-    "type": "video",
-    "uri": "/reference/asl-words/penny.mp4",
-    "credit": "asl-citizen",
-    "source": "penny/citizen_21510997807121468-seedPENNY.mp4"
   },
   "asl/words/person": {
     "type": "video",
@@ -1589,12 +1487,6 @@
     "credit": "asl-citizen",
     "source": "toilet/citizen_20765499771937668-TOILET.mp4"
   },
-  "asl/words/pretend": {
-    "type": "video",
-    "uri": "/reference/asl-words/pretend.mp4",
-    "credit": "asl-citizen",
-    "source": "pretend/citizen_2646200439832638-seedPRETEND.mp4"
-  },
   "asl/words/pretty": {
     "type": "video",
     "uri": "/reference/asl-words/pretty.mp4",
@@ -1648,12 +1540,6 @@
     "uri": "/reference/asl-words/refrigerator.mp4",
     "credit": "asl-citizen",
     "source": "refrigerator/citizen_19322215532432252-REFRIGERATOR.mp4"
-  },
-  "asl/words/ride": {
-    "type": "video",
-    "uri": "/reference/asl-words/ride.mp4",
-    "credit": "wlasl",
-    "source": "ride/48042.mp4"
   },
   "asl/words/room": {
     "type": "video",
@@ -1798,12 +1684,6 @@
     "uri": "/reference/asl-words/stairs.mp4",
     "credit": "asl-citizen",
     "source": "stairs/citizen_09281901456223873-STAIRS.mp4"
-  },
-  "asl/words/stay": {
-    "type": "video",
-    "uri": "/reference/asl-words/stay.mp4",
-    "credit": "asl-citizen",
-    "source": "stay/citizen_12825827929098765-STAY.mp4"
   },
   "asl/words/sticky": {
     "type": "video",
@@ -1960,12 +1840,6 @@
     "uri": "/reference/asl-words/tomorrow.mp4",
     "credit": "asl-citizen",
     "source": "tomorrow/citizen_00954311482656367-TOMORROW.mp4"
-  },
-  "asl/words/tongue": {
-    "type": "video",
-    "uri": "/reference/asl-words/tongue.mp4",
-    "credit": "asl-citizen",
-    "source": "tongue/citizen_16538366877078858-TONGUE.mp4"
   },
   "asl/words/tooth": {
     "type": "video",
@@ -2367,690 +2241,690 @@
     "type": "video",
     "uri": "/reference/fsl-words/20.mp4",
     "credit": "fsl-105",
-    "source": "clips/20/15.MOV"
+    "source": "clips/ONE/15.MOV"
   },
   "fsl/numbers/10": {
     "type": "video",
     "uri": "/reference/fsl-words/29.mp4",
     "credit": "fsl-105",
-    "source": "clips/29/15.MOV"
+    "source": "clips/TEN/15.MOV"
   },
   "fsl/numbers/2": {
     "type": "video",
     "uri": "/reference/fsl-words/21.mp4",
     "credit": "fsl-105",
-    "source": "clips/21/15.MOV"
+    "source": "clips/TWO/15.MOV"
   },
   "fsl/numbers/3": {
     "type": "video",
     "uri": "/reference/fsl-words/22.mp4",
     "credit": "fsl-105",
-    "source": "clips/22/15.MOV"
+    "source": "clips/THREE/15.MOV"
   },
   "fsl/numbers/4": {
     "type": "video",
     "uri": "/reference/fsl-words/23.mp4",
     "credit": "fsl-105",
-    "source": "clips/23/15.MOV"
+    "source": "clips/FOUR/15.MOV"
   },
   "fsl/numbers/5": {
     "type": "video",
     "uri": "/reference/fsl-words/24.mp4",
     "credit": "fsl-105",
-    "source": "clips/24/15.MOV"
+    "source": "clips/FIVE/15.MOV"
   },
   "fsl/numbers/6": {
     "type": "video",
     "uri": "/reference/fsl-words/25.mp4",
     "credit": "fsl-105",
-    "source": "clips/25/15.MOV"
+    "source": "clips/SIX/15.MOV"
   },
   "fsl/numbers/7": {
     "type": "video",
     "uri": "/reference/fsl-words/26.mp4",
     "credit": "fsl-105",
-    "source": "clips/26/16.MOV"
+    "source": "clips/SEVEN/16.MOV"
   },
   "fsl/numbers/8": {
     "type": "video",
     "uri": "/reference/fsl-words/27.mp4",
     "credit": "fsl-105",
-    "source": "clips/27/16.MOV"
+    "source": "clips/EIGHT/16.MOV"
   },
   "fsl/numbers/9": {
     "type": "video",
     "uri": "/reference/fsl-words/28.mp4",
     "credit": "fsl-105",
-    "source": "clips/28/15.MOV"
+    "source": "clips/NINE/15.MOV"
   },
   "fsl/words/april": {
     "type": "video",
     "uri": "/reference/fsl-words/33.mp4",
     "credit": "fsl-105",
-    "source": "clips/33/15.MOV"
+    "source": "clips/APRIL/15.MOV"
   },
   "fsl/words/august": {
     "type": "video",
     "uri": "/reference/fsl-words/37.mp4",
     "credit": "fsl-105",
-    "source": "clips/37/16.MOV"
+    "source": "clips/AUGUST/16.MOV"
   },
   "fsl/words/auntie": {
     "type": "video",
     "uri": "/reference/fsl-words/59.mp4",
     "credit": "fsl-105",
-    "source": "clips/59/15.MOV"
+    "source": "clips/AUNTIE/15.MOV"
   },
   "fsl/words/beer": {
     "type": "video",
     "uri": "/reference/fsl-words/101.mp4",
     "credit": "fsl-105",
-    "source": "clips/101/15.MOV"
+    "source": "clips/BEER/15.MOV"
   },
   "fsl/words/black": {
     "type": "video",
     "uri": "/reference/fsl-words/76.mp4",
     "credit": "fsl-105",
-    "source": "clips/76/15.MOV"
+    "source": "clips/BLACK/15.MOV"
   },
   "fsl/words/blind": {
     "type": "video",
     "uri": "/reference/fsl-words/69.mp4",
     "credit": "fsl-105",
-    "source": "clips/69/15.MOV"
+    "source": "clips/BLIND/15.MOV"
   },
   "fsl/words/blue": {
     "type": "video",
     "uri": "/reference/fsl-words/72.mp4",
     "credit": "fsl-105",
-    "source": "clips/72/15.MOV"
+    "source": "clips/BLUE/15.MOV"
   },
   "fsl/words/boy": {
     "type": "video",
     "uri": "/reference/fsl-words/62.mp4",
     "credit": "fsl-105",
-    "source": "clips/62/16.MOV"
+    "source": "clips/BOY/16.MOV"
   },
   "fsl/words/bread": {
     "type": "video",
     "uri": "/reference/fsl-words/85.mp4",
     "credit": "fsl-105",
-    "source": "clips/85/15.MOV"
+    "source": "clips/BREAD/15.MOV"
   },
   "fsl/words/brown": {
     "type": "video",
     "uri": "/reference/fsl-words/75.mp4",
     "credit": "fsl-105",
-    "source": "clips/75/15.MOV"
+    "source": "clips/BROWN/15.MOV"
   },
   "fsl/words/chicken": {
     "type": "video",
     "uri": "/reference/fsl-words/89.mp4",
     "credit": "fsl-105",
-    "source": "clips/89/15.MOV"
+    "source": "clips/CHICKEN/15.MOV"
   },
   "fsl/words/coffee": {
     "type": "video",
     "uri": "/reference/fsl-words/99.mp4",
     "credit": "fsl-105",
-    "source": "clips/99/15.MOV"
+    "source": "clips/COFFEE/15.MOV"
   },
   "fsl/words/cold": {
     "type": "video",
     "uri": "/reference/fsl-words/96.mp4",
     "credit": "fsl-105",
-    "source": "clips/96/16.MOV"
+    "source": "clips/COLD/16.MOV"
   },
   "fsl/words/correct": {
     "type": "video",
     "uri": "/reference/fsl-words/17.mp4",
     "credit": "fsl-105",
-    "source": "clips/17/16.MOV"
+    "source": "clips/CORRECT/16.MOV"
   },
   "fsl/words/cousin": {
     "type": "video",
     "uri": "/reference/fsl-words/60.mp4",
     "credit": "fsl-105",
-    "source": "clips/60/15.MOV"
+    "source": "clips/COUSIN/15.MOV"
   },
   "fsl/words/crab": {
     "type": "video",
     "uri": "/reference/fsl-words/94.mp4",
     "credit": "fsl-105",
-    "source": "clips/94/15.MOV"
+    "source": "clips/CRAB/15.MOV"
   },
   "fsl/words/dark": {
     "type": "video",
     "uri": "/reference/fsl-words/84.mp4",
     "credit": "fsl-105",
-    "source": "clips/84/15.MOV"
+    "source": "clips/DARK/15.MOV"
   },
   "fsl/words/daughter": {
     "type": "video",
     "uri": "/reference/fsl-words/55.mp4",
     "credit": "fsl-105",
-    "source": "clips/55/15.MOV"
+    "source": "clips/DAUGHTER/15.MOV"
   },
   "fsl/words/deaf": {
     "type": "video",
     "uri": "/reference/fsl-words/66.mp4",
     "credit": "fsl-105",
-    "source": "clips/66/16.MOV"
+    "source": "clips/DEAF/16.MOV"
   },
   "fsl/words/deaf blind": {
     "type": "video",
     "uri": "/reference/fsl-words/70.mp4",
     "credit": "fsl-105",
-    "source": "clips/70/15.MOV"
+    "source": "clips/DEAF BLIND/15.MOV"
   },
   "fsl/words/december": {
     "type": "video",
     "uri": "/reference/fsl-words/41.mp4",
     "credit": "fsl-105",
-    "source": "clips/41/17.MOV"
+    "source": "clips/DECEMBER/17.MOV"
   },
   "fsl/words/don’t know": {
     "type": "video",
     "uri": "/reference/fsl-words/13.mp4",
     "credit": "fsl-105",
-    "source": "clips/13/15.MOV"
+    "source": "clips/DON’T KNOW/15.MOV"
   },
   "fsl/words/don’t understand": {
     "type": "video",
     "uri": "/reference/fsl-words/11.mp4",
     "credit": "fsl-105",
-    "source": "clips/11/16.MOV"
+    "source": "clips/DON’T UNDERSTAND/16.MOV"
   },
   "fsl/words/egg": {
     "type": "video",
     "uri": "/reference/fsl-words/86.mp4",
     "credit": "fsl-105",
-    "source": "clips/86/15.MOV"
+    "source": "clips/EGG/15.MOV"
   },
   "fsl/words/eight": {
     "type": "video",
     "uri": "/reference/fsl-words/27.mp4",
     "credit": "fsl-105",
-    "source": "clips/27/16.MOV"
+    "source": "clips/EIGHT/16.MOV"
   },
   "fsl/words/fast": {
     "type": "video",
     "uri": "/reference/fsl-words/19.mp4",
     "credit": "fsl-105",
-    "source": "clips/19/16.MOV"
+    "source": "clips/FAST/16.MOV"
   },
   "fsl/words/father": {
     "type": "video",
     "uri": "/reference/fsl-words/52.mp4",
     "credit": "fsl-105",
-    "source": "clips/52/15.MOV"
+    "source": "clips/FATHER/15.MOV"
   },
   "fsl/words/february": {
     "type": "video",
     "uri": "/reference/fsl-words/31.mp4",
     "credit": "fsl-105",
-    "source": "clips/31/14.MOV"
+    "source": "clips/FEBRUARY/14.MOV"
   },
   "fsl/words/fish": {
     "type": "video",
     "uri": "/reference/fsl-words/87.mp4",
     "credit": "fsl-105",
-    "source": "clips/87/15.MOV"
+    "source": "clips/FISH/15.MOV"
   },
   "fsl/words/five": {
     "type": "video",
     "uri": "/reference/fsl-words/24.mp4",
     "credit": "fsl-105",
-    "source": "clips/24/15.MOV"
+    "source": "clips/FIVE/15.MOV"
   },
   "fsl/words/four": {
     "type": "video",
     "uri": "/reference/fsl-words/23.mp4",
     "credit": "fsl-105",
-    "source": "clips/23/15.MOV"
+    "source": "clips/FOUR/15.MOV"
   },
   "fsl/words/friday": {
     "type": "video",
     "uri": "/reference/fsl-words/46.mp4",
     "credit": "fsl-105",
-    "source": "clips/46/15.MOV"
+    "source": "clips/FRIDAY/15.MOV"
   },
   "fsl/words/girl": {
     "type": "video",
     "uri": "/reference/fsl-words/63.mp4",
     "credit": "fsl-105",
-    "source": "clips/63/15.MOV"
+    "source": "clips/GIRL/15.MOV"
   },
   "fsl/words/good afternoon": {
     "type": "video",
     "uri": "/reference/fsl-words/1.mp4",
     "credit": "fsl-105",
-    "source": "clips/1/16.MOV"
+    "source": "clips/GOOD AFTERNOON/16.MOV"
   },
   "fsl/words/good evening": {
     "type": "video",
     "uri": "/reference/fsl-words/2.mp4",
     "credit": "fsl-105",
-    "source": "clips/2/16.MOV"
+    "source": "clips/GOOD EVENING/16.MOV"
   },
   "fsl/words/good morning": {
     "type": "video",
     "uri": "/reference/fsl-words/0.mp4",
     "credit": "fsl-105",
-    "source": "clips/0/15.MOV"
+    "source": "clips/GOOD MORNING/15.MOV"
   },
   "fsl/words/grandfather": {
     "type": "video",
     "uri": "/reference/fsl-words/56.mp4",
     "credit": "fsl-105",
-    "source": "clips/56/13.MOV"
+    "source": "clips/GRANDFATHER/13.MOV"
   },
   "fsl/words/grandmother": {
     "type": "video",
     "uri": "/reference/fsl-words/57.mp4",
     "credit": "fsl-105",
-    "source": "clips/57/15.MOV"
+    "source": "clips/GRANDMOTHER/15.MOV"
   },
   "fsl/words/gray": {
     "type": "video",
     "uri": "/reference/fsl-words/80.mp4",
     "credit": "fsl-105",
-    "source": "clips/80/15.MOV"
+    "source": "clips/GRAY/15.MOV"
   },
   "fsl/words/green": {
     "type": "video",
     "uri": "/reference/fsl-words/73.mp4",
     "credit": "fsl-105",
-    "source": "clips/73/15.MOV"
+    "source": "clips/GREEN/15.MOV"
   },
   "fsl/words/hard of hearing": {
     "type": "video",
     "uri": "/reference/fsl-words/67.mp4",
     "credit": "fsl-105",
-    "source": "clips/67/15.MOV"
+    "source": "clips/HARD OF HEARING/15.MOV"
   },
   "fsl/words/hello": {
     "type": "video",
     "uri": "/reference/fsl-words/3.mp4",
     "credit": "fsl-105",
-    "source": "clips/3/15.MOV"
+    "source": "clips/HELLO/15.MOV"
   },
   "fsl/words/hot": {
     "type": "video",
     "uri": "/reference/fsl-words/95.mp4",
     "credit": "fsl-105",
-    "source": "clips/95/15.MOV"
+    "source": "clips/HOT/15.MOV"
   },
   "fsl/words/how are you": {
     "type": "video",
     "uri": "/reference/fsl-words/4.mp4",
     "credit": "fsl-105",
-    "source": "clips/4/16.MOV"
+    "source": "clips/HOW ARE YOU/16.MOV"
   },
   "fsl/words/im fine": {
     "type": "video",
     "uri": "/reference/fsl-words/5.mp4",
     "credit": "fsl-105",
-    "source": "clips/5/15.MOV"
+    "source": "clips/IM FINE/15.MOV"
   },
   "fsl/words/january": {
     "type": "video",
     "uri": "/reference/fsl-words/30.mp4",
     "credit": "fsl-105",
-    "source": "clips/30/15.MOV"
+    "source": "clips/JANUARY/15.MOV"
   },
   "fsl/words/juice": {
     "type": "video",
     "uri": "/reference/fsl-words/97.mp4",
     "credit": "fsl-105",
-    "source": "clips/97/16.MOV"
+    "source": "clips/JUICE/16.MOV"
   },
   "fsl/words/july": {
     "type": "video",
     "uri": "/reference/fsl-words/36.mp4",
     "credit": "fsl-105",
-    "source": "clips/36/16.MOV"
+    "source": "clips/JULY/16.MOV"
   },
   "fsl/words/june": {
     "type": "video",
     "uri": "/reference/fsl-words/35.mp4",
     "credit": "fsl-105",
-    "source": "clips/35/15.MOV"
+    "source": "clips/JUNE/15.MOV"
   },
   "fsl/words/know": {
     "type": "video",
     "uri": "/reference/fsl-words/12.mp4",
     "credit": "fsl-105",
-    "source": "clips/12/15.MOV"
+    "source": "clips/KNOW/15.MOV"
   },
   "fsl/words/light": {
     "type": "video",
     "uri": "/reference/fsl-words/83.mp4",
     "credit": "fsl-105",
-    "source": "clips/83/15.MOV"
+    "source": "clips/LIGHT/15.MOV"
   },
   "fsl/words/longanisa": {
     "type": "video",
     "uri": "/reference/fsl-words/92.mp4",
     "credit": "fsl-105",
-    "source": "clips/92/15.MOV"
+    "source": "clips/LONGANISA/15.MOV"
   },
   "fsl/words/man": {
     "type": "video",
     "uri": "/reference/fsl-words/64.mp4",
     "credit": "fsl-105",
-    "source": "clips/64/15.MOV"
+    "source": "clips/MAN/15.MOV"
   },
   "fsl/words/march": {
     "type": "video",
     "uri": "/reference/fsl-words/32.mp4",
     "credit": "fsl-105",
-    "source": "clips/32/15.MOV"
+    "source": "clips/MARCH/15.MOV"
   },
   "fsl/words/married": {
     "type": "video",
     "uri": "/reference/fsl-words/71.mp4",
     "credit": "fsl-105",
-    "source": "clips/71/15.MOV"
+    "source": "clips/MARRIED/15.MOV"
   },
   "fsl/words/may": {
     "type": "video",
     "uri": "/reference/fsl-words/34.mp4",
     "credit": "fsl-105",
-    "source": "clips/34/16.MOV"
+    "source": "clips/MAY/16.MOV"
   },
   "fsl/words/meat": {
     "type": "video",
     "uri": "/reference/fsl-words/88.mp4",
     "credit": "fsl-105",
-    "source": "clips/88/15.MOV"
+    "source": "clips/MEAT/15.MOV"
   },
   "fsl/words/milk": {
     "type": "video",
     "uri": "/reference/fsl-words/98.mp4",
     "credit": "fsl-105",
-    "source": "clips/98/15.MOV"
+    "source": "clips/MILK/15.MOV"
   },
   "fsl/words/monday": {
     "type": "video",
     "uri": "/reference/fsl-words/42.mp4",
     "credit": "fsl-105",
-    "source": "clips/42/15.MOV"
+    "source": "clips/MONDAY/15.MOV"
   },
   "fsl/words/mother": {
     "type": "video",
     "uri": "/reference/fsl-words/53.mp4",
     "credit": "fsl-105",
-    "source": "clips/53/15.MOV"
+    "source": "clips/MOTHER/15.MOV"
   },
   "fsl/words/nice to meet you": {
     "type": "video",
     "uri": "/reference/fsl-words/6.mp4",
     "credit": "fsl-105",
-    "source": "clips/6/17.MOV"
+    "source": "clips/NICE TO MEET YOU/17.MOV"
   },
   "fsl/words/nine": {
     "type": "video",
     "uri": "/reference/fsl-words/28.mp4",
     "credit": "fsl-105",
-    "source": "clips/28/15.MOV"
+    "source": "clips/NINE/15.MOV"
   },
   "fsl/words/no": {
     "type": "video",
     "uri": "/reference/fsl-words/14.mp4",
     "credit": "fsl-105",
-    "source": "clips/14/16.MOV"
+    "source": "clips/NO/16.MOV"
   },
   "fsl/words/no sugar": {
     "type": "video",
     "uri": "/reference/fsl-words/104.mp4",
     "credit": "fsl-105",
-    "source": "clips/104/15.MOV"
+    "source": "clips/NO SUGAR/15.MOV"
   },
   "fsl/words/november": {
     "type": "video",
     "uri": "/reference/fsl-words/40.mp4",
     "credit": "fsl-105",
-    "source": "clips/40/16.MOV"
+    "source": "clips/NOVEMBER/16.MOV"
   },
   "fsl/words/october": {
     "type": "video",
     "uri": "/reference/fsl-words/39.mp4",
     "credit": "fsl-105",
-    "source": "clips/39/15.MOV"
+    "source": "clips/OCTOBER/15.MOV"
   },
   "fsl/words/one": {
     "type": "video",
     "uri": "/reference/fsl-words/20.mp4",
     "credit": "fsl-105",
-    "source": "clips/20/15.MOV"
+    "source": "clips/ONE/15.MOV"
   },
   "fsl/words/orange": {
     "type": "video",
     "uri": "/reference/fsl-words/79.mp4",
     "credit": "fsl-105",
-    "source": "clips/79/15.MOV"
+    "source": "clips/ORANGE/15.MOV"
   },
   "fsl/words/parents": {
     "type": "video",
     "uri": "/reference/fsl-words/61.mp4",
     "credit": "fsl-105",
-    "source": "clips/61/15.MOV"
+    "source": "clips/PARENTS/15.MOV"
   },
   "fsl/words/pink": {
     "type": "video",
     "uri": "/reference/fsl-words/81.mp4",
     "credit": "fsl-105",
-    "source": "clips/81/15.MOV"
+    "source": "clips/PINK/15.MOV"
   },
   "fsl/words/red": {
     "type": "video",
     "uri": "/reference/fsl-words/74.mp4",
     "credit": "fsl-105",
-    "source": "clips/74/15.MOV"
+    "source": "clips/RED/15.MOV"
   },
   "fsl/words/rice": {
     "type": "video",
     "uri": "/reference/fsl-words/91.mp4",
     "credit": "fsl-105",
-    "source": "clips/91/15.MOV"
+    "source": "clips/RICE/15.MOV"
   },
   "fsl/words/saturday": {
     "type": "video",
     "uri": "/reference/fsl-words/47.mp4",
     "credit": "fsl-105",
-    "source": "clips/47/15.MOV"
+    "source": "clips/SATURDAY/15.MOV"
   },
   "fsl/words/see you tomorrow": {
     "type": "video",
     "uri": "/reference/fsl-words/9.mp4",
     "credit": "fsl-105",
-    "source": "clips/9/15.MOV"
+    "source": "clips/SEE YOU TOMORROW/15.MOV"
   },
   "fsl/words/september": {
     "type": "video",
     "uri": "/reference/fsl-words/38.mp4",
     "credit": "fsl-105",
-    "source": "clips/38/15.MOV"
+    "source": "clips/SEPTEMBER/15.MOV"
   },
   "fsl/words/seven": {
     "type": "video",
     "uri": "/reference/fsl-words/26.mp4",
     "credit": "fsl-105",
-    "source": "clips/26/16.MOV"
+    "source": "clips/SEVEN/16.MOV"
   },
   "fsl/words/shrimp": {
     "type": "video",
     "uri": "/reference/fsl-words/93.mp4",
     "credit": "fsl-105",
-    "source": "clips/93/15.MOV"
+    "source": "clips/SHRIMP/15.MOV"
   },
   "fsl/words/six": {
     "type": "video",
     "uri": "/reference/fsl-words/25.mp4",
     "credit": "fsl-105",
-    "source": "clips/25/15.MOV"
+    "source": "clips/SIX/15.MOV"
   },
   "fsl/words/slow": {
     "type": "video",
     "uri": "/reference/fsl-words/18.mp4",
     "credit": "fsl-105",
-    "source": "clips/18/15.MOV"
+    "source": "clips/SLOW/15.MOV"
   },
   "fsl/words/son": {
     "type": "video",
     "uri": "/reference/fsl-words/54.mp4",
     "credit": "fsl-105",
-    "source": "clips/54/15.MOV"
+    "source": "clips/SON/15.MOV"
   },
   "fsl/words/spaghetti": {
     "type": "video",
     "uri": "/reference/fsl-words/90.mp4",
     "credit": "fsl-105",
-    "source": "clips/90/15.MOV"
+    "source": "clips/SPAGHETTI/15.MOV"
   },
   "fsl/words/sugar": {
     "type": "video",
     "uri": "/reference/fsl-words/103.mp4",
     "credit": "fsl-105",
-    "source": "clips/103/16.MOV"
+    "source": "clips/SUGAR/16.MOV"
   },
   "fsl/words/sunday": {
     "type": "video",
     "uri": "/reference/fsl-words/48.mp4",
     "credit": "fsl-105",
-    "source": "clips/48/15.MOV"
+    "source": "clips/SUNDAY/15.MOV"
   },
   "fsl/words/tea": {
     "type": "video",
     "uri": "/reference/fsl-words/100.mp4",
     "credit": "fsl-105",
-    "source": "clips/100/15.MOV"
+    "source": "clips/TEA/15.MOV"
   },
   "fsl/words/ten": {
     "type": "video",
     "uri": "/reference/fsl-words/29.mp4",
     "credit": "fsl-105",
-    "source": "clips/29/15.MOV"
+    "source": "clips/TEN/15.MOV"
   },
   "fsl/words/thank you": {
     "type": "video",
     "uri": "/reference/fsl-words/7.mp4",
     "credit": "fsl-105",
-    "source": "clips/7/15.MOV"
+    "source": "clips/THANK YOU/15.MOV"
   },
   "fsl/words/three": {
     "type": "video",
     "uri": "/reference/fsl-words/22.mp4",
     "credit": "fsl-105",
-    "source": "clips/22/15.MOV"
+    "source": "clips/THREE/15.MOV"
   },
   "fsl/words/thursday": {
     "type": "video",
     "uri": "/reference/fsl-words/45.mp4",
     "credit": "fsl-105",
-    "source": "clips/45/15.MOV"
+    "source": "clips/THURSDAY/15.MOV"
   },
   "fsl/words/today": {
     "type": "video",
     "uri": "/reference/fsl-words/49.mp4",
     "credit": "fsl-105",
-    "source": "clips/49/15.MOV"
+    "source": "clips/TODAY/15.MOV"
   },
   "fsl/words/tomorrow": {
     "type": "video",
     "uri": "/reference/fsl-words/50.mp4",
     "credit": "fsl-105",
-    "source": "clips/50/16.MOV"
+    "source": "clips/TOMORROW/16.MOV"
   },
   "fsl/words/tuesday": {
     "type": "video",
     "uri": "/reference/fsl-words/43.mp4",
     "credit": "fsl-105",
-    "source": "clips/43/15.MOV"
+    "source": "clips/TUESDAY/15.MOV"
   },
   "fsl/words/two": {
     "type": "video",
     "uri": "/reference/fsl-words/21.mp4",
     "credit": "fsl-105",
-    "source": "clips/21/15.MOV"
+    "source": "clips/TWO/15.MOV"
   },
   "fsl/words/uncle": {
     "type": "video",
     "uri": "/reference/fsl-words/58.mp4",
     "credit": "fsl-105",
-    "source": "clips/58/15.MOV"
+    "source": "clips/UNCLE/15.MOV"
   },
   "fsl/words/understand": {
     "type": "video",
     "uri": "/reference/fsl-words/10.mp4",
     "credit": "fsl-105",
-    "source": "clips/10/15.MOV"
+    "source": "clips/UNDERSTAND/15.MOV"
   },
   "fsl/words/violet": {
     "type": "video",
     "uri": "/reference/fsl-words/82.mp4",
     "credit": "fsl-105",
-    "source": "clips/82/15.MOV"
+    "source": "clips/VIOLET/15.MOV"
   },
   "fsl/words/wednesday": {
     "type": "video",
     "uri": "/reference/fsl-words/44.mp4",
     "credit": "fsl-105",
-    "source": "clips/44/15.MOV"
+    "source": "clips/WEDNESDAY/15.MOV"
   },
   "fsl/words/weelchair person": {
     "type": "video",
     "uri": "/reference/fsl-words/68.mp4",
     "credit": "fsl-105",
-    "source": "clips/68/15.MOV"
+    "source": "clips/WEELCHAIR PERSON/15.MOV"
   },
   "fsl/words/white": {
     "type": "video",
     "uri": "/reference/fsl-words/77.mp4",
     "credit": "fsl-105",
-    "source": "clips/77/15.MOV"
+    "source": "clips/WHITE/15.MOV"
   },
   "fsl/words/wine": {
     "type": "video",
     "uri": "/reference/fsl-words/102.mp4",
     "credit": "fsl-105",
-    "source": "clips/102/15.MOV"
+    "source": "clips/WINE/15.MOV"
   },
   "fsl/words/woman": {
     "type": "video",
     "uri": "/reference/fsl-words/65.mp4",
     "credit": "fsl-105",
-    "source": "clips/65/15.MOV"
+    "source": "clips/WOMAN/15.MOV"
   },
   "fsl/words/wrong": {
     "type": "video",
     "uri": "/reference/fsl-words/16.mp4",
     "credit": "fsl-105",
-    "source": "clips/16/16.MOV"
+    "source": "clips/WRONG/16.MOV"
   },
   "fsl/words/yellow": {
     "type": "video",
     "uri": "/reference/fsl-words/78.mp4",
     "credit": "fsl-105",
-    "source": "clips/78/15.MOV"
+    "source": "clips/YELLOW/15.MOV"
   },
   "fsl/words/yes": {
     "type": "video",
     "uri": "/reference/fsl-words/15.mp4",
     "credit": "fsl-105",
-    "source": "clips/15/15.MOV"
+    "source": "clips/YES/15.MOV"
   },
   "fsl/words/yesterday": {
     "type": "video",
     "uri": "/reference/fsl-words/51.mp4",
     "credit": "fsl-105",
-    "source": "clips/51/15.MOV"
+    "source": "clips/YESTERDAY/15.MOV"
   },
   "fsl/words/youre welcome": {
     "type": "video",
     "uri": "/reference/fsl-words/8.mp4",
     "credit": "fsl-105",
-    "source": "clips/8/15.MOV"
+    "source": "clips/YOURE WELCOME/15.MOV"
   }
 }

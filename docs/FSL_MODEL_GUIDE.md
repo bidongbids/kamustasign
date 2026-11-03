@@ -15,11 +15,20 @@ stated problem.
 `ml/data/FSL-105 A dataset for recognizing 105 Filipino sign language videos/`
 
 ```
+clips/        one folder per class, named by its label (clips/GOOD MORNING/<n>.MOV)
 clips.zip     379 MB, 2,130 .MOV clips as clips/<id_label>/<n>.MOV
 labels.csv    105 classes: id, label, category
 train.csv     1,704 rows: vid_path, id_label, label, category
 test.csv       426 rows: same columns
 ```
+
+The class folders were the class number (`clips/0`, as in clips.zip and in
+train.csv/test.csv's `vid_path`) until 2026-11-02, when they were renamed to
+their labels so recorders can find a word. labels.csv maps one to the other.
+`build_fsl_manifest.py` reads the folder names from labels.csv; video_ids keep
+the number, so cached landmarks and earlier models still match. `clips/clips/`
+is a byte-for-byte duplicate of the 2,130 original clips (left over from
+unzipping); nothing reads it.
 
 - **105 classes**, 18–22 clips each (median 20), well balanced
 - **10 categories**: COLOR (13), CALENDAR (12), then GREETING, SURVIVAL, NUMBER,
@@ -85,8 +94,8 @@ path, word, video_id, split
 - `path` — relative to wherever you point `DATA_DIR`
 - `word` — use the `label` column from the CSVs (e.g. `GOOD MORNING`), lowercased
   for consistency with the ASL vocabulary
-- `video_id` — must be unique across the whole dataset. `clips/17/6.MOV` and
-  `clips/74/6.MOV` both have stem `6`, so **use `<class>_<n>`**, not the stem
+- `video_id` — must be unique across the whole dataset. `clips/CORRECT/6.MOV` and
+  `clips/RED/6.MOV` both have stem `6`, so **use `<class id>_<n>`**, not the stem
   alone, or the landmark cache will overwrite itself and you will silently train
   on the wrong data.
 - `split` — train/val/test per your decision in section 2
@@ -139,6 +148,14 @@ With ~20 clips per class, watch for overfitting harder than you would on ASL.
 If the gap between train and validation accuracy is large, reach for more
 augmentation before reaching for a bigger model.
 
+On the GPU (WSL, the same environment as the ASL model), after consolidating
+on Windows: `wsl -d Ubuntu -- bash /mnt/c/Users/USER/Documents/kamustasign/ml/train_fsl_seeds_gpu.sh 0 1 2 3`
+(add `ivan paul ry` for the one-recorder-left-out runs). On the 2026-11-02
+data (3,188 training clips) a seed took 6–7 minutes, no faster than the CPU:
+the unrolled GRUs and small batches keep the GPU mostly idle. Run it from
+your own terminal; Claude Code stops long background jobs when the PC runs low
+on memory.
+
 ### Step 5 — Export, convert, deploy
 
 Same two-venv dance:
@@ -181,7 +198,9 @@ serialisation that fixes it.
 
 ## 5. Definition of done
 
-1. `fsl_landmarks.npz` has shape `(N, 40, 384)` and 105 classes.
+1. `fsl_landmarks.npz` has shape `(N, 40, 384)` and 95 classes (105 with
+   `consolidate_fsl_landmarks.py --keep-numbers`; since 2026-11-02 the number
+   words one–ten are taught by the FSL numbers model instead).
 2. Four seeds trained; ensemble top-1 and top-5 recorded on held-out test.
 3. **The split used is documented**, and if it is signer-dependent, that is
    stated explicitly rather than quietly.
@@ -222,7 +241,9 @@ both halves, so it is signer-dependent.
 
 | Split | top-1 | top-5 |
 |---|---|---|
-| **Deployed 4-seed ensemble, signer D unseen** | **75.3%** | **94.9%** |
+| **Deployed 4-seed ensemble since 2026-11-02**: 95 words (one–ten moved to FSL numbers), + our recordings of 22 words (see EVALUATION.md §3), signer D unseen (484 clips) | **86.8%** | **98.1%** |
+| 2026-11-01 4-seed ensemble (TUESDAY/WEDNESDAY recordings), same 95 words / all 105 | 81.8% / 82.0% | 98.6% / 98.7% |
+| 2026-10-06 4-seed ensemble, same 95 words / all 105 | 75.6% / 75.3% | 95.0% / 94.9% |
 | Leave-one-signer-out, mean of 4 folds (1 seed each) | 76.7% (65.7–82.6) | 95.4% |
 | Provided split (signer-dependent), 1 seed | 98.1% | 99.8% |
 

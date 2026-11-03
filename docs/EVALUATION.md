@@ -1,6 +1,6 @@
 # LCSign — model evaluation
 
-All figures are for the models **deployed in `public/`** (as of 2026-10-21; numbers and FSL letters 2026-10-28; ASL words 2026-10-29, v6),
+All figures are for the models **deployed in `public/`** (as of 2026-10-21; numbers and FSL letters 2026-10-28; ASL words 2026-11-02, v6 without 23 look-alike words; FSL words 2026-11-02, second retrain that day),
 produced by the scripts named in each section. Re-run them after any retrain;
 numbers here go stale otherwise.
 
@@ -9,10 +9,12 @@ numbers here go stale otherwise.
 | ASL letters (since 2026-10-28) | 26 + del/space | **ASL-HG signers held out**, 2 per fold (25,983 photos) | **93.9%** | 100% (top-3) |
 | ASL letters | | **105 WLASL webcam clips** of 21 letters | **64.8%** per clip | 56.0% per frame |
 | *ASL letters before 2026-10-28* | | *10 ASL-HG signers / the same WLASL clips* | *71.5% / 34.3% per clip* | |
-| ASL words (4-seed ensemble, v6, 2026-10-29) | 344 | Test split + 2 held-out GISLR signers (9,579 clips, none trained on) | 58.8% | 82.8% |
-| ASL words | | **Webcam clips of 5 ASL Citizen signers never seen in training** (1,435 clips, 242 words, see §2) | **82.4%** | 96.4% |
+| ASL words (4-seed ensemble, v6 minus 23 look-alikes, 2026-11-02) | 321 | Test split + 2 held-out GISLR signers (8,766 clips, none trained on) | 62.6% | 84.1% |
+| ASL words | | **Webcam clips of 5 ASL Citizen signers never seen in training** (1,366 clips, 229 words, see §2) | **84.6%** | 96.7% |
+| *ASL words, v6 with all 344 words (2026-10-29)* | | *9,579 test / 1,435 webcam clips* | *58.8% / 82.4%* | *82.8% / 96.4%* |
 | *ASL words, v5 (deployed earlier on 2026-10-29)* | | *The 9,170 / 809 of those clips neither model trained on* | *57.6% / 63.4% (v6: 58.0% / 79.9%)* | *82.5% / 87.6% (v6: 82.5% / 96.4%)* |
-| FSL-105 words (4-seed ensemble) | 105 | **Signer D, never seen in training** (534 clips) | **75.3%** | 94.9% |
+| FSL-105 words (4-seed ensemble, 2026-11-02 evening) | 95 (one–ten are in FSL numbers) | **Signer D, never seen in training** (484 clips) | **90.3%** | 99.4% |
+| *FSL-105 words, 2026-11-02 morning / 2026-11-01 / 2026-10-06 models* | | *the same 484 clips and 95 words* | *86.8% / 81.8% / 75.6%* | *98.1% / 98.6% / 95.0%* |
 | ASL numbers (2026-10-28) | 0–9 | **Webcam clips of ASL Citizen / WLASL / MS-ASL signers** (338 clips) | **97.9%** per clip | 83.1% per frame |
 | ASL numbers | | ASL-HG, 2 signers held out per fold (10,000 photos) | 100% | |
 | FSL numbers (2026-10-28) | 1–10 | **FSL-105, one signer held out per fold** (202 clips) | **97.0%** per clip | 90.6% per frame |
@@ -72,9 +74,43 @@ practice pass rule (`PASS_CONFIDENCE`).
 - **J and Z involve motion**. A one-frame model can't read them; Z scores 0%
   for new signers. Practising them should rely on the reference video.
 
-## 2. ASL words (344)
+## 2. ASL words (321 since 2026-11-02; 344 before)
 
 `ml/scripts/word_model_diagnostics.py asl` → `ml/models/diagnostics/asl_per_word.csv`, `summary.json`; PDF: `word_diagnostics_report.py`
+
+**2026-11-02: 23 look-alike words removed (344 → 321), no retraining.** Each was
+right under 50% of the time (v6 on the 9,579 test + 1,435 webcam clips) and
+most of its misses went to one word whose sign looks alike on the reference
+videos (the 2026-11-01 look-alike check), so the model can't learn them apart
+with this data: animal (→ have), bee (→ close), cereal (→ pizza), cheek (→ eye),
+chin (→ say), feet (→ down), finger (→ wait), flag (→ before), hear (→ ear),
+jacket (→ bath), kiss (→ home), kitty (→ cat, the same sign), lips (→ say),
+make (→ year), mouth (→ tooth), my/mine (→ please), pen (→ pencil), penny
+(→ think), pretend (→ will), ride (→ chair), stay (→ same), tongue (→ duck),
+wake (→ awake, the same sign). `ml/scripts/prune_asl_word_model.py` dropped
+their columns from each seed's last layer, which is exactly v6's
+probabilities with those words taken out and the rest renormalised (checked:
+max |Δp| 1e-6 per seed); clips of removed words left the test and webcam sets.
+`REMOVED_WORDS` in `consolidate_combined_words.py` keeps them out of any
+retrain. v6 originals: `models/asl_combined_v6_person/` (with
+`asl_per_word_v6.csv`) and `data/combined_word_landmarks_v6_344.npz`.
+
+| On the clips of the 321 words | v6 (344 outputs) | 321 outputs |
+|---|---|---|
+| Test + webcam (10,132 clips) | 61.9%* | 65.6% |
+| Test split (8,766) top-1 / top-5 | | **62.6% / 84.1%** |
+| Webcam, 5 unseen people (1,366) top-1 / top-5 | | **84.6% / 96.7%** |
+| Words under 50% (test + webcam) | 88 of 344 | 62 of 321 |
+
+\* v6's 61.9% is on all 11,014 clips of 344 words. The look-alikes that stay
+gain most: say 31% → 81%, awake 20% → 56%, have 66% → 78%, same 62% → 74%,
+bath 72% → 85%, ear 84% → 92%, pencil 54% → 62%. TF.js parity of the new
+`public/word-model/model0` against the Keras seeds: max |Δp| 5e-7, 100% top-1
+agreement on 1,500 test clips. Not re-measured: the out-of-vocabulary
+gate (§ OOV), whose "unknown" clips now include the removed words' signs.
+think, read and mad stay although each has a look-alike (first, dance, wolf):
+they are among the most common words. The figures below this point are v6's,
+with all 344 words.
 
 **Retrained again 2026-10-29 (v6): every webcam clip on disk, split by
 person.** Only the ~8 clips per word that the reference picker tried had
@@ -176,16 +212,167 @@ location.
 
 `ml/scripts/word_model_diagnostics.py fsl` → `fsl-105_per_word.csv`
 
-| Metric | Value |
-|---|---|
-| Test | every clip from signer D (534), never seen in training |
-| Top-1 / top-5 | 75.3% / 94.9% |
-| Macro F1 | 0.717 |
-| Shown at 40% gate / precision when shown | 86.1% / 82.2% |
-| Words at 100% / 0% | 64 / 13 |
+Since 2026-11-02 the word model has **95 words**: FSL-105's number words
+one–ten are left out (`consolidate_fsl_landmarks.py`), because the app
+teaches and recognises 1–10 with the FSL numbers model (§3b), which still
+reads those clips from the manifest. The earlier models are scored here on
+the same 95 words, their number outputs dropped.
 
-Leave-one-signer-out (single model, seed 0) shows how much depends on who is
-held out:
+| Metric | Since 2026-11-02 evening | 2026-11-02 morning | 2026-11-01 model | 2026-10-06 model |
+|---|---|---|---|---|
+| Test | every clip from signer D of the 95 words (484), never seen in training | same | same | same |
+| Top-1 / top-5 | **90.3% / 99.4%** | 86.8% / 98.1% | 81.8% / 98.6% | 75.6% / 95.0% |
+| Macro F1 | 0.886 | 0.850 | 0.799 | 0.727 |
+| Shown at 40% gate / precision when shown | 99.4% / 90.6% | 98.1% / 87.8% | 94.8% / 85.0% | 86.4% / 82.8% |
+| Words at 100% / 0% / below 50% | 80 / 5 / 8 | 68 / 6 / 8 | 64 / 7 / 15 | 58 / 11 / 22 |
+
+(With all 105 words, as reported on 2026-11-01: 82.0% / 98.7% for the
+2026-11-01 model, 75.3% / 94.9% for the 2026-10-06 one, on 534 clips.)
+
+### 2026-11-03: ASL clips for COLD and HELLO, tried and not deployed
+
+95 ASL videos had been copied into the FSL COLD (59) and HELLO (36) folders,
+from ASL Citizen, WLASL and MS-ASL. In the reference videos the two languages'
+COLD signs look alike, and FSL-105's HELLO is the same forehead salute as
+WLASL's (most ASL Citizen HELLOs are a wave). They were trained in as
+training-only clips (signer "asl"). The 13 signed mainly with the left hand
+were flipped, since the model expects right-handed signing. This was a
+4-seed GPU run on otherwise identical data.
+
+| On signer D (484 clips) | Deployed (2026-11-02 evening) | With the ASL clips |
+|---|---|---|
+| Ensemble top-1 / top-5 | **90.3% / 99.4%** | 89.5% / 98.8% |
+| Seeds | 86.8 / 85.7 / 87.6 / 88.6% | 88.2 / 88.2 / 89.5 / 87.0% |
+| HELLO (kumusta) | 1/5 (as pinsan) | 2/5 (as pinsan) |
+| Other words read as COLD | 0 | 5: CRAB 5/5 -> 1/5, CORRECT 2/6 -> 0/6 |
+
+Each seed scored higher on its own, but the ensemble scored lower. The ASL
+COLD clips widened "cold" into CRAB and CORRECT, and FSL COLD was already
+5/5. **Not deployed.** `INCLUDE_BORROWED_ASL = False` in
+`build_fsl_manifest.py` keeps them out of the manifest; the code and the flip
+list stay. The run is in `ml/models/fsl_experiments_2026-11-03_asl_clips/`,
+and the deployed model's files are also archived in
+`ml/models/fsl_v4_2026-11-02b/`. The better fix for HELLO is FSL recordings:
+the team hasn't recorded it.
+
+Later on 2026-11-03 the ASL files were deleted from the FSL COLD and HELLO
+folders: the 95 videos, plus 390 GISLR .parquet and 4 .npy landmark files in
+HELLO that were never used. Their landmark caches were deleted too. Every
+file was a byte-identical copy of one in `ml/data/ASL_word_dataset/cold` or
+`/hello`; the 12 numbered COLD videos are the `wlasl_` files there. To try
+again, copy the videos back and set the flag.
+
+### 2026-11-02 evening: 29 more words from our recorders
+
+ivan, paul and ry recorded 29 more words on 2026-11-02 (1,189 clips): the
+twelve months (APRIL 16, FEBRUARY 15 and JUNE/JULY 30 clips; the rest 45-46),
+blue, green, yellow, orange, pink, good morning/afternoon/evening, I'm fine,
+nice to meet you, see you tomorrow, understand, don't understand, auntie,
+correct, blind and deaf blind. That makes 51 of the 95 words recorded in
+the team's room. Trained on the GPU (WSL, RTX 4050) with the same recipe.
+
+- **Not mirrored.** On one clip per word and recorder (87), the morning
+  model got 44 right as recorded and 0 flipped.
+- **Who recorded what.** All clips are named by recording time. Every word
+  has the same order, paul, ry, ivan (matched by face across the two
+  sessions: months in the morning in the 2026-11-01 shirts, the rest in the
+  afternoon in different ones), but not always 15 takes each: APRIL 5/6/5,
+  FEBRUARY 5/5/5, GREEN 6/4/6, JUNE and JULY 10/10/10, SEE YOU TOMORROW
+  15/16/14, AUGUST and UNDERSTAND 15/15/16 (`TAKE_BLOCKS` in
+  `build_fsl_manifest.py`, read off contact sheets and confirmed by cutting
+  each word into three blocks by shirt colour).
+- **Signer D:** all 95 words 86.8% → **90.3%** (top-5 98.1% → 99.4%). Every
+  new seed beats every morning seed on its own (85.7–88.6% against
+  82.0–84.7%). The 29 newly recorded words 71.3% → 75.3% (150 clips); the
+  22 recorded earlier 92.0% → 95.6%; the 44 never recorded 94.6% → 97.7%.
+  17 words improved, 4 got worse. Gains: **magandang gabi 0/6 → 5/6**,
+  Disyembre 3 → 5, tama 0/6 → 2/6, tita 0/5 → 2/5, kumusta 0 → 1, and one
+  clip each for several others. Losses: **Agosto 3/6 → 0/6 and Setyembre
+  2/5 → 0/5, both now read as Abril**, **rosas 3/5 → 0/5 (read as pula)**,
+  Lunes 5 → 4. Still 0: asul (read as alam) and Marso (read as Nobyembre),
+  both recorded in this batch.
+- **Not measured this time:** the one-recorder-left-out runs (stopped for
+  low memory on the PC) and a control without the batch.
+
+### 2026-11-02 morning: 20 more words from our recorders
+
+ivan, paul and ry recorded 20 more words, 15 takes each (901 clips): how are
+you, you're welcome, know, don't know, no, wrong, slow, fast, tomorrow,
+uncle, boy, girl, woman, deaf, red, chicken, hot, milk, coffee, no sugar.
+With TUESDAY and WEDNESDAY that is 22 words from the same room and camera.
+
+- **Not mirrored this time.** On 60 sampled clips the 2026-11-01 model got
+  29 right as recorded and 3 flipped (mostly read as *madilim*), so only the
+  TUESDAY/WEDNESDAY batch is flipped now (`build_fsl_manifest.py`
+  MIRRORED_CLASSES). Twelve of the words are saved under recording-time
+  names (`2026-11-01_23-36-33.mp4`); the recorder comes from recording
+  order (paul, ry, ivan, 15 each, `TIMESTAMP_BATCHES`), checked against
+  shirt colour in every class. ASL Citizen / WLASL / MS-ASL clips found in
+  the BLUE, WHITE and COLD folders are not used (never were).
+- **Signer D:** all 95 words 81.8% → **86.8%**; the 22 recorded words
+  81.4% → **92.0%** (113 clips; 62.8% for the 2026-10-06 model). 17 words
+  improved, 9 got worse. Gains include mabagal 0/6 → 6/6, Abril 0/5 → 5/5,
+  Oktubre 0/5 → 4/5, Mayo 1/5 → 5/5, Biyernes and Lunes 2/5 → 5/5. Losses:
+  **tama 2/6 → 0/6 (all read as kape**, one of the recorded words),
+  **magandang gabi 3/6 → 0/6** (read as magandang hapon), and months shuffled
+  the other way: Setyembre 5 → 2, Pebrero and Disyembre 5 → 3.
+- **Is the gain the new clips?** A control with today's code and 95 words but
+  without this batch (seeds 0–1) scores 80.4% on signer D, against 86.2%
+  for the new seeds 0–1. Leaving the numbers out on its own changes little
+  (the 2026-11-01 model goes from 82.0% to 81.8% when scored on 95 words).
+- **A recorder the model never saw** (seed 0, one left out each time), on the
+  20 new words: ivan 95.6%, paul 84.2%, ry 97.3%, against 42.3%, 43.9% and
+  40.7% for the 2026-11-01 model on the same clips. Paul's misses are mostly
+  mabilis and hindi read as Martes (13 and 9 of 15); mabilis/Martes was
+  already a look-alike pair for signer D. As on 2026-11-01, this is flattered
+  by the shared room and camera; signer D is the stronger evidence.
+- **Room shortcut:** before this batch, the 2026-11-01 model's most common
+  wrong answer for the team's other words was Martes (e.g. hindi → Martes for
+  all three), consistent with the room cue suspected on 2026-11-01. With 22
+  words now recorded there, the room no longer points at one word.
+
+### 2026-11-01: our own TUESDAY and WEDNESDAY recordings
+
+(Figures in this subsection are for the 105-word models.)
+
+Three of the team (ivan, paul, ry) recorded TUESDAY (46 clips) and WEDNESDAY
+(46), both 0 of 5 for signer D before and both look-alikes (Martes→mabilis,
+Miyerkules→anim). They train alongside signers A–C; signer D stays the only
+test signer, so the numbers compare directly with the 2026-10-06 model.
+
+- **The recordings were saved mirrored** (signing hand on the right of the
+  picture, the opposite of FSL-105 and of the raw frame the app's camera
+  gives). The old model read all 92 as *naka-wheelchair*, which is also what
+  it reads for signer D's own clips when mirrored. The pipeline flips them
+  before landmark extraction (`build_fsl_manifest.py` MIRRORED_CLASSES,
+  `flip` column). Future recordings: turn mirroring off (the 2026-11-02 batch
+  was), and check every batch.
+- **Signer D:** Martes 0/5 → **5/5**, Miyerkules 0/5 → **5/5**; all words
+  75.3% → 82.0%.
+- **Is the gain the new data?** A control trained today without the new clips
+  (seeds 0–1) scores 71.5% on signer D, against 73.2% for the old seeds 0–1
+  and 81.5% for the new seeds 0–1. So it is the data, not a changed
+  environment. 24 words improved and 7 got worse; the clearest loss is anim
+  (six) 4/5 → 1/5, now read as pito (seven), not as Miyerkules. Abril, Agosto
+  and Oktubre are now read as Setyembre (the control models do that too).
+- **A recorder the model never saw** (seed 0, one of the three left out each
+  time): 30–31 of 30–31 clips right for each, against 0 of 92 for the old
+  model. This is flattered: all three filmed in the same room with the same
+  camera. Signer D, a different person in a different setup, is the better
+  evidence. Whether other words signed in that room are taken for
+  Martes/Miyerkules: see the 2026-11-02 room-shortcut note above.
+
+Models: `ml/models/fsl_sequence_classifier_seed{0-3}.keras` (deployed
+2026-11-02 evening, 95 words); the 2026-11-02 morning seeds, fused model and
+training data are kept in `ml/models/fsl_v3_2026-11-02/`, the 2026-11-01
+ones in `ml/models/fsl_v2_2026-11-01/`, the 2026-10-06 ones in
+`ml/models/fsl_v1_signerD/`; left-out and control runs in
+`ml/models/fsl_experiments_2026-11-01/` and `fsl_experiments_2026-11-02/`.
+TF.js parity of `public/fsl-model/model0` against the Keras ensemble: max
+|Δp| 8e-7, 100% top-1 agreement on the 484 clips.
+
+Leave-one-signer-out (single model, seed 0, the 2026-10-06 recipe without our
+recordings) shows how much depends on who is held out:
 
 | Held-out signer | A | B | C | D |
 |---|---|---|---|---|
@@ -195,9 +382,16 @@ held out:
 For contrast, the dataset's own split (signers mixed between train and test)
 gives 98.1%. That is the number *not* to quote.
 
-Most-confused (by the Tagalog names the app shows): magandang gabi→magandang
-hapon, dalawa→isa, Miyerkules→anim, Biyernes→siyam, rosas→pula,
-Oktubre→Setyembre. Several FSL day names are built on number handshapes.
+Most-confused since 2026-11-02 evening (by the Tagalog names the app
+shows): Agosto→Abril (6 of 6), Setyembre→Abril and rosas→pula (5 of 5),
+kumusta→pinsan, tama→kape, Marso→Nobyembre, asul→alam (4 each), tita→berde
+(3). Still 0%: Agosto, Setyembre, rosas, asul, Marso. In the morning model:
+magandang gabi→magandang hapon and tama→kape (6 of 6 each), kumusta→pinsan,
+Marso→Pebrero, tita→berde (5 of 5 each), asul→alam (4). On 2026-11-01
+(105 words): kumusta→pinsan, Abril/Agosto/Oktubre→Setyembre, Biyernes→siyam,
+tita→berde, rosas→pula, magandang gabi→magandang hapon. Several FSL day
+names are built on number handshapes (Biyernes→siyam is gone with the
+numbers), and the months share one pattern on the other hand's finger.
 
 ## 3b. ASL numbers, FSL letters and FSL numbers (2026-10-28)
 

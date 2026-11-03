@@ -20,13 +20,20 @@ under more than one split (see train_fsl_classifier.py):
   X (N, 40, 384) float32, y (N,) int32,
   signer, video_id, split, provided_split  (N,) str
 
-No vocabulary lock or MIN_EXAMPLES filter: all 105 classes have 18-22 clips.
+No vocabulary lock or MIN_EXAMPLES filter: every class has 18+ clips.
+
+The ten number words (one..ten) are left out since 2026-11-02: the app
+teaches and recognises 1-10 with its own FSL Numbers model
+(train_handshape_classifier.py fsl-numbers, which reads those clips straight
+from the manifest), so the word model has 95 words. --keep-numbers builds
+the old 105-word set.
 
 Run (venv active):
-  python scripts/consolidate_fsl_landmarks.py
+  python scripts/consolidate_fsl_landmarks.py [--keep-numbers]
 """
 
 import os
+import sys
 import csv
 import json
 import numpy as np
@@ -43,6 +50,7 @@ OUTPUT_STATS = os.path.join(DATA_DIR, "fsl_extraction_stats.json")
 TRIM_MARGIN = 3  # frames (~0.1 s at the 30 fps the cache is sampled at)
 HANDS = slice(ex.NUM_POSE * 4, ex.FEATURES_PER_FRAME)
 POSE = slice(0, ex.NUM_POSE * 4)
+NUMBER_WORDS = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"}
 
 
 def hand_span(raw, margin=TRIM_MARGIN):
@@ -61,6 +69,10 @@ def resample(seq, n=ex.SEQUENCE_LENGTH):
 def main():
     with open(MANIFEST_CSV, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
+    if "--keep-numbers" not in sys.argv:
+        dropped = sum(r["word"] in NUMBER_WORDS for r in rows)
+        rows = [r for r in rows if r["word"] not in NUMBER_WORDS]
+        print(f"left out {dropped} clips of the number words (--keep-numbers keeps them)")
 
     words = sorted({r["word"] for r in rows})
     word_to_idx = {w: i for i, w in enumerate(words)}
