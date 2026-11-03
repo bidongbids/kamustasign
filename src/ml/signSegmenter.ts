@@ -29,8 +29,11 @@
 //    made the speed lag by several frames there, so onsets were cut and a
 //    still hand took over a second to count as still (at 6 fps, almost half
 //    the held signs never finished being read).
-// Together, holding the hands up at 15 fps: FSL 65% -> 76% passed, ASL 30%
-// -> 40%, our recordings 89% -> 96%; at 6 fps FSL 32% -> 74%.
+// Together with startSpeed 0.6 (below), holding the hands up at 15 fps: FSL
+// 65% -> 76% passed, ASL 30% -> 40%, our recordings 89% -> 96%; at 6 fps
+// FSL 32% -> 74%, ASL 13% -> 33%, ours 59% -> 91%. Lowering the hands after
+// the sign: 15 fps unchanged (FSL ~80%, the same as scoring the whole clip),
+// 6 fps FSL 72% -> 78%, ASL 27% -> 34%, ours 71% -> 92%.
 
 import { FEATURES_PER_FRAME, NUM_HAND, NUM_POSE } from "./wordLandmarks";
 
@@ -71,7 +74,11 @@ export type SegmenterConfig = {
 };
 
 export const DEFAULT_SEGMENTER_CONFIG: SegmenterConfig = {
-  startSpeed: 0.8,
+  // 0.8 until 2026-11-03: 0.6 misses fewer signs at low frame rates (our
+  // recordings at 6 fps: 7.8% -> 5.2% never read; ASL webcam 15.8% -> 13.6%)
+  // with no more false starts in the replay, and is still above the jitter
+  // of a hand at rest (~0.1-0.4).
+  startSpeed: 0.6,
   stopSpeed: 0.35,
   holdMs: 550,
   minSignMs: 300,
