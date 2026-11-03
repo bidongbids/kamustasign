@@ -17,10 +17,12 @@
       "main.js"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "build/icon.png"
     },
     "extraResources": [
       {
@@ -30,7 +32,15 @@
           "**/*"
         ]
       }
-    ]
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    }
   },
   "allowScripts": {
     "electron@33.4.11": true
