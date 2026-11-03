@@ -2,7 +2,10 @@
 // categories, and which words in each, the class learns. Students see only
 // these words, grouped by the same categories (WordCategoryList), and every
 // progress figure - theirs and the teacher's - counts only them
-// (curriculum.ts planSigns). Letters and numbers are always the whole group.
+// (curriculum.ts planSigns). Letters and numbers are always the whole group,
+// but any group - letters, numbers or words, per language - can be switched
+// off for a class that doesn't learn it (0015): it is hidden from students
+// and left out of every progress figure.
 //
 // Words inside a category are listed the way students see them: the ones the
 // model recognises most reliably first (wordPracticeOrder.json), so "the
@@ -20,8 +23,8 @@ import { Bar } from "./TeacherToday";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon, PlusIcon } from "../../components/icons/UiIcons";
 import { fonts, radii, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
-import { saveClassPlan, type ClassRow } from "../../lib/queries";
-import { CURRICULUM, getGroup, planSigns, type ClassPlan, type SignLanguage } from "../../lib/curriculum";
+import { isMissingPlanGroups, saveClassPlan, withLanguagePlan, type ClassRow } from "../../lib/queries";
+import { CURRICULUM, getGroup, getLanguage, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { WORD_CATEGORIES, getWordCategory, type WordCategory } from "../../lib/wordCategories";
 import { signName, signMatches } from "../../lib/signNames";
 
@@ -31,11 +34,20 @@ const LANGUAGES = CURRICULUM.filter((l) => getGroup(l.language, "words").availab
 const labelOf = (l: SignLanguage) => CURRICULUM.find((x) => x.language === l)!.label;
 
 type Drafts = Record<SignLanguage, Set<string>>;
+type OffDrafts = Record<SignLanguage, Set<SignGroup>>;
+
+/** The planned words, whether or not the Words group is switched off (turning it back on restores them). */
+const plannedWords = (l: SignLanguage, plan: ClassPlan) => planSigns(l, "words", { ...plan, off: undefined });
 
 const draftsFrom = (plan: ClassPlan): Drafts =>
-  Object.fromEntries(
-    CURRICULUM.map((l) => [l.language, new Set(planSigns(l.language, "words", plan))])
-  ) as Drafts;
+  Object.fromEntries(CURRICULUM.map((l) => [l.language, new Set(plannedWords(l.language, plan))])) as Drafts;
+
+const offFrom = (plan: ClassPlan): OffDrafts =>
+  Object.fromEntries(CURRICULUM.map((l) => [l.language, new Set(plan.off?.[l.language] ?? [])])) as OffDrafts;
+
+function sameSet<T>(a: Set<T>, b: Set<T>): boolean {
+  return a.size === b.size && [...a].every((x) => b.has(x));
+}
 
 export type SaveBarState = {
   message: string;
@@ -69,6 +81,7 @@ export default function ClassPlanEditor({
   const styles = useThemedStyles(makeStyles);
   const [language, setLanguage] = useState<SignLanguage>(LANGUAGES[0] ?? "asl");
   const [drafts, setDrafts] = useState<Drafts>(() => draftsFrom(plan));
+  const [offDrafts, setOffDrafts] = useState<OffDrafts>(() => offFrom(plan));
   const [open, setOpen] = useState<Set<WordCategory>>(new Set());
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
@@ -76,16 +89,16 @@ export default function ClassPlanEditor({
   // Another class, or a plan saved elsewhere: start from what is stored.
   useEffect(() => {
     setDrafts(draftsFrom(plan));
+    setOffDrafts(offFrom(plan));
   }, [plan, klass.id]);
 
   const all = getGroup(language, "words").signs;
   const chosen = drafts[language];
-  const saved = useMemo(() => new Set(planSigns(language, "words", plan)), [plan, language]);
-  const dirtyLanguages = LANGUAGES.filter((l) => {
-    const a = drafts[l];
-    const b = new Set(planSigns(l, "words", plan));
-    return a.size !== b.size || [...a].some((s) => !b.has(s));
-  });
+  const saved = useMemo(() => new Set(plannedWords(language, plan)), [plan, language]);
+  const savedOff = useMemo(() => offFrom(plan), [plan]);
+  const dirtyLanguages = LANGUAGES.filter(
+    (l) => !sameSet(drafts[l], new Set(plannedWords(l, plan))) || !sameSet(offDrafts[l], savedOff[l])
+  );
   const dirty = dirtyLanguages.length > 0;
   const added = [...chosen].filter((s) => !saved.has(s)).length;
   const removed = [...saved].filter((s) => !chosen.has(s)).length;
@@ -120,33 +133,45 @@ export default function ClassPlanEditor({
       }
     });
 
+  const toggleGroup = (g: SignGroup) =>
+    setOffDrafts((prev) => {
+      const next = new Set(prev[language]);
+      next.has(g) ? next.delete(g) : next.add(g);
+      return { ...prev, [language]: next };
+    });
+
   const save = async () => {
     setSaving(true);
-    const next: ClassPlan = { ...plan };
+    let next: ClassPlan = { ...plan };
     for (const l of dirtyLanguages) {
       const set = drafts[l];
       const every = getGroup(l, "words").signs;
-      // Every word picked = no plan, so words from a future model show up too.
+      // Every word picked = no word list, so words from a future model show up too.
       const signs = set.size === every.length ? null : every.filter((s) => set.has(s));
-      const { error } = await saveClassPlan(klass.id, l, signs);
+      const off = getLanguage(l).groups.map((g) => g.group).filter((g) => offDrafts[l].has(g));
+      const { error } = await saveClassPlan(klass.id, l, signs, off);
       if (error) {
         setSaving(false);
         setNotice({
           kind: "error",
           message: error.code === "42P01" || error.code === "PGRST205"
             ? "Learning plans need the 0012 database update. Ask your admin to apply it."
-            : error.message,
+            : isMissingPlanGroups(error) || error.code === "23502"
+              ? "Switching groups off needs the 0015 database update. Ask your admin to apply it."
+              : error.message,
         });
         return;
       }
-      if (signs) next[l] = signs;
-      else delete next[l];
+      next = withLanguagePlan(next, l, signs, off);
     }
     setSaving(false);
     setNotice({ kind: "success", message: `Saved the learning plan for ${klass.name}. Students see it the next time their dashboard loads.` });
     onSaved(next);
   };
-  const discard = () => setDrafts(draftsFrom(plan));
+  const discard = () => {
+    setDrafts(draftsFrom(plan));
+    setOffDrafts(offFrom(plan));
+  };
 
   // The pinned save bar calls whatever save / discard are current.
   const saveRef = useRef(save);
@@ -172,6 +197,7 @@ export default function ClassPlanEditor({
 
   const langLabel = labelOf(language);
   const share = all.length ? chosen.size / all.length : 0;
+  const wordsOff = offDrafts[language].has("words");
 
   const editor = (
     <View style={[styles.card, styles.main]}>
@@ -213,6 +239,11 @@ export default function ClassPlanEditor({
       </View>
 
       <View>
+        {wordsOff ? (
+          <Text style={styles.offNote}>
+            {langLabel} words are switched off for this class, so students won't see these. Switch them on under {langLabel} groups to use this list.
+          </Text>
+        ) : null}
         {categories.length === 0 ? <Text style={styles.muted}>No words match "{search}".</Text> : null}
         {categories.map((c, i) => {
           const picked = c.signs.filter((s) => chosen.has(s)).length;
@@ -299,8 +330,35 @@ export default function ClassPlanEditor({
         </View>
       </View>
       <View style={styles.card}>
-        <Text style={styles.sideTitle}>Letters and numbers</Text>
-        <Text style={styles.sideBody}>Always the whole group. Only words can be picked.</Text>
+        <Text style={styles.sideTitle}>{langLabel} groups</Text>
+        <Text style={styles.sideBody}>
+          Switch off what this class doesn't learn. It's hidden from students and doesn't count toward their overall
+          progress. Letters and numbers are always the whole group.
+        </Text>
+        <View style={styles.groupList}>
+          {getLanguage(language).groups.filter((g) => g.available).map((g) => {
+            const on = !offDrafts[language].has(g.group);
+            const changed = on === savedOff[language].has(g.group);
+            const detail = g.group === "words" ? `${chosen.size} of ${all.length} picked` : `${g.signs.length} signs`;
+            return (
+              <Pressable
+                key={g.group}
+                onPress={() => toggleGroup(g.group)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={`${langLabel} ${g.label}, ${on ? "learned by this class" : "switched off"}${changed ? ", not saved yet" : ""}`}
+                style={[styles.groupRow, webCursor]}
+              >
+                <CheckBox checked={on} accentColor={accentColor} />
+                <Text style={[styles.groupLabel, !on && styles.groupLabelOff]}>{g.label}</Text>
+                <Text style={styles.groupDetail}>
+                  {on ? detail : "off"}
+                  {changed ? " · not saved" : ""}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -386,6 +444,21 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
   diffAdd: { borderColor: "rgba(95,208,138,0.4)", backgroundColor: "rgba(63,181,106,0.12)" },
   diffRemove: { borderColor: "rgba(255,122,133,0.4)", backgroundColor: "rgba(224,82,95,0.1)" },
   diffText: { fontFamily: fonts.bodySemiBold, fontSize: 12.5 },
+  groupList: { marginTop: 10 },
+  groupRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 },
+  groupLabel: { fontFamily: fonts.bodySemiBold, fontSize: 15, color: colors.textPrimary },
+  groupLabelOff: { color: colors.textOnGlass, textDecorationLine: "line-through" },
+  groupDetail: { flex: 1, textAlign: "right", fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textOnGlass },
+  offNote: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: colors.textPrimary,
+    padding: 12,
+    marginTop: 8,
+    borderRadius: 12,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.06)" : colors.neuWell,
+  },
   saveBar: {
     flexDirection: "row",
     alignItems: "center",

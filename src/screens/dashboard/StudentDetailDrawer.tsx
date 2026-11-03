@@ -65,7 +65,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
   const [tilesOpen, setTilesOpen] = useState(!phone);
   const first = firstNameOf(student.full_name);
   const overall = computeOverall(student.mastered, plan);
-  const groups = availableGroups();
+  const groups = availableGroups(plan);
   const mine = notes.filter((n) => n.student_id === student.id).sort((a, b) => b.started_at.localeCompare(a.started_at));
 
   useEffect(() => {

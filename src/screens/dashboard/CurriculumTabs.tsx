@@ -30,6 +30,11 @@ type Props = {
   counts?: Partial<Record<SignGroup, string>>;
   /** In a row with other controls (no padding above, not centred). */
   inline?: boolean;
+  /**
+   * Student: which groups to offer (the class plan can switch groups off).
+   * A language with none is left out; with one language left, its toggle is too.
+   */
+  shown?: (language: SignLanguage, group: SignGroup) => boolean;
 };
 
 /** The group to land on in `language`: `preferred` if gradable, else the first that is. */
@@ -39,25 +44,34 @@ export function availableGroupFor(language: SignLanguage, preferred: SignGroup):
   return groups.find((g) => g.available)?.group ?? preferred;
 }
 
-export default function CurriculumTabs({ language, group, onChange, audience = "teacher", layout = "stacked", note = true, counts, inline }: Props) {
+export default function CurriculumTabs({ language, group, onChange, audience = "teacher", layout = "stacked", note = true, counts, inline, shown }: Props) {
   const styles = useThemedStyles(makeStyles);
   const student = audience === "student";
   const lang = getLanguage(language);
   const unavailable = lang.groups.filter((g) => !g.available);
+  const isShown = (l: SignLanguage, g: SignGroup) => !shown || shown(l, g);
+  const languages = CURRICULUM.filter((l) => l.groups.some((g) => isShown(l.language, g.group)));
+  const groupIn = (l: SignLanguage) => {
+    const preferred = availableGroupFor(l, group);
+    if (isShown(l, preferred)) return preferred;
+    return getLanguage(l).groups.find((g) => g.available && isShown(l, g.group))?.group ?? preferred;
+  };
 
   return (
     <View style={layout === "row" ? styles.row : inline ? styles.stack : undefined}>
+      {languages.length > 1 || !shown ? (
+        <SegmentedToggle
+          size={student ? "kid" : "default"}
+          inline={inline}
+          options={languages.map((l) => ({ key: l.language, label: l.label }))}
+          value={language}
+          onChange={(next) => onChange(next, groupIn(next))}
+        />
+      ) : null}
       <SegmentedToggle
         size={student ? "kid" : "default"}
         inline={inline}
-        options={CURRICULUM.map((l) => ({ key: l.language, label: l.label }))}
-        value={language}
-        onChange={(next) => onChange(next, availableGroupFor(next, group))}
-      />
-      <SegmentedToggle
-        size={student ? "kid" : "default"}
-        inline={inline}
-        options={lang.groups.map((g) =>
+        options={lang.groups.filter((g) => isShown(language, g.group)).map((g) =>
           student
             ? { key: g.group, label: g.label, badge: g.available ? undefined : ("soon" as const), count: g.available ? counts?.[g.group] : undefined }
             : {

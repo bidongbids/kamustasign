@@ -7,7 +7,9 @@ import {
   countMastered,
   getGroup,
   groupFraction,
+  groupInPlan,
   groupKey,
+  groupOff,
   isMastered,
   planSigns,
   formatPercent,
@@ -159,6 +161,30 @@ describe("class learning plan", () => {
     // ASL letters done; ASL numbers, ASL words, FSL letters, FSL numbers not. The
     // plan only picks words, so FSL letters and numbers still count.
     expect(withoutFsl).toBeCloseTo(1 / 5, 10);
+  });
+
+  it("a switched-off group teaches nothing and leaves the overall", () => {
+    const aslOnly = { off: { fsl: ["letters", "numbers", "words"] as const } } as any;
+    for (const g of ["letters", "numbers", "words"] as const) {
+      expect(groupOff("fsl", g, aslOnly)).toBe(true);
+      expect(planSigns("fsl", g, aslOnly)).toEqual([]);
+      expect(groupInPlan("fsl", g, aslOnly)).toBe(false);
+    }
+    expect(groupInPlan("asl", "letters", aslOnly)).toBe(true);
+    // Every ASL letter learned in an ASL-only class: 1 of 3 groups, not 1 of 6.
+    const lettersDone = { [groupKey("asl", "letters")]: getGroup("asl", "letters").signs.length };
+    expect(computeOverall(lettersDone)).toBeCloseTo(1 / 6, 10);
+    expect(computeOverall(lettersDone, aslOnly)).toBeCloseTo(1 / 3, 10);
+    // Counts ignore an off group's signs too.
+    const rows = [{ language: "fsl", sign_group: "letters", sign: getGroup("fsl", "letters").signs[0], passes: 1 }];
+    expect(countMastered(rows, aslOnly)[groupKey("fsl", "letters")]).toBe(0);
+  });
+
+  it("switching Words off keeps the word list for when it is switched back on", () => {
+    const plan = { asl: picked, off: { asl: ["words"] } } as any;
+    expect(planSigns("asl", "words", plan)).toEqual([]);
+    expect(planSigns("asl", "words", { ...plan, off: undefined })).toEqual([words[0], words[2], words[5]]);
+    expect(planSigns("asl", "numbers", plan)).toEqual(getGroup("asl", "numbers").signs);
   });
 });
 

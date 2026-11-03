@@ -43,6 +43,7 @@ import {
   saveClassPlan,
   saveModule,
   setModuleOrder,
+  withLanguagePlan,
   type ClassRow,
   type ModuleDraft,
   type ModuleRow,
@@ -511,16 +512,14 @@ function ModuleForm({
     const every = getGroup(language, "words").signs;
     const nextSet = new Set([...planSigns(language, "words", plan), word]);
     const signs = nextSet.size >= every.length ? null : every.filter((s) => nextSet.has(s));
-    const { error } = await saveClassPlan(klass.id, language, signs);
+    const off = plan.off?.[language] ?? [];
+    const { error } = await saveClassPlan(klass.id, language, signs, off);
     setAddingToPlan(null);
     if (error) {
       setNotice({ kind: "error", message: error.message });
       return;
     }
-    const next: ClassPlan = { ...plan };
-    if (signs) next[language] = signs;
-    else delete next[language];
-    onPlanSaved(next);
+    onPlanSaved(withLanguagePlan(plan, language, signs, off));
   };
 
   const save = async () => {

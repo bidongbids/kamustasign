@@ -74,6 +74,7 @@ import {
   getGroup,
   getLanguage,
   groupFraction,
+  groupInPlan,
   groupKey,
   isMastered,
   planSigns,
@@ -226,6 +227,23 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
     load();
   }, [load]);
 
+  // A group the class plan switches off (or leaves empty) isn't shown to the
+  // student at all; groups with no model yet still show as "soon".
+  const shownGroup = useCallback(
+    (l: SignLanguage, g: SignGroup) => !getGroup(l, g).available || groupInPlan(l, g, plan),
+    [plan]
+  );
+  // The open group got switched off: land on the first one the class learns.
+  useEffect(() => {
+    if (shownGroup(language, group)) return;
+    const first = CURRICULUM.flatMap((l) => l.groups.filter((g) => g.available && shownGroup(l.language, g.group)).map((g) => ({ l: l.language, g: g.group })))[0];
+    if (first) {
+      setLanguage(first.l);
+      setGroup(first.g);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownGroup]);
+
   const groupDef = getGroup(language, group);
   // The group's signs under the teacher's plan (every sign without one).
   const groupSigns = planSigns(language, group, plan);
@@ -326,7 +344,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
   const passesOf = (l: SignLanguage, g: SignGroup, s: string) => allRows.get(`${l}:${g}:${s}`);
   const learnedIn = (l: SignLanguage, g: SignGroup, list: string[]) => list.filter((s) => isMastered(passesOf(l, g, s))).length;
   const masteredHere = mastered[groupKey(language, group)] ?? 0;
-  const availableGroups = CURRICULUM.flatMap((l) => l.groups.filter((g) => g.available).map((g) => ({ lang: l, g })));
+  const availableGroups = CURRICULUM.flatMap((l) => l.groups.filter((g) => g.available && shownGroup(l.language, g.group)).map((g) => ({ lang: l, g })));
   const soonGroups = CURRICULUM.flatMap((l) => l.groups.filter((g) => !g.available).map((g) => `${l.label} ${g.label}`));
   const totalLearned = availableGroups.reduce((s, { lang: l, g }) => s + (mastered[groupKey(l.language, g.group)] ?? 0), 0);
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
@@ -663,6 +681,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
           language={language}
           group={group}
           counts={isMobile ? undefined : counts}
+          shown={shownGroup}
           onChange={(l, g) => {
             setActiveModuleId(null);
             setCategory(null);

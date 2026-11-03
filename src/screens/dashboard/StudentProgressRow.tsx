@@ -12,6 +12,7 @@ import {
   computeOverall,
   getLanguage,
   groupKey,
+  groupOff,
   planSigns,
   type ClassPlan,
   type MasteredCounts,
@@ -50,9 +51,11 @@ export default function StudentProgressRow({ name, mastered, plan, language, hig
             <Text key={g.group} style={g.group === highlightGroup ? styles.highlight : undefined}>
               {i > 0 ? " · " : ""}
               {g.label[0]}{" "}
-              {g.available
-                ? `${mastered[groupKey(language, g.group)] ?? 0}/${planSigns(language, g.group, plan).length}`
-                : "soon"}
+              {!g.available
+                ? "soon"
+                : groupOff(language, g.group, plan)
+                  ? "off"
+                  : `${mastered[groupKey(language, g.group)] ?? 0}/${planSigns(language, g.group, plan).length}`}
             </Text>
           ))}
         </Text>

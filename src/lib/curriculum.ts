@@ -136,22 +136,41 @@ export function getGroup(language: SignLanguage, group: SignGroup): GroupDefinit
 // ---- class learning plan ----
 
 /**
- * A teacher's learning plan for one class (class_word_plans, 0012): the
- * words each language's Words group teaches. A language with no entry
- * teaches every word; letters and numbers are always the whole group.
+ * A teacher's learning plan for one class (class_word_plans, 0012 + 0015):
+ *  - per language, the words its Words group teaches; a language with no
+ *    entry teaches every word;
+ *  - `off`: whole groups the class doesn't learn (0015), e.g. a class that
+ *    only does ASL, or skips numbers. An off group teaches nothing, so it
+ *    is hidden from students and left out of every progress figure -
+ *    otherwise a student who has learned everything their class teaches
+ *    would still sit far below 100%. Letters and numbers are otherwise
+ *    always the whole group.
  */
-export type ClassPlan = Partial<Record<SignLanguage, string[]>>;
+export type ClassPlan = Partial<Record<SignLanguage, string[]>> & {
+  off?: Partial<Record<SignLanguage, SignGroup[]>>;
+};
+
+/** True when the class plan switches `group` off for `language`. */
+export function groupOff(language: SignLanguage, group: SignGroup, plan?: ClassPlan | null): boolean {
+  return !!plan?.off?.[language]?.includes(group);
+}
 
 /**
  * The signs a group teaches under `plan`, in curriculum order (most reliable
  * first). Words the model no longer has are dropped, like moduleSigns().
  */
 export function planSigns(language: SignLanguage, group: SignGroup, plan?: ClassPlan | null): string[] {
+  if (groupOff(language, group, plan)) return [];
   const all = getGroup(language, group).signs;
   const chosen = group === "words" ? plan?.[language] : undefined;
   if (!chosen) return all;
   const keep = new Set(chosen);
   return all.filter((s) => keep.has(s));
+}
+
+/** A group students can learn in this class: it has a model and the plan gives it signs. */
+export function groupInPlan(language: SignLanguage, group: SignGroup, plan?: ClassPlan | null): boolean {
+  return getGroup(language, group).available && planSigns(language, group, plan).length > 0;
 }
 
 // ---- progress maths ----
@@ -211,7 +230,8 @@ export function groupFraction(
  * views alike. Two deliberate choices (docs/CLASSROOM_REDESIGN.md section 5):
  *  - Unavailable groups are left out entirely, so mastering every gradable
  *    sign reaches 100%. The denominator grows when a new model ships. So is
- *    a group the class plan leaves empty (a class that only learns ASL).
+ *    a group the class plan switches off or leaves empty (a class that only
+ *    learns ASL).
  *  - Each available group weighs the same (mean of group fractions), rather
  *    than pooling sign counts - pooled, 344 ASL words would drown out the
  *    26 letters and the bar would really be "percent of words".

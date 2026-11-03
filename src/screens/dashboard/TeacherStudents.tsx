@@ -73,7 +73,7 @@ export default function TeacherStudents(props: Props) {
   const [ascending, setAscending] = useState(true);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
-  const groups = availableGroups();
+  const groups = availableGroups(plan);
 
   const counts = useMemo(() => rosterCounts(students, plan, presence), [students, plan, presence]);
   const q = search.trim().toLowerCase();

@@ -9,6 +9,7 @@ import {
   getLanguage,
   groupFraction,
   groupKey,
+  groupOff,
   isMastered,
   planSigns,
   type ClassPlan,
@@ -85,10 +86,15 @@ export function monthGrid(year: number, month: number): (number | null)[][] {
 
 export type GroupRef = { language: SignLanguage; group: SignGroup; key: GroupKey; label: string };
 
-/** Groups with a model behind them, e.g. ASL Letters, ASL Words, FSL Words. */
-export function availableGroups(): GroupRef[] {
+/**
+ * Groups with a model behind them, e.g. ASL Letters, ASL Words, FSL Words -
+ * minus any the class plan switches off, when a plan is given.
+ */
+export function availableGroups(plan?: ClassPlan | null): GroupRef[] {
   return CURRICULUM.flatMap((l) =>
-    l.groups.filter((g) => g.available).map((g) => ({ language: l.language, group: g.group, key: groupKey(l.language, g.group), label: `${l.label} ${g.label}` }))
+    l.groups
+      .filter((g) => g.available && !groupOff(l.language, g.group, plan))
+      .map((g) => ({ language: l.language, group: g.group, key: groupKey(l.language, g.group), label: `${l.label} ${g.label}` }))
   );
 }
 

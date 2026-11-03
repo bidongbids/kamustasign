@@ -223,26 +223,63 @@ export async function deleteModule(moduleId: string) {
   return supabase.from("modules").delete().eq("id", moduleId);
 }
 
-// ---- class learning plans (0012_class_plan_no_cooldown.sql) ----
-// One row per class + language. No row = every word (curriculum planSigns).
+// ---- class learning plans (0012_class_plan_no_cooldown.sql, 0015_class_plan_groups.sql) ----
+// One row per class + language. No row = every word, every group (curriculum
+// planSigns). signs NULL = every word; groups_off = groups switched off.
+
+/** Postgres/PostgREST codes for "that column isn't there" (0015 not applied yet). */
+const MISSING_COLUMN = new Set(["42703", "PGRST204"]);
+
+/** Group switches need 0015 on the database. */
+export function isMissingPlanGroups(error: { code?: string } | null | undefined): boolean {
+  return !!error && MISSING_COLUMN.has(error.code ?? "");
+}
 
 /** The class's plan. A missing table (0012 not applied yet) reads as "no plan". */
 export async function getClassPlan(classId: string): Promise<{ data: ClassPlan; error: { message: string } | null }> {
-  const { data, error } = await supabase.from("class_word_plans").select("language, signs").eq("class_id", classId);
+  let res: { data: unknown; error: { code?: string; message: string } | null } = await supabase
+    .from("class_word_plans")
+    .select("language, signs, groups_off")
+    .eq("class_id", classId);
+  // Before 0015: no groups_off column - read the words alone.
+  if (isMissingPlanGroups(res.error)) res = await supabase.from("class_word_plans").select("language, signs").eq("class_id", classId);
+  const { data, error } = res;
   if (error) return { data: {}, error: error.code === "42P01" || error.code === "PGRST205" ? null : error };
   const plan: ClassPlan = {};
-  for (const r of (data as { language: SignLanguage; signs: string[] }[] | null) ?? []) plan[r.language] = r.signs;
+  const rows = (data as { language: SignLanguage; signs: string[] | null; groups_off?: SignGroup[] }[] | null) ?? [];
+  for (const r of rows) {
+    if (r.signs) plan[r.language] = r.signs;
+    if (r.groups_off?.length) plan.off = { ...plan.off, [r.language]: r.groups_off };
+  }
   return { data: plan, error: null };
 }
 
-/** Sets one language's planned words; null removes the plan (every word again). */
-export async function saveClassPlan(classId: string, language: SignLanguage, signs: string[] | null) {
-  if (signs === null) {
+/**
+ * Sets one language's plan: its words (null = every word) and the groups the
+ * class doesn't learn. Every word and no group off removes the row.
+ */
+export async function saveClassPlan(classId: string, language: SignLanguage, signs: string[] | null, groupsOff: SignGroup[]) {
+  if (signs === null && groupsOff.length === 0) {
     return supabase.from("class_word_plans").delete().eq("class_id", classId).eq("language", language);
   }
-  return supabase
-    .from("class_word_plans")
-    .upsert({ class_id: classId, language, signs, updated_at: new Date().toISOString() }, { onConflict: "class_id,language" });
+  const row = { class_id: classId, language, signs, groups_off: groupsOff, updated_at: new Date().toISOString() };
+  const res = await supabase.from("class_word_plans").upsert(row, { onConflict: "class_id,language" });
+  // Before 0015 a words-only plan still saves (there are no switches to keep).
+  if (isMissingPlanGroups(res.error) && groupsOff.length === 0 && signs !== null) {
+    const { groups_off: _off, ...wordsOnly } = row;
+    return supabase.from("class_word_plans").upsert(wordsOnly, { onConflict: "class_id,language" });
+  }
+  return res;
+}
+
+/** A copy of `plan` with one language's saved words and switches in it. */
+export function withLanguagePlan(plan: ClassPlan, language: SignLanguage, signs: string[] | null, groupsOff: SignGroup[]): ClassPlan {
+  const next: ClassPlan = { ...plan, off: { ...plan.off } };
+  if (signs) next[language] = signs;
+  else delete next[language];
+  if (groupsOff.length) next.off![language] = groupsOff;
+  else delete next.off![language];
+  return next;
 }
 
 /** Saves a new module order: each id's position becomes its index. */
