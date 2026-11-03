@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { loadTasksVision, getVisionFileset } from "../lib/mediapipeVision";
+import { createHolisticTracker, type HolisticTracker } from "../lib/holisticTracker";
 
 // NOTE: landmarker instances are NOT hoisted/shared the way the camera stream
 // is (see useSharedCameraStream). Each screen builds its own landmarker fresh
@@ -73,30 +74,18 @@ export function useSharedLandmarkers() {
     });
   }
 
-  async function createHolisticLandmarker(): Promise<any> {
+  // A HolisticTracker (lib/holisticTracker), normally running in a Web
+  // Worker. Its CPU delegate is deliberate: HolisticLandmarker defaults to
+  // the GPU delegate, but its graph is much heavier than HandLandmarker's
+  // (it includes segmentation-mask smoothing), and createFromOptions() was
+  // observed to hang indefinitely on GPU (no error, no console output, not
+  // even the "GL version:" log HandLandmarker prints almost immediately),
+  // both in Electron and in plain Chrome on this machine. GPU was also
+  // slower once it did build (~105 ms vs ~65 ms per frame).
+  async function createHolisticLandmarker(): Promise<HolisticTracker> {
     return serialize(async () => {
       await closeActive();
-      const [vision, mp] = await Promise.all([getVisionFileset(), loadTasksVision()]);
-      const instance = await mp.HolisticLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: "/mediapipe/holistic_landmarker.task",
-        // HolisticLandmarker defaults to the GPU delegate (same as
-        // HandLandmarker, which builds fine on this hardware), but its graph
-        // is much heavier - it includes segmentation-mask smoothing that
-        // HandLandmarker doesn't have at all - and createFromOptions() was
-        // observed to hang indefinitely (no error, no console output, not
-        // even the "GL version:" log HandLandmarker prints almost
-        // immediately) both in Electron and in plain Chrome on this machine.
-        // That points at a GPU-shader-specific stall rather than a fetch or
-        // JS-side bug. Forcing CPU sidesteps whatever that GPU codepath is
-        // doing. Revert to GPU (or drop this line) if this turns out not to
-        // be the cause once tested.
-        delegate: "CPU",
-      },
-        runningMode: "VIDEO",
-        minPoseDetectionConfidence: 0.4,
-        minHandLandmarksConfidence: 0.4,
-      });
+      const instance = await createHolisticTracker();
       activeRef.current = instance;
       return instance;
     });

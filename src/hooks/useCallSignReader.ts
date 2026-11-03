@@ -34,6 +34,7 @@ import {
 import { SignSegmenter } from "../ml/signSegmenter";
 import { frameAspect, handshapeInput } from "../ml/handshapeInput";
 import { loadTasksVision, getVisionFileset } from "../lib/mediapipeVision";
+import { createHolisticTracker } from "../lib/holisticTracker";
 import { UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
 import { createFrameGate } from "./useFpsMeter";
 import { signName } from "../lib/signNames";
@@ -176,16 +177,11 @@ export function useCallSignReader(
     }
 
     async function runWords(language: SignLanguage) {
-      const [{ model: clf, classes }, mp] = await Promise.all([loadWordModels(language), loadTasksVision()]);
-      const fileset = await getVisionFileset();
-      const lm = await mp.HolisticLandmarker.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: "/mediapipe/holistic_landmarker.task", delegate: "CPU" },
-        runningMode: "VIDEO",
-        minPoseDetectionConfidence: 0.4,
-        minHandLandmarksConfidence: 0.4,
-      });
-      if (stopped) return lm.close();
-      landmarker = lm;
+      // Holistic runs in a Web Worker (lib/holisticTracker), so reading a
+      // feed doesn't stall the call's video and controls.
+      const [{ model: clf, classes }, tracker] = await Promise.all([loadWordModels(language), createHolisticTracker()]);
+      if (stopped) return tracker.close();
+      landmarker = tracker;
       setPhase("no-hand");
       const seg = new SignSegmenter();
       let classifying = false;
@@ -231,17 +227,24 @@ export function useCallSignReader(
       const loop = () => {
         if (stopped) return;
         const video = videoRef.current;
-        if (video && video.readyState >= 2 && freshFrame(video)) {
+        if (video && video.readyState >= 2 && !tracker.busy && freshFrame(video)) {
           const now = performance.now();
-          const result = lm.detectForVideo(video, now);
-          const ev = seg.push(landmarksToVector(result), now);
-          if (ev?.type === "start") setPhase("reading");
-          else if (ev?.type === "end") void classify(ev.frames);
-          else if (ev?.type === "discard") setPhase("unsure");
-          const handSeen = !!(result.leftHandLandmarks?.length || result.rightHandLandmarks?.length);
-          if (!seg.isActive && !classifying) {
-            setPhase((p) => (!handSeen && (p === "reading" || p === "no-hand" || p === "loading") ? "no-hand" : p));
-          }
+          tracker
+            .detect(video, now)
+            ?.then((result) => {
+              if (stopped || !result) return;
+              const ev = seg.push(landmarksToVector(result), now);
+              if (ev?.type === "start") setPhase("reading");
+              else if (ev?.type === "end") void classify(ev.frames);
+              else if (ev?.type === "discard") setPhase("unsure");
+              const handSeen = !!(result.leftHandLandmarks?.length || result.rightHandLandmarks?.length);
+              if (!seg.isActive && !classifying) {
+                setPhase((p) => (!handSeen && (p === "reading" || p === "no-hand" || p === "loading") ? "no-hand" : p));
+              }
+            })
+            .catch(() => {
+              // One frame lost; the next one is tracked as usual.
+            });
         }
         raf = requestAnimationFrame(loop);
       };

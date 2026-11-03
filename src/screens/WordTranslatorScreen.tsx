@@ -375,59 +375,67 @@ export default function WordTranslatorScreen({
       if (stopped || !holisticLandmarker || !videoRef.current) return;
 
       const video = videoRef.current;
-      const canvas = canvasRef.current;
 
-      // fpsTick is false while the camera is still on the frame we last
-      // processed (see useFpsMeter) - nothing new to detect.
-      if (video.readyState >= 2 && fpsTick(video)) {
+      // Tracking runs in a worker (see lib/holisticTracker) and takes longer
+      // than one camera frame, so frames that arrive while one is being
+      // tracked are skipped. fpsTick is false while the camera is still on
+      // the frame we last took (see useFpsMeter) - nothing new to detect.
+      if (!holisticLandmarker.busy && video.readyState >= 2 && fpsTick(video)) {
         // Detection runs on the RAW (unmirrored) video frame - the preview
         // is mirrored purely via CSS (see CameraDevice's videoStyle), same
         // as the alphabet screen. Feeding a visually-flipped frame into the
         // detector would be a real train/inference mismatch, not just a
         // cosmetic choice, since the training videos were not mirrored.
         // Timestamps use performance.now() (matching LiveTranslatorScreen)
-        // rather than a locally incremented counter: the landmarker is now
-        // shared and outlives this mount (see useSharedLandmarkers), and
-        // MediaPipe requires timestamps to strictly increase across a
-        // landmarker's whole lifetime - a counter reset to 0 on every mount
-        // would violate that as soon as you switched back to Words.
-        const result = holisticLandmarker.detectForVideo(video, performance.now());
-
-        if (canvas) {
-          const ctx = canvas.getContext("2d");
-          // Assigning width/height reallocates the canvas even when the
-          // value is unchanged, so only do it when the video size changes.
-          if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
-          if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
-          if (ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawLandmarks(ctx, canvas, result);
-          }
-        }
-
-        if (modeRef.current === "auto") {
-          const seg = segmenterRef.current;
-          const event = seg.push(landmarksToVector(result), performance.now());
-          if (event?.type === "start") {
-            setSegmentActive(true);
-            setStatus("Reading sign...");
-          } else if (event?.type === "end") {
-            setSegmentActive(false);
-            setFrameCount(event.frames.length);
-            autoClassifyRef.current(event.frames);
-          } else if (event?.type === "discard") {
-            setSegmentActive(false);
-            setFrameCount(0);
-            setStatus("Too brief to read as a sign - " + readyText().charAt(0).toLowerCase() + readyText().slice(1));
-          }
-          if (seg.isActive) setFrameCount(seg.length);
-        } else if (recordingRef.current) {
-          framesRef.current.push(landmarksToVector(result));
-          setFrameCount(framesRef.current.length);
-        }
+        // rather than a locally incremented counter: MediaPipe requires
+        // them to strictly increase across a landmarker's whole lifetime.
+        // The frame's capture time is also what the segmenter is given.
+        const capturedAt = performance.now();
+        holisticLandmarker
+          .detect(video, capturedAt)
+          ?.then((result: any) => {
+            if (!stopped && result) onTracked(video, result, capturedAt);
+          })
+          .catch((err: any) => trace("tracking failed:", err));
       }
 
       animationId = requestAnimationFrame(loop);
+    }
+
+    function onTracked(video: HTMLVideoElement, result: any, capturedAt: number) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        // Assigning width/height reallocates the canvas even when the
+        // value is unchanged, so only do it when the video size changes.
+        if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
+        if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          drawLandmarks(ctx, canvas, result);
+        }
+      }
+
+      if (modeRef.current === "auto") {
+        const seg = segmenterRef.current;
+        const event = seg.push(landmarksToVector(result), capturedAt);
+        if (event?.type === "start") {
+          setSegmentActive(true);
+          setStatus("Reading sign...");
+        } else if (event?.type === "end") {
+          setSegmentActive(false);
+          setFrameCount(event.frames.length);
+          autoClassifyRef.current(event.frames);
+        } else if (event?.type === "discard") {
+          setSegmentActive(false);
+          setFrameCount(0);
+          setStatus("Too brief to read as a sign - " + readyText().charAt(0).toLowerCase() + readyText().slice(1));
+        }
+        if (seg.isActive) setFrameCount(seg.length);
+      } else if (recordingRef.current) {
+        framesRef.current.push(landmarksToVector(result));
+        setFrameCount(framesRef.current.length);
+      }
     }
 
     trace("MOUNT");
