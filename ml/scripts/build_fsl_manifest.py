@@ -112,7 +112,10 @@ EXTRA_CLIP = re.compile(r"^(?P<signer>[a-z]+) \((?P<take>\d+)\)\.(mp4|mov)$", re
 # 2026-11-02 (29 words): same three people in the same order, matched by face
 # across the two sessions - months in the morning (same shirts as 11-01),
 # colours/greetings/AUNTIE/CORRECT/BLIND/DEAF BLIND/(DON'T) UNDERSTAND in the
-# afternoon (paul white, ry red, ivan printed white). A timestamp clip from
+# afternoon (paul white, ry red, ivan printed white). Ten more words were
+# recorded late that evening (22:57-23:42, same shirts, 15/15/15 each by
+# contact sheet) and added 2026-11-04: CRAB, COLD, COUSIN, FRIDAY,
+# GRANDMOTHER, PARENTS, MONDAY, MOTHER, THURSDAY, WHITE. A timestamp clip from
 # any other day stops the build until its recorders are added here.
 TIMESTAMP_CLIP = re.compile(r"^(?P<day>\d{4}-\d{2}-\d{2})_(?P<time>\d{2}-\d{2}-\d{2})\.mp4$")
 TIMESTAMP_BATCHES = {"2026-11-01": ("paul", "ry", "ivan"), "2026-11-02": ("paul", "ry", "ivan")}
@@ -209,7 +212,7 @@ def extra_signer_rows(labels, folders):
     """Our own recordings, saved next to FSL-105's clips as
     clips/<CLASS>/<name> (<k>).mp4, one name per person, or named by
     recording time (see TIMESTAMP_BATCHES). ivan, paul and ry: TUESDAY and
-    WEDNESDAY, 20 more words on 2026-11-01, 29 more on 2026-11-02. Each person is their own
+    WEDNESDAY, 20 more words on 2026-11-01, 29 + 10 more on 2026-11-02. Each person is their own
     signer; they train, with one take per (class, signer) as val. Signer D
     stays the only test signer, so test numbers stay comparable with earlier
     models. A separate RNG per class keeps the FSL-105 rows' val picks, and

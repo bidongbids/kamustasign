@@ -1,6 +1,6 @@
 # LCSign — model evaluation
 
-All figures are for the models **deployed in `public/`** (as of 2026-10-21; numbers and FSL letters 2026-10-28; ASL words 2026-11-02, v6 without 23 look-alike words; FSL words 2026-11-02, second retrain that day),
+All figures are for the models **deployed in `public/`** (as of 2026-10-21; numbers and FSL letters 2026-10-28; ASL words 2026-11-02, v6 without 23 look-alike words; FSL words 2026-11-04),
 produced by the scripts named in each section. Re-run them after any retrain;
 numbers here go stale otherwise.
 
@@ -13,8 +13,8 @@ numbers here go stale otherwise.
 | ASL words | | **Webcam clips of 5 ASL Citizen signers never seen in training** (1,366 clips, 229 words, see §2) | **84.6%** | 96.7% |
 | *ASL words, v6 with all 344 words (2026-10-29)* | | *9,579 test / 1,435 webcam clips* | *58.8% / 82.4%* | *82.8% / 96.4%* |
 | *ASL words, v5 (deployed earlier on 2026-10-29)* | | *The 9,170 / 809 of those clips neither model trained on* | *57.6% / 63.4% (v6: 58.0% / 79.9%)* | *82.5% / 87.6% (v6: 82.5% / 96.4%)* |
-| FSL-105 words (4-seed ensemble, 2026-11-02 evening) | 95 (one–ten are in FSL numbers) | **Signer D, never seen in training** (484 clips) | **90.3%** | 99.4% |
-| *FSL-105 words, 2026-11-02 morning / 2026-11-01 / 2026-10-06 models* | | *the same 484 clips and 95 words* | *86.8% / 81.8% / 75.6%* | *98.1% / 98.6% / 95.0%* |
+| FSL-105 words (4-seed ensemble, 2026-11-04) | 95 (one–ten are in FSL numbers) | **Signer D, never seen in training** (484 clips) | **88.6%** | 99.2% |
+| *FSL-105 words, 2026-11-02 evening / morning / 2026-11-01 / 2026-10-06 models* | | *the same 484 clips and 95 words* | *90.3% / 86.8% / 81.8% / 75.6%* | *99.4% / 98.1% / 98.6% / 95.0%* |
 | ASL numbers (2026-10-28) | 0–9 | **Webcam clips of ASL Citizen / WLASL / MS-ASL signers** (338 clips) | **97.9%** per clip | 83.1% per frame |
 | ASL numbers | | ASL-HG, 2 signers held out per fold (10,000 photos) | 100% | |
 | FSL numbers (2026-10-28) | 1–10 | **FSL-105, one signer held out per fold** (202 clips) | **97.0%** per clip | 90.6% per frame |
@@ -218,16 +218,60 @@ teaches and recognises 1–10 with the FSL numbers model (§3b), which still
 reads those clips from the manifest. The earlier models are scored here on
 the same 95 words, their number outputs dropped.
 
-| Metric | Since 2026-11-02 evening | 2026-11-02 morning | 2026-11-01 model | 2026-10-06 model |
-|---|---|---|---|---|
-| Test | every clip from signer D of the 95 words (484), never seen in training | same | same | same |
-| Top-1 / top-5 | **90.3% / 99.4%** | 86.8% / 98.1% | 81.8% / 98.6% | 75.6% / 95.0% |
-| Macro F1 | 0.886 | 0.850 | 0.799 | 0.727 |
-| Shown at 40% gate / precision when shown | 99.4% / 90.6% | 98.1% / 87.8% | 94.8% / 85.0% | 86.4% / 82.8% |
-| Words at 100% / 0% / below 50% | 80 / 5 / 8 | 68 / 6 / 8 | 64 / 7 / 15 | 58 / 11 / 22 |
+| Metric | Since 2026-11-04 | 2026-11-02 evening | 2026-11-02 morning | 2026-11-01 model | 2026-10-06 model |
+|---|---|---|---|---|---|
+| Test | every clip from signer D of the 95 words (484), never seen in training | same | same | same | same |
+| Top-1 / top-5 | **88.6% / 99.2%** | 90.3% / 99.4% | 86.8% / 98.1% | 81.8% / 98.6% | 75.6% / 95.0% |
+| Macro F1 | 0.869 | 0.886 | 0.850 | 0.799 | 0.727 |
+| Shown at 40% gate / precision when shown | 99.2% / 89.2% | 99.4% / 90.6% | 98.1% / 87.8% | 94.8% / 85.0% | 86.4% / 82.8% |
+| Words at 100% / 0% / below 50% | 77 / 5 / 9 | 80 / 5 / 8 | 68 / 6 / 8 | 64 / 7 / 15 | 58 / 11 / 22 |
 
 (With all 105 words, as reported on 2026-11-01: 82.0% / 98.7% for the
 2026-11-01 model, 75.3% / 94.9% for the 2026-10-06 one, on 534 clips.)
+
+### 2026-11-04: 10 more words from our recorders
+
+ivan, paul and ry recorded 10 more words late on 2026-11-02 (22:57–23:42,
+450 clips, 15 takes each in the order paul, ry, ivan, in the afternoon
+shirts): crab, cold, cousin, friday, grandmother, parents, monday, mother,
+thursday and white. They were copied into the dataset on 2026-11-04. That
+makes 61 of the 95 words recorded in the team's room. Same recipe and data
+otherwise, trained on the GPU.
+
+- **Not mirrored.** The signing hand is on the same side of the picture as
+  FSL-105's signers, and Holistic puts it in the right-hand slot in 378 of
+  the 450 clips (51 left; the rest two-handed). No clip lacks a hand.
+- **Why record them: the previous model missed these words for our
+  signers.** On the 450 new clips (which it never trained on) the
+  2026-11-02 evening model got **64.2%** top-1 (87.1% top-5): parents 1/45
+  (read as father), cold 10/45 (as saturday), mother 14/45 (as blind and
+  I'm fine), crab 28/45, cousin 30/45 (ivan's 1/15, as blue), monday 32/45
+  (as yes), thursday 39/45; friday, grandmother and white 45/45. Signer D
+  got 98% of these ten words right with that model, so the signer-D test
+  could not show the gap.
+- **Signer D: 90.3% → 88.6%** (top-5 99.4% → 99.2%). The single seeds are
+  no worse: 86.0 / 87.8 / 88.2 / 86.0% against 86.8 / 85.7 / 87.6 / 88.6%
+  (mean 87.0% against 87.2%). The ensemble lost 15 clips and gained 7; an
+  exact McNemar test gives p = 0.13, so the drop is within run-to-run
+  variation. The ten new words 98.0% → 94.1% (51 clips; magulang 5/5 → 2/5,
+  as tatay); the 51 words recorded earlier 84.0% → 80.6%; the 34 never
+  recorded 97.6% → 99.4%. Gains: **kumusta 1/5 → 4/5**, Marso 0/5 → 2/5,
+  Lunes 4 → 5, Agosto 0 → 1. Losses: **magandang gabi 5/6 → 1/6** (as
+  magandang hapon; it was 0/6 with the 2026-11-02 morning model, so this word
+  swings between runs), tama 2/6 → 0/6, tita 2/5 → 0/5, babae 5 → 3,
+  Nobyembre 6 → 5, Oktubre 5 → 4. Still 0: tita, asul, tama, rosas,
+  Setyembre.
+- **Deployed** (the project owner's choice): signer D is about the same
+  within noise, and the batch covers words the old model got wrong for
+  people signing like our team.
+- **Not measured:** how the new model does on these words for a recorder it
+  never saw (the one-recorder-left-out runs; it trained on all three). The
+  64.2% above is the old model on unseen clips, not a before/after pair.
+- **Files:** seeds, results, fused model, npz and manifest in
+  `ml/models/fsl_v5_2026-11-04/`; the previous model in
+  `ml/models/fsl_v4_2026-11-02b/`. TF.js parity on the 484 test clips: 100%
+  agreement, max probability difference 5e-7. Service worker cache
+  kamustasign-v9.
 
 ### 2026-11-03: ASL clips for COLD and HELLO, tried and not deployed
 

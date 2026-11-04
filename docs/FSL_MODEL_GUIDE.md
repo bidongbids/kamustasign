@@ -241,7 +241,8 @@ both halves, so it is signer-dependent.
 
 | Split | top-1 | top-5 |
 |---|---|---|
-| **Deployed 4-seed ensemble since 2026-11-02**: 95 words (one–ten moved to FSL numbers), + our recordings of 22 words (see EVALUATION.md §3), signer D unseen (484 clips) | **86.8%** | **98.1%** |
+| **Deployed 4-seed ensemble since 2026-11-04**: 95 words (one–ten moved to FSL numbers), + our recordings of 61 words (see EVALUATION.md §3), signer D unseen (484 clips) | **88.6%** | **99.2%** |
+| 2026-11-02 evening / morning 4-seed ensembles (our recordings of 51 / 22 words), same 95 words | 90.3% / 86.8% | 99.4% / 98.1% |
 | 2026-11-01 4-seed ensemble (TUESDAY/WEDNESDAY recordings), same 95 words / all 105 | 81.8% / 82.0% | 98.6% / 98.7% |
 | 2026-10-06 4-seed ensemble, same 95 words / all 105 | 75.6% / 75.3% | 95.0% / 94.9% |
 | Leave-one-signer-out, mean of 4 folds (1 seed each) | 76.7% (65.7–82.6) | 95.4% |
