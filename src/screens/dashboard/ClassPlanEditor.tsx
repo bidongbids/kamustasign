@@ -7,9 +7,10 @@
 // off for a class that doesn't learn it (0015): it is hidden from students
 // and left out of every progress figure.
 //
-// Words inside a category are listed the way students see them: the ones the
-// model recognises most reliably first (wordPracticeOrder.json), so "the
-// first N of each category" is a sensible starter plan.
+// Words inside a category are listed the way students see them:
+// alphabetically by their shown name (Tagalog for FSL). The starter plan
+// still picks the N words of each category the model recognises most
+// reliably (curriculum.ts mostReliableFirst), not the first N listed.
 //
 // Step 1 of "What they learn" (design T4): the editor beside two cards that
 // say what saving changes (with the +N / -N against the saved plan). Unsaved
@@ -24,7 +25,7 @@ import { CheckIcon, ChevronDownIcon, ChevronUpIcon, PlusIcon } from "../../compo
 import { fonts, radii, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { isMissingPlanGroups, saveClassPlan, withLanguagePlan, type ClassRow } from "../../lib/queries";
-import { CURRICULUM, getGroup, getLanguage, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
+import { CURRICULUM, getGroup, getLanguage, mostReliableFirst, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { WORD_CATEGORIES, getWordCategory, type WordCategory } from "../../lib/wordCategories";
 import { signName, signMatches } from "../../lib/signNames";
 
@@ -129,7 +130,9 @@ export default function ClassPlanEditor({
     update((set) => {
       set.clear();
       for (const c of WORD_CATEGORIES) {
-        all.filter((s) => getWordCategory(language, s) === c.key).slice(0, STARTER_PER_CATEGORY).forEach((s) => set.add(s));
+        mostReliableFirst(language, all.filter((s) => getWordCategory(language, s) === c.key))
+          .slice(0, STARTER_PER_CATEGORY)
+          .forEach((s) => set.add(s));
       }
     });
 
@@ -295,7 +298,7 @@ export default function ClassPlanEditor({
                       </Pressable>
                     );
                   })}
-                  <Text style={styles.chipNote}>Listed the way students see them: most reliably checked first.</Text>
+                  <Text style={styles.chipNote}>Listed the way students see them: A to Z.</Text>
                 </View>
               ) : null}
             </View>

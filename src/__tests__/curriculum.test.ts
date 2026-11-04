@@ -11,12 +11,15 @@ import {
   groupKey,
   groupOff,
   isMastered,
+  mostReliableFirst,
   planSigns,
   formatPercent,
   UNKNOWN_SIGN_LABEL,
 } from "../lib/curriculum";
 import { WORD_CATEGORIES, categoriesIn, evenChunks, filterByCategory, getWordCategory } from "../lib/wordCategories";
 import { sectionsByCategory } from "../components/learn/WordCategoryList";
+import { signName } from "../lib/signNames";
+import wordPracticeOrder from "../data/wordPracticeOrder.json";
 
 describe("curriculum data", () => {
   it("drops the fingerspelling UI classes from ASL letters", () => {
@@ -188,8 +191,31 @@ describe("class learning plan", () => {
   });
 });
 
+describe("word order", () => {
+  it("lists words A to Z by the name the app shows (Tagalog for FSL), ignoring case", () => {
+    for (const language of ["asl", "fsl"] as const) {
+      const shown = getGroup(language, "words").signs.map((w) => signName(language, w));
+      const sorted = [...shown].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+      expect(shown).toEqual(sorted);
+    }
+    const fsl = getGroup("fsl", "words").signs.map((w) => signName("fsl", w));
+    expect(fsl.indexOf("Abril")).toBeLessThan(fsl.indexOf("Agosto"));
+    expect(fsl.indexOf("Agosto")).toBeLessThan(fsl.indexOf("alam"));
+  });
+
+  it("mostReliableFirst follows wordPracticeOrder (for the starter plan)", () => {
+    for (const language of ["asl", "fsl"] as const) {
+      const words = getGroup(language, "words").signs;
+      const ranked = mostReliableFirst(language, words);
+      expect(new Set(ranked)).toEqual(new Set(words));
+      const order = (wordPracticeOrder[language] as string[]).filter((w) => words.includes(w));
+      expect(ranked.slice(0, order.length)).toEqual(order);
+    }
+  });
+});
+
 describe("sectionsByCategory", () => {
-  it("groups by category in display order, most reliable word first inside each", () => {
+  it("groups by category in display order, keeping curriculum (A to Z) order inside each", () => {
     const words = getGroup("asl", "words").signs;
     const sections = sectionsByCategory("asl", words);
     const order = WORD_CATEGORIES.map((c) => c.key);

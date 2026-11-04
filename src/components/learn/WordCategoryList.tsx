@@ -1,9 +1,8 @@
 // P8: Words by category (parts of speech, wordCategories.ts) instead of one
-// wall of pills. Inside each category the order is the curriculum's -
-// export_word_practice_order.py, the words the model recognises most
-// reliably first - so a child starts each category with the signs the
-// computer is best at checking. Nothing is locked; the category holding the
-// "Next" sign starts open (or the only one, when there is just one).
+// wall of pills. Inside each category the order is the curriculum's:
+// alphabetical by the shown name (Tagalog for FSL), so a child can find a
+// word. Nothing is locked; the category holding the "Next" sign starts open
+// (or the only one, when there is just one).
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import GlassCard from "../GlassCard";
