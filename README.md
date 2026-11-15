@@ -1,4 +1,4 @@
-# KamustaSign
+# LCSign (Formerly Kamustasign)
 
 Sign-language translator and classroom app for Liloan Central School: it reads
 ASL/FSL signs from a webcam, turns them into text and speech, and gives
