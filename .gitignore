@@ -55,3 +55,11 @@ electron/server.json
 mobile/android/keystore.properties
 *.jks
 *.keystore
+
+# Red-team scripts: test-project keys, test accounts, outputs
+scripts/redteam/env.json
+scripts/redteam/creds.json
+scripts/redteam/seed.sql
+scripts/redteam/results*.json
+scripts/redteam/dist-rt/
+scripts/redteam/xss-*.png

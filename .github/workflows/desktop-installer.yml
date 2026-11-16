@@ -60,7 +60,7 @@ jobs:
             echo "EXPO_PUBLIC_PASSWORD_RESET=true"
           } > .env
 
-      - run: npx expo export --platform web
+      - run: npx expo export --platform web --clear
       - run: npm ci
         working-directory: electron
       - run: node write-server-config.mjs

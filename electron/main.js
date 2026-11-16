@@ -83,23 +83,37 @@ function openOutside(url) {
 // server needs eval). It stops injected code from running or sending data
 // anywhere the app doesn't already talk to:
 //  - script-src: the app's own files only - no inline scripts, no eval.
-//    'wasm-unsafe-eval' lets MediaPipe and TF.js compile WebAssembly;
-//    jsdelivr is MediaPipe's fallback when the local copy is missing.
+//    'wasm-unsafe-eval' lets MediaPipe and TF.js compile WebAssembly. No
+//    CDN: the installer always carries MediaPipe (public/mediapipe), and a
+//    CDN like jsdelivr serves anyone's files, so allowing it would let
+//    injected HTML load any script (red team, 2026-11-17).
 //  - style-src 'unsafe-inline': react-native-web writes its styles into
 //    <style> tags while running.
-//  - connect-src: Supabase (API + realtime), the leaked-password check,
+//  - connect-src: this build's own Supabase project only (API + realtime;
+//    from server.json, else any *.supabase.co), the leaked-password check,
 //    MyMemory translation, the Metered TURN credentials URL. Moving
 //    EXPO_PUBLIC_TURN_CREDENTIALS_URL to another provider means adding its
 //    host here, or video calls lose their relay.
+function supabaseSources() {
+  try {
+    const { supabaseUrl } = JSON.parse(fs.readFileSync(path.join(__dirname, "server.json"), "utf8"));
+    const u = new URL(supabaseUrl);
+    if (u.protocol === "https:" && u.hostname.endsWith(".supabase.co")) return `https://${u.host} wss://${u.host}`;
+  } catch {
+    // no server.json (development): fall back to any Supabase project
+  }
+  return "https://*.supabase.co wss://*.supabase.co";
+}
+
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
+  "script-src 'self' 'wasm-unsafe-eval'",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "media-src 'self' blob: mediastream:",
   "font-src 'self' data:",
-  "connect-src 'self' data: blob: https://*.supabase.co wss://*.supabase.co https://api.pwnedpasswords.com https://api.mymemory.translated.net https://*.metered.live https://cdn.jsdelivr.net",
+  `connect-src 'self' data: blob: ${supabaseSources()} https://api.pwnedpasswords.com https://api.mymemory.translated.net https://*.metered.live`,
   "object-src 'none'",
   "frame-src 'none'",
   "base-uri 'none'",

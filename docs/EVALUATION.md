@@ -574,8 +574,11 @@ and record it here. Reference points from this development machine:
   A small recorded set of real users (even 5 people × 20 signs) would be the
   single most convincing addition.
 - **Passes are graded on the device.** The model runs in the browser, so the
-  pass/fail result is reported by the client. The database enforces one
-  counted pass per sign per 10 minutes (migrations 0007 and 0010), but can't
-  verify that the sign was actually made.
+  pass/fail result is reported by the client, and the database can't verify
+  that the sign was actually made: a student who calls the API directly can
+  record passes they never signed (confirmed in the 2026-11-17 red-team run,
+  docs/RED_TEAM_REPORT.md). The database only makes sure a student records
+  their own practice (0010). The 10-minute pass cooldown from 0007 was
+  removed in 0012, since one pass now learns a sign.
 - **Licences.** Several training/reference datasets are research-only (see
   `public/reference/CREDITS.txt`).
