@@ -16,10 +16,15 @@
 // Children see counts and stars, never percentages; the fill of every bar is
 // still computeOverall()/groupFraction(), the same value teachers see as a %.
 //
-// The plan doesn't need a class: a student with no class can still practise,
+// The plan doesn't need a class: a student with no class can still practice,
 // and joins one by typing their teacher's class code. The teacher's learning
 // plan (class_word_plans, 0012) decides which words appear at all, and every
 // count and bar here is over those words (curriculum.ts planSigns).
+//
+// `guest`: the offline Classroom - practice with no account, opened from the
+// start screen when there's no internet. Today and My signs over every sign
+// (no class plan), progress read from and saved on this device
+// (localProgress.ts); nothing from a teacher, no calls, no account menu.
 import React, { useCallback, useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -47,6 +52,7 @@ import {
   HomeIcon,
   PhoneIcon,
   VideoIcon,
+  WifiOffIcon,
 } from "../../components/icons/UiIcons";
 import { fonts, kidTypography, radii, spacing, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
@@ -58,7 +64,9 @@ import {
   getClassPlan,
   getLessonProgress,
   getMissedCalls,
+  getMyBookings,
   markMissedCallsSeen,
+  type CallBooking,
   type MissedCallRow,
   getModulesForClass,
   moduleSigns,
@@ -67,6 +75,9 @@ import {
   type ModuleRow,
   type Profile,
 } from "../../lib/queries";
+import { bookingWords, dayWords, studentCallGate, timeWords } from "../../lib/callSchedule";
+import { useNow } from "../../hooks/useNow";
+import { teacherShortName } from "../../lib/teacherInsights";
 import {
   CURRICULUM,
   computeOverall,
@@ -77,6 +88,7 @@ import {
   groupInPlan,
   groupKey,
   isMastered,
+  passedSince,
   planSigns,
   type ClassPlan,
   type MasteredCounts,
@@ -84,6 +96,7 @@ import {
   type SignLanguage,
 } from "../../lib/curriculum";
 import { nextPracticeSign, type ProgressLike } from "../../lib/practiceFlow";
+import { getLocalGroupProgress, getLocalProgress, recordLocalAttempt } from "../../lib/localProgress";
 import { signName } from "../../lib/signNames";
 import { useVideoCall } from "../../hooks/useVideoCall";
 import VideoCallScreen from "../videocall/VideoCallScreen";
@@ -92,12 +105,19 @@ import type { CallPeer } from "../../lib/callSignaling";
 
 type Props = {
   accentColor: string;
-  onSignOut: () => void;
+  /** Signed in: the account menu's Sign out. Not in guest mode. */
+  onSignOut?: () => void;
   onExitToStart: () => void;
   /** The Account panel changed the name or 2FA - App reloads the profile. */
-  onAccountChange: () => void;
+  onAccountChange?: () => void;
   /** The Translator button in the header. */
   onOpenTranslator: () => void;
+  /** The offline Classroom: no account, progress on this device (see the top). */
+  guest?: boolean;
+  /** Guest mode: where onExitToStart goes, in words ("Back to log in"). */
+  exitLabel?: string;
+  /** Signed in: "Practice offline" on the can't-load card - the guest Classroom. */
+  onPracticeOffline?: () => void;
 };
 
 type Tab = "today" | "signs" | "teacher";
@@ -128,7 +148,16 @@ function dueDay(date: string): { short: string; days: number } {
 }
 const inDays = (n: number) => (n === 0 ? "today" : n === 1 ? "tomorrow" : n > 1 ? `in ${n} days` : n === -1 ? "yesterday" : `${-n} days ago`);
 
-export default function StudentDashboard({ accentColor, onSignOut, onExitToStart, onAccountChange, onOpenTranslator }: Props) {
+export default function StudentDashboard({
+  accentColor,
+  onSignOut,
+  onExitToStart,
+  onAccountChange,
+  onOpenTranslator,
+  guest = false,
+  exitLabel = "Back to log in",
+  onPracticeOffline,
+}: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { isDesktop, isMobile } = useResponsive();
@@ -145,28 +174,37 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
   const [loading, setLoading] = useState(true);
   const [groupLoading, setGroupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [practising, setPractising] = useState<string | null>(null);
-  // A sign to practise in another group: opens once that group's rows are in.
+  const [practicing, setPracticing] = useState<string | null>(null);
+  // A sign to practice in another group: opens once that group's rows are in.
   const [pending, setPending] = useState<string | null>(null);
   const [modules, setModules] = useState<ModuleRow[]>([]);
-  // The module being practised from (its signs are practice's "Next sign" order).
+  // The module being practiced from (its signs are practice's "Next sign" order).
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   // Part-of-speech filter for Words; null = all. Cleared on any tab change.
   const [category, setCategory] = useState<WordCategory | null>(null);
   // Every progress row, keyed language:group:sign - for the cards and modules
   // that count across groups, unlike `rows` (the selected group only).
-  const [allRows, setAllRows] = useState<Map<string, { passes: number }>>(new Map());
+  // last_passed_at: a module only counts passes since it was made.
+  const [allRows, setAllRows] = useState<Map<string, { passes: number; last_passed_at: string | null }>>(new Map());
   const [joinedNote, setJoinedNote] = useState<string | null>(null);
   const [missedCalls, setMissedCalls] = useState<MissedCallRow[]>([]);
+  // Booked calls (0017): the student can only call in their booked time.
+  // null = not loaded, or no 0017 table - then calls work as before.
+  const [bookings, setBookings] = useState<CallBooking[] | null>(null);
+  const now = useNow();
   const [gridWidth, setGridWidth] = useState(0);
+  // Guest mode has no profile to wait for: this says the first read is done.
+  const [guestLoaded, setGuestLoaded] = useState(false);
+  // No teacher without an account, so no "From my teacher".
+  const tabs = guest ? TABS.filter((t) => t.key !== "teacher") : TABS;
 
   useEffect(() => {
     AsyncStorage.getItem(TAB_KEY)
       .then((t) => {
-        if (t === "today" || t === "signs" || t === "teacher") setTabState(t);
+        if (t === "today" || t === "signs" || (t === "teacher" && !guest)) setTabState(t);
       })
       .catch(() => {});
-  }, []);
+  }, [guest]);
   const setTab = (t: Tab) => {
     setTabState(t);
     AsyncStorage.setItem(TAB_KEY, t).catch(() => {});
@@ -183,9 +221,23 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
     const { data } = await getMissedCalls(profileId);
     setMissedCalls(data);
   }, [profileId]);
+  // Every minute too, so a call the teacher just booked shows up.
+  const loadBookings = useCallback(async () => {
+    if (!profileId) return;
+    const res = await getMyBookings(profileId);
+    if (res.missing) setBookings(null);
+    else if (!res.error) setBookings(res.data);
+  }, [profileId]);
   useEffect(() => {
-    if (call.callState === "idle") void loadMissed();
-  }, [call.callState, loadMissed]);
+    if (call.callState === "idle") {
+      void loadMissed();
+      void loadBookings();
+    }
+  }, [call.callState, loadMissed, loadBookings]);
+  useEffect(() => {
+    const id = setInterval(() => void loadBookings(), 60_000);
+    return () => clearInterval(id);
+  }, [loadBookings]);
   const dismissMissed = (ids: string[]) => {
     setMissedCalls((prev) => prev.filter((c) => !ids.includes(c.id)));
     void markMissedCallsSeen(ids);
@@ -194,6 +246,18 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (guest) {
+      // Every sign, no plan: the same bars and counts as a student with no class.
+      const local = await getLocalProgress();
+      if (local.error) setError(local.error.message);
+      else {
+        setMastered(countMastered(local.data, {}));
+        setAllRows(new Map(local.data.map((r) => [`${r.language}:${r.sign_group}:${r.sign}`, { passes: r.passes, last_passed_at: r.last_passed_at }])));
+      }
+      setGuestLoaded(true);
+      setLoading(false);
+      return;
+    }
     const { data: me, error: profileError } = await getMyProfile();
     if (profileError || !me) {
       setError(profileError?.message ?? "Couldn't load your profile.");
@@ -218,10 +282,12 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
     // A missing modules table (0009 not run yet) just means no modules.
     setModules(mods.error ? [] : mods.data.filter((m) => moduleSigns(m).length > 0));
     if (!all.error) {
-      setAllRows(new Map(((all.data as any[]) ?? []).map((r) => [`${r.language}:${r.sign_group}:${r.sign}`, { passes: r.passes }])));
+      setAllRows(
+        new Map(((all.data as any[]) ?? []).map((r) => [`${r.language}:${r.sign_group}:${r.sign}`, { passes: r.passes, last_passed_at: r.last_passed_at ?? null }]))
+      );
     }
     setLoading(false);
-  }, []);
+  }, [guest]);
 
   useEffect(() => {
     load();
@@ -248,13 +314,13 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
   // The group's signs under the teacher's plan (every sign without one).
   const groupSigns = planSigns(language, group, plan);
   const activeModule = modules.find((m) => m.id === activeModuleId) ?? null;
-  // Practice's "Next sign" order: the module's when practising from one, else
+  // Practice's "Next sign" order: the module's when practicing from one, else
   // the group's, narrowed to the chosen category for Words.
   const signs = activeModule ? moduleSigns(activeModule) : filterByCategory(language, groupSigns, group === "words" ? category : null);
 
   const loadGroup = useCallback(async () => {
     const key = `${language}:${group}`;
-    if (!profile || !groupDef.available) {
+    if ((!profile && !guest) || !groupDef.available) {
       setRows(new Map());
       setRowsKey(key);
       return;
@@ -262,7 +328,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
     setRows(new Map());
     setRowsKey(null);
     setGroupLoading(true);
-    const { data, error: err } = await getLessonProgress(profile.id, language, group);
+    const { data, error: err } = guest ? await getLocalGroupProgress(language, group) : await getLessonProgress(profile!.id, language, group);
     setGroupLoading(false);
     if (err) {
       setError(err.message);
@@ -270,7 +336,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
     }
     setRows(new Map(((data as LessonProgressRow[]) ?? []).map((r) => [r.sign, r])));
     setRowsKey(key);
-  }, [profile, language, group, groupDef.available]);
+  }, [profile, guest, language, group, groupDef.available]);
 
   useEffect(() => {
     loadGroup();
@@ -280,16 +346,16 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
   // so practice starts from the right stars and the right "Next sign".
   useEffect(() => {
     if (pending && rowsKey === `${language}:${group}`) {
-      setPractising(pending);
+      setPracticing(pending);
       setPending(null);
     }
   }, [pending, rowsKey, language, group]);
 
-  const practise = (t: Target, moduleId: string | null = null) => {
+  const practice = (t: Target, moduleId: string | null = null) => {
     setActiveModuleId(moduleId);
     setCategory(null);
     if (t.language === language && t.group === group && rowsKey === `${language}:${group}`) {
-      setPractising(t.sign);
+      setPracticing(t.sign);
       return;
     }
     setLanguage(t.language);
@@ -309,32 +375,36 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
   // loadGroup effect) the tiles, so what the student sees is what the
   // database now holds - and what their teacher sees.
   const handlePracticeDone = () => {
-    setPractising(null);
+    setPracticing(null);
     setActiveModuleId(null);
     load();
+    // Guest mode has no fresh profile to re-trigger loadGroup.
+    if (guest) void loadGroup();
   };
 
   const handleRowUpdate = useCallback((row: LessonProgressRow) => {
     setRows((prev) => new Map(prev).set(row.sign, row));
-    setAllRows((prev) => new Map(prev).set(`${row.language}:${row.sign_group}:${row.sign}`, { passes: row.passes }));
+    setAllRows((prev) => new Map(prev).set(`${row.language}:${row.sign_group}:${row.sign}`, { passes: row.passes, last_passed_at: row.last_passed_at }));
   }, []);
 
   if (call.callState !== "idle" && self && profile?.class_id) {
     return <VideoCallScreen role="student" call={call} self={self} classId={profile.class_id} accentColor={accentColor} />;
   }
 
-  if (practising && profile) {
+  if (practicing && (profile || guest)) {
     return (
       <PracticeScreen
-        studentId={profile.id}
+        studentId={profile?.id ?? ""}
+        saveAttempt={guest ? recordLocalAttempt : undefined}
         language={language}
         group={group}
-        sign={practising}
+        sign={practicing}
         signs={signs}
         rows={rows}
+        doneSince={activeModule?.created_at ?? null}
         accentColor={accentColor}
         onRowUpdate={handleRowUpdate}
-        onChangeSign={setPractising}
+        onChangeSign={setPracticing}
         onDone={handlePracticeDone}
       />
     );
@@ -373,9 +443,12 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
     return left.find((x) => x.l === language) ?? left[0] ?? null;
   })();
 
+  // A module counts only passes since the teacher made it: a sign learned
+  // before still has to be done for the module (passedSince).
+  const doneInModule = (m: ModuleRow, s: string) => passedSince(passesOf(m.language, m.sign_group, s), m.created_at);
   const moduleProgress = (m: ModuleRow) => {
     const list = moduleSigns(m);
-    const learned = learnedIn(m.language, m.sign_group, list);
+    const learned = list.filter((s) => doneInModule(m, s)).length;
     return { list, learned, done: learned >= list.length };
   };
   // Due soon: the nearest due date among unfinished modules, else the first unfinished one.
@@ -386,29 +459,74 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
   })();
   const continueModule = (m: ModuleRow) => {
     const { list } = moduleProgress(m);
-    const sign = list.find((s) => !isMastered(passesOf(m.language, m.sign_group, s))) ?? list[0];
-    if (sign) practise({ language: m.language, group: m.sign_group, sign }, m.id);
+    const sign = list.find((s) => !doneInModule(m, s)) ?? list[0];
+    if (sign) practice({ language: m.language, group: m.sign_group, sign }, m.id);
   };
 
   const presence = teacher ? call.presence[teacher.id] : undefined;
-  const callLabel = presence === "busy" ? "Call (they're on a call)" : "Call";
-  const startCall = () => teacher && call.startCall(teacher);
+  // Their booked call with this class's teacher: open now, later, or none.
+  const gate = bookings && profile?.class_id ? studentCallGate(bookings.filter((b) => b.class_id === profile.class_id), profile.id, now) : null;
+  const canCall = !gate || gate.kind === "open";
+  const laterStart = gate?.kind === "later" ? Date.parse(gate.booking.starts_at) : null;
+  const laterWords =
+    laterStart === null ? "" : dayWords(laterStart, now) === "Today" ? timeWords(laterStart) : `${dayWords(laterStart, now)} ${timeWords(laterStart)}`;
+  const callLabel = !canCall
+    ? gate?.kind === "later"
+      ? `Call at ${laterWords}`
+      : "No call booked"
+    : presence === "busy"
+      ? "Call (they're on a call)"
+      : "Call";
+  const startCall = () => {
+    if (teacher && canCall) call.startCall(teacher);
+  };
   const latestMissed = missedCalls[0] ?? null;
 
   // ---- pieces ----
   const callButton = (big?: boolean, label = callLabel) => (
     <Pressable
       onPress={startCall}
+      disabled={!canCall}
       accessibilityRole="button"
-      accessibilityLabel={presence === "busy" ? `Call ${teacher?.name}, they're on a call` : `Call ${teacher?.name}`}
-      style={(s: any) => [styles.callBtn, big && styles.callBtnBig, s.pressed && styles.pressed, s.focused && styles.focused]}
+      accessibilityState={{ disabled: !canCall }}
+      accessibilityLabel={
+        !canCall
+          ? gate?.kind === "later"
+            ? `Call ${teacher?.name}. Your call is ${bookingWords(gate.booking, now)}`
+            : `Call ${teacher?.name}. No call booked yet`
+          : presence === "busy"
+            ? `Call ${teacher?.name}, they're on a call`
+            : `Call ${teacher?.name}`
+      }
+      style={(s: any) => [styles.callBtn, big && styles.callBtnBig, !canCall && styles.callBtnOff, canCall && s.pressed && styles.pressed, s.focused && styles.focused]}
     >
-      <VideoIcon size={big ? 18 : 16} color={colors.onPrimary} />
-      <Text style={[styles.callText, big && styles.callTextBig]} numberOfLines={1}>
+      <VideoIcon size={big ? 18 : 16} color={canCall ? colors.onPrimary : colors.textSecondary} />
+      <Text style={[styles.callText, big && styles.callTextBig, !canCall && styles.callTextOff]} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
   );
+
+  // What the booking means, in words (teacher card and Today).
+  const teacherFirst = teacher ? teacherShortName(teacher.name) : "your teacher";
+  const callTimeText = !gate
+    ? null
+    : gate.kind === "open"
+      ? `It's your call time! You can call ${teacherFirst} until ${timeWords(Date.parse(gate.booking.ends_at))}.`
+      : gate.kind === "later"
+        ? `Your next call: ${bookingWords(gate.booking, now)}. The Call button turns on 5 minutes before.`
+        : `${teacherFirst} books a time for your call. It will show here.`;
+  // On Today: only when the call is on now or later today.
+  const callTimeNotice =
+    teacher && gate && (gate.kind === "open" || (laterStart !== null && dayWords(laterStart, now) === "Today")) ? (
+      <View style={styles.notice}>
+        <CalendarIcon size={16} color={colors.accentText} />
+        <Text style={[styles.noticeText, styles.flex]}>
+          {gate.kind === "open" ? `It's your call time with ${teacherFirst}!` : `Your call with ${teacherFirst} is today at ${laterWords}.`}
+        </Text>
+        {gate.kind === "open" ? callButton(false, "Call") : null}
+      </View>
+    ) : null;
 
   const teacherPill = profile?.class_id ? (
     <GlassCard radius={999} padding={0} contentStyle={[styles.pill, isMobile && styles.pillPhone]}>
@@ -426,11 +544,20 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
               </View>
             </View>
           )}
-          {callButton(false, isMobile ? "Call" : callLabel)}
+          {callButton(false, isMobile ? (canCall ? "Call" : laterWords || "No call") : callLabel)}
         </>
       ) : (
         <Text style={[styles.pillRole, styles.pillNone]}>No teacher yet</Text>
       )}
+    </GlassCard>
+  ) : null;
+
+  const guestPill = guest ? (
+    <GlassCard radius={999} padding={0} contentStyle={[styles.pill, styles.guestPill, isMobile && styles.pillPhone]}>
+      <WifiOffIcon size={isMobile ? 16 : 18} color={colors.textSecondary} />
+      <Text style={styles.pillRole} numberOfLines={1}>
+        {isMobile ? "Offline" : "Offline practice"}
+      </Text>
     </GlassCard>
   ) : null;
 
@@ -445,13 +572,13 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
           <ProgressBar value={computeOverall(mastered, plan)} label={`${totalLearned} signs learned`} compact readout="none" color="accent" style={styles.flex} />
         </View>
       </View>
-      {teacherPill}
+      {guest ? guestPill : teacherPill}
     </View>
   );
 
   const pageTabs = (
     <View style={styles.pageTabs} accessibilityRole="tablist">
-      {TABS.map((t) => {
+      {tabs.map((t) => {
         const on = t.key === tab;
         const count = t.key === "signs" ? String(totalLearned) : t.key === "teacher" && modules.length ? String(modules.length) : null;
         return (
@@ -464,7 +591,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
             {...({
               onKeyDown: (e: any) => {
                 const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-                if (step) setTab(TABS[(TABS.findIndex((x) => x.key === tab) + step + TABS.length) % TABS.length].key);
+                if (step) setTab(tabs[(tabs.findIndex((x) => x.key === tab) + step + tabs.length) % tabs.length].key);
               },
             } as object)}
           >
@@ -485,7 +612,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
     <View style={styles.notice}>
       <PhoneIcon size={16} color={colors.accentText} />
       <Text style={[styles.noticeText, styles.flex]}>
-        You missed a call from {teacher && latestMissed.caller_id === teacher.id ? teacher.name.split(" ")[0] : "your teacher"} · {formatWhen(latestMissed.created_at)}
+        You missed a call from {teacher && latestMissed.caller_id === teacher.id ? teacherShortName(teacher.name) : "your teacher"} · {formatWhen(latestMissed.created_at)}
       </Text>
       <KidButton small variant="ghost" label="OK" accessibilityLabel="Dismiss the missed call" onPress={() => dismissMissed(missedCalls.map((c) => c.id))} />
     </View>
@@ -493,10 +620,10 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
 
   // ---- Today ----
   const nextTitle = nextUp
-    ? `Practise the ${GROUP_ONE[nextUp.group]} ${signName(nextUp.language, nextUp.sign)}`
+    ? `Practice the ${GROUP_ONE[nextUp.group]} ${signName(nextUp.language, nextUp.sign)}`
     : "You've learned every sign!";
   const nextLine = (() => {
-    if (!nextUp) return "Practise any sign again to earn more stars.";
+    if (!nextUp) return "Practice any sign again to earn more stars.";
     const total = planSigns(nextUp.language, nextUp.group, plan).length;
     const learned = mastered[groupKey(nextUp.language, nextUp.group)] ?? 0;
     const noun = GROUP_PLURAL[nextUp.group];
@@ -527,8 +654,8 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
           {nextUp ? (
             <KidButton
               variant="primary"
-              label={`Practise ${nextName}`}
-              onPress={() => practise(nextUp)}
+              label={`Practice ${nextName}`}
+              onPress={() => practice(nextUp)}
               iconRight={<ArrowRightIcon size={18} color={colors.textOnAccent} />}
               style={isMobile ? styles.flex : undefined}
             />
@@ -653,12 +780,28 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
     </View>
   );
 
+  // Guest mode, beside Next up: what practicing without an account means.
+  const guestCard = (
+    <GlassCard radius={22} padding={20} style={isMobile ? undefined : styles.dueCard} contentStyle={styles.dueContent}>
+      <View style={styles.row10}>
+        <WifiOffIcon size={18} color={colors.accentText} />
+        <Text style={styles.meta}>No account needed</Text>
+      </View>
+      <Text style={styles.h2}>Practicing offline</Text>
+      <Text style={styles.body}>Your stars are saved on this device only, so your teacher won't see them.</Text>
+      <Text style={styles.body}>When the internet is back, log in to practice for your class.</Text>
+      <View style={styles.flex} />
+      <KidButton label={exitLabel} onPress={onExitToStart} />
+    </GlassCard>
+  );
+
   const todayTab = (
     <View style={styles.tabBody}>
+      {callTimeNotice}
       {missedNotice}
       <View style={[styles.todayRow, isMobile && styles.col12]}>
         {nextCard}
-        {profile?.class_id ? dueCard : <JoinClassCard style={isMobile ? undefined : styles.dueCard} onJoined={joined} />}
+        {guest ? guestCard : profile?.class_id ? dueCard : <JoinClassCard style={isMobile ? undefined : styles.dueCard} onJoined={joined} />}
       </View>
       {groupCards}
     </View>
@@ -726,7 +869,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
                 <Text style={styles.doneTitle}>
                   All {groupSigns.length} {GROUP_PLURAL[group]} learned. Great work!
                 </Text>
-                <Text style={styles.caption}>Practise any {GROUP_ONE[group]} again to earn more stars.</Text>
+                <Text style={styles.caption}>Practice any {GROUP_ONE[group]} again to earn more stars.</Text>
               </View>
               {nextGroup ? (
                 <KidButton
@@ -775,7 +918,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
                 group={group}
                 rows={rows}
                 nextSign={nextInGroup}
-                onPressSign={setPractising}
+                onPressSign={setPracticing}
                 columns={isDesktop ? 2 : 1}
               />
             </View>
@@ -790,12 +933,12 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
                   row={rows.get(sign)}
                   isNext={sign === nextInGroup}
                   size={tileSize}
-                  onPress={() => setPractising(sign)}
+                  onPress={() => setPracticing(sign)}
                 />
               ))}
             </View>
           )}
-          <Text style={styles.caption}>Tap a {GROUP_ONE[group]} to practise it.</Text>
+          <Text style={styles.caption}>Tap a {GROUP_ONE[group]} to practice it.</Text>
         </>
       )}
     </GlassCard>
@@ -826,7 +969,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
             ) : (
               <View style={styles.chips}>
                 {list.slice(0, 14).map((s) => {
-                  const ok = isMastered(passesOf(m.language, m.sign_group, s));
+                  const ok = doneInModule(m, s);
                   return (
                     <View key={s} style={[styles.signChip, ok ? styles.signChipOk : styles.signChipNo]}>
                       {ok ? <CheckIcon size={11} color={colors.successText} strokeWidth={3} /> : null}
@@ -847,7 +990,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
             </View>
           </View>
           {done ? (
-            <KidButton small label="Practise again" onPress={() => practise({ language: m.language, group: m.sign_group, sign: list[0] }, m.id)} style={isMobile ? styles.fullWidth : undefined} />
+            <KidButton small label="Practice again" onPress={() => practice({ language: m.language, group: m.sign_group, sign: list[0] }, m.id)} style={isMobile ? styles.fullWidth : undefined} />
           ) : (
             <KidButton
               small
@@ -865,8 +1008,8 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
     <GlassCard radius={20} padding={20} contentStyle={styles.gap12}>
       <Text style={styles.body}>
         {profile?.class_id
-          ? "Your teacher hasn't added any modules yet. You can still practise everything in My signs."
-          : "Join your class to see what your teacher picks for you. You can still practise everything in My signs."}
+          ? "Your teacher hasn't added any modules yet. You can still practice everything in My signs."
+          : "Join your class to see what your teacher picks for you. You can still practice everything in My signs."}
       </Text>
       <KidButton small label="Go to My signs" onPress={() => setTab("signs")} style={styles.selfStart} />
     </GlassCard>
@@ -884,8 +1027,14 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
               <PresenceDot status={presence} />
             </View>
           </View>
-          <Text style={styles.body}>Call to practise signs together. Your teacher can ask you to sign and help you.</Text>
-          {callButton(true, presence === "busy" ? callLabel : `Call ${teacher.name.split(" ")[0]}`)}
+          <Text style={styles.body}>Call to practice signs together. Your teacher can ask you to sign and help you.</Text>
+          {callTimeText ? (
+            <View style={[styles.callTime, gate?.kind === "open" && styles.callTimeOn]}>
+              <CalendarIcon size={16} color={gate?.kind === "open" ? colors.successText : colors.textSecondary} />
+              <Text style={[styles.callTimeText, styles.flex]}>{callTimeText}</Text>
+            </View>
+          ) : null}
+          {callButton(true, !canCall || presence === "busy" ? callLabel : `Call ${teacherShortName(teacher.name)}`)}
         </>
       ) : (
         <Text style={styles.body}>Your class doesn't have a teacher yet.</Text>
@@ -898,6 +1047,7 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
 
   const teacherTab = isMobile ? (
     <View style={styles.tabBody}>
+      {callTimeNotice}
       {missedNotice}
       {moduleCards}
       {profile?.class_id ? null : <JoinClassCard onJoined={joined} />}
@@ -919,16 +1069,17 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
       accentColor={accentColor}
       roleLabel="Student"
       userName={profile?.full_name ?? "..."}
-      onSignOut={onSignOut}
+      onSignOut={guest ? undefined : onSignOut}
       onExitToStart={onExitToStart}
+      backAccessibilityLabel={guest ? exitLabel : undefined}
       onOpenTranslator={onOpenTranslator}
-      profile={profile}
+      profile={guest ? null : profile}
       onProfileChange={(p) => {
         setProfile(p);
-        onAccountChange();
+        onAccountChange?.();
       }}
       contentMaxWidth={1248}
-      tabs={TABS.map((t) => ({ key: t.key, label: t.label, icon: (c: string) => t.icon(c, 20) }))}
+      tabs={tabs.map((t) => ({ key: t.key, label: t.label, icon: (c: string) => t.icon(c, 20) }))}
       activeTab={tab}
       onTab={(k) => setTab(k as Tab)}
       scrollKey={tab}
@@ -939,8 +1090,17 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
             <AlertCircleIcon size={24} color={colors.dangerText} />
             <View style={styles.flex} accessibilityHint={error}>
               <Text style={styles.h3}>We couldn't load your signs</Text>
-              <Text style={styles.body}>Check the internet, then try again.</Text>
-              <KidButton small label="Try again" onPress={load} style={styles.msgAction} />
+              <Text style={styles.body}>
+                {guest
+                  ? "Something went wrong on this device. Try again."
+                  : onPracticeOffline
+                    ? "Check the internet, then try again. No internet? You can still practice offline."
+                    : "Check the internet, then try again."}
+              </Text>
+              <View style={[styles.row10, styles.msgAction]}>
+                <KidButton small label="Try again" onPress={load} />
+                {!guest && onPracticeOffline ? <KidButton small variant="ghost" label="Practice offline" onPress={onPracticeOffline} /> : null}
+              </View>
             </View>
           </GlassCard>
         ) : null}
@@ -953,10 +1113,12 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
           </View>
         ) : null}
 
-        {topStrip}
-        {isDesktop ? pageTabs : null}
+        {/* A failed load shows only the card above: "0 signs learned" and
+            untried tiles would read as lost progress. */}
+        {error ? null : topStrip}
+        {error || !isDesktop ? null : pageTabs}
 
-        {loading && !profile ? (
+        {error ? null : loading && (guest ? !guestLoaded : !profile) ? (
           <GlassCard radius={22} padding={20}>
             <View style={styles.tileGrid}>
               {Array.from({ length: 6 }).map((_, i) => (
@@ -965,12 +1127,12 @@ export default function StudentDashboard({ accentColor, onSignOut, onExitToStart
             </View>
             <Text style={[styles.body, { marginTop: 14 }]}>Getting your signs…</Text>
           </GlassCard>
-        ) : tab === "today" ? (
-          todayTab
         ) : tab === "signs" ? (
           signsTab
-        ) : (
+        ) : tab === "teacher" && !guest ? (
           teacherTab
+        ) : (
+          todayTab
         )}
       </View>
     </DashboardShell>
@@ -1061,6 +1223,7 @@ const makeStyles = (colors: ThemeColors, theme: Theme) => {
     pillName: { fontFamily: fonts.bodySemiBold, fontSize: 14.5, color: colors.textPrimary },
     pillRole: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.textSecondary },
     pillNone: { paddingRight: 10 },
+    guestPill: { paddingLeft: 14, paddingRight: 16, paddingVertical: 11 },
     callBtn: {
       height: 44,
       flexDirection: "row",
@@ -1075,6 +1238,11 @@ const makeStyles = (colors: ThemeColors, theme: Theme) => {
     callBtnBig: { height: 52, paddingHorizontal: 24, alignSelf: "stretch" },
     callText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.onPrimary },
     callTextBig: { fontSize: 16 },
+    callBtnOff: { backgroundColor: colors.neuWell, ...(Platform.OS === "web" ? ({ cursor: "not-allowed" } as object) : null) },
+    callTextOff: { color: colors.textSecondary },
+    callTime: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12, borderRadius: 14, backgroundColor: colors.neuWell },
+    callTimeOn: { backgroundColor: colors.success + "1F" },
+    callTimeText: { fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 20, color: colors.textPrimary },
     avatar: {
       alignItems: "center",
       justifyContent: "center",
@@ -1105,7 +1273,7 @@ const makeStyles = (colors: ThemeColors, theme: Theme) => {
     notice: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, paddingLeft: 14, paddingRight: 8, borderRadius: 14, backgroundColor: colors.well },
     noticeText: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.textPrimary },
     msgRow: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
-    msgAction: { alignSelf: "flex-start", marginTop: 12 },
+    msgAction: { alignSelf: "flex-start", marginTop: 12, flexWrap: "wrap" },
 
     // Today
     todayRow: { flexDirection: "row", gap: 18, alignItems: "stretch" },

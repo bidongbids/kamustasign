@@ -5,6 +5,8 @@
 // the role cards became the login card and the rest stayed: the Translator
 // as a ghost button below an "OR SKIP SIGN-IN" rule, since skipping sign-in
 // is a categorically different action from signing in.
+// With no internet (App's connectivity check) a second button joins it:
+// the Classroom, for practice without an account (StudentDashboard `guest`).
 // Desktop gets a two-pane split (432px brand pane + the card); tablet is a
 // single scrolling column with the ghost button pinned to the bottom. Phones
 // (<768) get the docs/KAMUSTASIGN_LIGHT_THEME_HANDOFF.md layout (PhoneStart):
@@ -21,7 +23,7 @@ import GradientBackground from "../../components/GradientBackground";
 import GlassCard from "../../components/GlassCard";
 import { AppearanceButton } from "../../components/AppearancePanel";
 import { VideoCameraIcon } from "../../components/icons/RoleIcons";
-import { ChevronRightIcon } from "../../components/icons/UiIcons";
+import { BookIcon, ChevronRightIcon } from "../../components/icons/UiIcons";
 import { typography, spacing, radii, mobileTypography, ThemeColors } from "../../theme/theme";
 import { useResponsive } from "../../theme/responsive";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
@@ -29,6 +31,8 @@ import { Theme, useTheme, useThemedStyles } from "../../theme/ThemeProvider";
 
 type Props = {
   onOpenTranslator: () => void;
+  /** Offline only: the Classroom without an account. No button when not given. */
+  onOpenClassroom?: () => void;
   /** The login form, or whose session this is; shown in a frosted card. */
   children: React.ReactNode;
 };
@@ -88,6 +92,22 @@ function TranslatorGhostButtonDesktop({ onPress }: { onPress: () => void }) {
   );
 }
 
+function ClassroomGhostButtonDesktop({ onPress }: { onPress: () => void }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.translatorGhostDesktop, styles.classroomGhostDesktop]}
+      accessibilityRole="button"
+      accessibilityLabel="Practice in the Classroom — no internet or account needed"
+    >
+      <View style={[styles.translatorDot, styles.classroomDot]} />
+      <Text style={[typography.label, styles.translatorLabel]}>Practice in the Classroom</Text>
+      <Text style={[typography.bodySm, styles.translatorHint]}>works offline</Text>
+    </Pressable>
+  );
+}
+
 function SkipDivider() {
   const styles = useThemedStyles(makeStyles);
   return (
@@ -136,6 +156,7 @@ const makePhoneStyles = (c: ThemeColors, theme: Theme) =>
       ...theme.shadows.neuRaised("md"),
     },
     translatorPressed: theme.shadows.neuPressed(),
+    classroom: { marginTop: spacing.md },
     iconTile: {
       width: 40,
       height: 40,
@@ -150,7 +171,7 @@ const makePhoneStyles = (c: ThemeColors, theme: Theme) =>
     footer: { ...mobileTypography.caption, color: c.textMuted, marginTop: "auto", paddingTop: spacing.xl, textAlign: "center" },
   });
 
-function PhoneStart({ onOpenTranslator, children }: Props) {
+function PhoneStart({ onOpenTranslator, onOpenClassroom, children }: Props) {
   const { colors: c } = useTheme();
   const styles = useThemedStyles(makePhoneStyles);
   const insets = useSafeAreaInsets();
@@ -196,6 +217,23 @@ function PhoneStart({ onOpenTranslator, children }: Props) {
           </View>
           <ChevronRightIcon size={16} color={c.textSecondary} />
         </Pressable>
+        {onOpenClassroom ? (
+          <Pressable
+            onPress={onOpenClassroom}
+            accessibilityRole="button"
+            accessibilityLabel="Practice in the Classroom, no internet or account needed"
+            style={({ pressed }) => [styles.translator, styles.classroom, pressed && styles.translatorPressed]}
+          >
+            <View style={styles.iconTile}>
+              <BookIcon color={c.accentText} />
+            </View>
+            <View style={styles.translatorText}>
+              <Text style={styles.translatorLabel}>Classroom</Text>
+              <Text style={styles.translatorHint}>Practice offline · no account needed</Text>
+            </View>
+            <ChevronRightIcon size={16} color={c.textSecondary} />
+          </Pressable>
+        ) : null}
 
         <Text style={styles.footer}>Real-time ASL and FSL interpretation for Liloan Central School.</Text>
       </ScrollView>
@@ -209,7 +247,7 @@ export default function StartLayout(props: Props) {
   return <WideStart {...props} />;
 }
 
-function WideStart({ onOpenTranslator, children }: Props) {
+function WideStart({ onOpenTranslator, onOpenClassroom, children }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { isDesktop } = useResponsive();
@@ -258,6 +296,7 @@ function WideStart({ onOpenTranslator, children }: Props) {
             <LoginCard padding={spacing.xl}>{children}</LoginCard>
             <SkipDivider />
             <TranslatorGhostButtonDesktop onPress={onOpenTranslator} />
+            {onOpenClassroom ? <ClassroomGhostButtonDesktop onPress={onOpenClassroom} /> : null}
           </Animated.View>
         </ScrollView>
         <View style={styles.appearanceCorner}>
@@ -294,7 +333,17 @@ function WideStart({ onOpenTranslator, children }: Props) {
           >
             <Text style={[typography.label, styles.translatorLabel]}>Open the Translator</Text>
           </Pressable>
-          <Text style={[typography.caption, styles.mobileHint]}>No account needed</Text>
+          {onOpenClassroom ? (
+            <Pressable
+              onPress={onOpenClassroom}
+              style={[styles.translatorGhostMobile, styles.classroomGhostMobile]}
+              accessibilityRole="button"
+              accessibilityLabel="Practice in the Classroom — no internet or account needed"
+            >
+              <Text style={[typography.label, styles.translatorLabel]}>Practice in the Classroom</Text>
+            </Pressable>
+          ) : null}
+          <Text style={[typography.caption, styles.mobileHint]}>{onOpenClassroom ? "No account needed · works offline" : "No account needed"}</Text>
         </View>
       </ScrollView>
       <View style={styles.appearanceCorner}>
@@ -403,6 +452,13 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
     backgroundColor: colors.success,
     boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 8, color: colors.success }],
   } as ViewStyle,
+  classroomGhostDesktop: {
+    marginTop: spacing.sm + 2,
+  },
+  classroomDot: {
+    backgroundColor: colors.accent,
+    boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 8, color: colors.accent }],
+  } as ViewStyle,
   translatorLabel: {
     color: colors.textPrimary,
   },
@@ -458,6 +514,9 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
     borderColor: "rgba(255,255,255,0.20)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  classroomGhostMobile: {
+    marginTop: spacing.sm + 2,
   },
   mobileHint: {
     color: colors.textTertiary,
