@@ -40,6 +40,7 @@ import {
 } from "../../lib/teacherInsights";
 import type { ClassRow, StudentProgressSummary } from "../../lib/queries";
 import type { PresenceStatus } from "../../lib/callSignaling";
+import { isAndroidApp } from "../../lib/androidApp";
 
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
 
@@ -371,9 +372,11 @@ function StudentsEmpty({ klass, onCopyCode, onPrint, onInvite }: Props) {
 
 /** A print page with the class code in big type (window.print). */
 export function printClassCode(klass: ClassRow): boolean {
-  if (Platform.OS !== "web" || typeof window === "undefined") return false;
+  if (Platform.OS !== "web" || typeof window === "undefined" || isAndroidApp()) return false;
   const w = window.open("", "_blank", "width=760,height=600");
-  if (!w) return false;
+  // A web view without a second window hands back this same page (Android's
+  // does); writing the print page into it would wipe the app.
+  if (!w || w === window) return false;
   const esc = (t: string) => t.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]!);
   w.document.write(
     `<!doctype html><html><head><meta charset="utf-8"><title>Class code · ${esc(klass.name)}</title>` +

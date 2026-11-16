@@ -11,6 +11,7 @@ import {
   groupKey,
   groupOff,
   isMastered,
+  passedSince,
   planSigns,
   type ClassPlan,
   type GroupKey,
@@ -167,7 +168,7 @@ export function sortRoster<T extends RosterStudent>(
 
 // ---- progress rows ----
 
-type Row = { sign: string; passes: number; attempts?: number };
+type Row = { sign: string; passes: number; attempts?: number; last_passed_at?: string | null };
 
 export type Cell = "learned" | "tried" | "none";
 export type GridRow = { id: string; name: string; cells: Cell[]; learned: number; tried: string[] };
@@ -196,12 +197,21 @@ export function shareLearned(grid: GridRow[], signs: string[]): number[] {
   return signs.map((_, i) => (grid.length ? grid.filter((g) => g.cells[i] === "learned").length / grid.length : 0));
 }
 
-/** How far each student is through a module's signs, the class average, and who finished. */
-export function moduleCompletion(signs: string[], studentIds: string[], rowsByStudent: Map<string, Row[]> | null | undefined) {
+/**
+ * How far each student is through a module's signs, the class average, and
+ * who finished. `since` is the module's created_at: only passes from then on
+ * count (passedSince), so a sign learned before still has to be done.
+ */
+export function moduleCompletion(
+  signs: string[],
+  studentIds: string[],
+  rowsByStudent: Map<string, Row[]> | null | undefined,
+  since?: string | null
+) {
   const set = new Set(signs);
   const perStudent = new Map<string, number>();
   for (const id of studentIds) {
-    const learned = (rowsByStudent?.get(id) ?? []).filter((r) => set.has(r.sign) && isMastered(r)).length;
+    const learned = (rowsByStudent?.get(id) ?? []).filter((r) => set.has(r.sign) && passedSince(r, since)).length;
     perStudent.set(id, learned);
   }
   const fractions = studentIds.map((id) => (signs.length ? (perStudent.get(id) ?? 0) / signs.length : 0));
@@ -273,6 +283,19 @@ export function nameList(names: string[], max = 3): string {
 }
 
 export const firstNameOf = (name: string) => name.trim().split(/\s+/)[0] || name;
+
+const TITLES = /^(mr|mrs|ms|miss|mx|dr|prof|sir|ma'?am|teacher|gng|g)\.?$/i;
+
+/**
+ * How a student names their teacher: with a title the whole name ("Ms.
+ * Reyes", "Sir Juan dela Cruz" - surnames can be several words), without
+ * one the first name ("Ana Santos" is "Ana").
+ */
+export function teacherShortName(name: string): string {
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 2 && TITLES.test(words[0])) return words.join(" ");
+  return words[0] || name;
+}
 
 /** "ASL Letters" from a group key. */
 export function groupLabel(language: SignLanguage, group: SignGroup): string {

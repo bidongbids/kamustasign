@@ -595,3 +595,19 @@ export function ChevronRightIcon({ size = 14, color = "#000000" }: IconProps) {
     </Svg>
   );
 }
+
+/** No internet: Wi-Fi arcs with a slash (the offline Classroom, the start screen). */
+export function WifiOffIcon({ size = 18, color = "#000000" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M2.5 8.8a14 14 0 0 1 4.2-2.6M10.3 5.3A14 14 0 0 1 21.5 8.8M5.5 12.3a9.5 9.5 0 0 1 3.4-2M14.6 10.2a9.5 9.5 0 0 1 3.9 2.1M8.7 15.6a5 5 0 0 1 6.6 0"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Circle cx={12} cy={19} r={1.25} fill={color} />
+      <Path d="M3.5 3.5l17 17" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}

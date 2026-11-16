@@ -13,6 +13,7 @@ import {
   sortRoster,
   soonGroupsText,
   stuckSigns,
+  teacherShortName,
   toDay,
 } from "../lib/teacherInsights";
 import type { SignInsight } from "../lib/classInsights";
@@ -99,6 +100,18 @@ describe("progress grid", () => {
     expect(done.perStudent.get("a")).toBe(1);
     expect(moduleCompletion(["A"], ["a"], null).average).toBe(0);
   });
+
+  it("counts a module's signs only when passed after the module was made", () => {
+    const made = "2026-11-05T08:00:00Z";
+    const byStudent = new Map([
+      ["a", [{ sign: "A", passes: 3, last_passed_at: "2026-11-02T08:00:00Z" }]], // learned before
+      ["b", [{ sign: "A", passes: 4, last_passed_at: "2026-11-05T10:00:00Z" }]], // did it for the module
+    ]);
+    const done = moduleCompletion(["A"], ["a", "b"], byStudent, made);
+    expect(done.perStudent.get("a")).toBe(0);
+    expect(done.perStudent.get("b")).toBe(1);
+    expect(done.finished).toBe(1);
+  });
 });
 
 describe("Today", () => {
@@ -158,5 +171,14 @@ describe("words", () => {
     const avg = classGroupAverages([{ mastered: { "asl:letters": 13 } }, { mastered: {} }], {});
     expect(avg.find((g) => g.key === "asl:letters")?.value).toBeCloseTo(0.25);
     expect(avg.map((g) => g.key)).toEqual(["asl:letters", "asl:numbers", "asl:words", "fsl:letters", "fsl:numbers", "fsl:words"]);
+  });
+});
+
+describe("teacherShortName", () => {
+  it("keeps a title with the surname, else the first name", () => {
+    expect(teacherShortName("Ms. Reyes")).toBe("Ms. Reyes");
+    expect(teacherShortName("Sir Juan dela Cruz")).toBe("Sir Juan dela Cruz");
+    expect(teacherShortName("Ana Santos")).toBe("Ana");
+    expect(teacherShortName("Teacher")).toBe("Teacher");
   });
 });

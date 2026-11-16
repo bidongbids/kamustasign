@@ -9,6 +9,7 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 import { fonts, radii, spacing, type ThemeColors } from "../../theme/theme";
+import { stateHints } from "../../theme/interactionStates";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { AlertCircleIcon, CheckIcon, CloseIcon, RetryIcon, SearchIcon } from "../../components/icons/UiIcons";
 import type { ProfileRole } from "../../lib/queries";
@@ -327,7 +328,7 @@ export function SearchField({
   const { colors, shadows } = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
-    <View style={[styles.search, shadows.neuInset("sm")]}>
+    <View style={[styles.search, shadows.neuInset("sm")]} {...stateHints({ focusRing: "frame" })}>
       <SearchIcon size={16} color={colors.textSecondary} />
       <TextInput
         value={value}
@@ -340,7 +341,7 @@ export function SearchField({
         style={styles.searchInput}
       />
       {value ? (
-        <Pressable onPress={() => onChangeText("")} hitSlop={10} accessibilityLabel="Clear search" style={webCursor}>
+        <Pressable onPress={() => onChangeText("")} hitSlop={10} accessibilityRole="button" accessibilityLabel="Clear search" style={webCursor}>
           <CloseIcon size={14} color={colors.textSecondary} />
         </Pressable>
       ) : null}
@@ -395,6 +396,7 @@ export function InlineField({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onSubmitEditing={() => !busy && value.trim() && onSubmit()}
+          {...stateHints({ focusRing: "own" })}
           style={[styles.fieldInput, focused && styles.fieldInputFocused]}
         />
         <ActionButton

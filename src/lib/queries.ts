@@ -12,6 +12,7 @@
 // asks for. (The legacy assignments / submissions / scores tables are
 // closed since 0011 and have no functions here.)
 import { supabase } from "./supabase";
+import type { CallBooking } from "./callSchedule";
 import {
   countMastered,
   getGroup,
@@ -384,7 +385,7 @@ export type StudentProgressSummary = {
 };
 
 export type ProgressEmbed = Pick<LessonProgressRow, "language" | "sign_group" | "sign" | "passes"> &
-  Partial<Pick<LessonProgressRow, "best_confidence" | "attempts">>;
+  Partial<Pick<LessonProgressRow, "best_confidence" | "attempts" | "last_passed_at">>;
 
 function summarizeStudent(row: any): StudentProgressSummary {
   const klass = toOne(row.classes) as { name: string } | null;
@@ -409,11 +410,12 @@ export async function getLessonProgress(studentId: string, language: SignLanguag
 }
 
 // Every row the student has, across languages and groups - for the module
-// cards, whose signs can come from any group.
+// cards, whose signs can come from any group (last_passed_at: a module only
+// counts passes since it was made, passedSince).
 export async function getAllLessonProgress(studentId: string) {
   return supabase
     .from("lesson_progress")
-    .select("language, sign_group, sign, passes, best_confidence")
+    .select("language, sign_group, sign, passes, best_confidence, last_passed_at")
     .eq("student_id", studentId);
 }
 
@@ -467,11 +469,11 @@ export async function getClassProgressSummary(classId: string) {
 
 // Teacher's module view and "Signs to review": every student's rows for one
 // language+group (not just mastered ones), so a module can show per-student
-// progress over its own signs.
+// progress over its own signs (passes since the module was made).
 export async function getClassGroupProgress(classId: string, language: SignLanguage, group: SignGroup) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, lesson_progress(language, sign_group, sign, attempts, passes, best_confidence)")
+    .select("id, lesson_progress(language, sign_group, sign, attempts, passes, best_confidence, last_passed_at)")
     .eq("class_id", classId)
     .eq("role", "student")
     .eq("lesson_progress.language", language)
@@ -563,4 +565,68 @@ export async function getCallNotes(classId: string): Promise<{ data: CallNoteRow
 
 export async function deleteCallNote(id: string) {
   return supabase.from("call_notes").delete().eq("id", id);
+}
+
+// ---- booked calls (0017_call_bookings.sql) ----
+// The teacher books each call; a student can only call in their booked time
+// (src/lib/callSchedule.ts). A missing table (0017 not applied yet) reads as
+// `missing: true`, and the app then lets calls through as before.
+
+export type { CallBooking } from "./callSchedule";
+
+const BOOKING_COLUMNS = "id, class_id, teacher_id, student_id, starts_at, ends_at";
+
+/** The overlap errors (exclusion constraints) in words. */
+function bookingError(error: { code?: string; message: string }): { message: string } {
+  if (error.code === "23P01") {
+    return {
+      message: error.message.includes("student_free")
+        ? "That student already has a call booked at that time. Pick another time."
+        : "That time overlaps another call you booked. Pick another time.",
+    };
+  }
+  if (missingTable(error)) return { message: "Booking calls needs the 0017 database update. Ask your admin to apply it." };
+  return error;
+}
+
+type BookingsResult = { data: CallBooking[]; error: { message: string } | null; missing: boolean };
+
+/** Teacher: every booking of theirs that hasn't ended, across all their classes, with the student's name. */
+export async function getTeacherBookings(teacherId: string): Promise<BookingsResult> {
+  const { data, error } = await supabase
+    .from("call_bookings")
+    .select(`${BOOKING_COLUMNS}, student:profiles!call_bookings_student_id_fkey(full_name)`)
+    .eq("teacher_id", teacherId)
+    .gt("ends_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+  if (error) return { data: [], error: missingTable(error) ? null : error, missing: missingTable(error) };
+  return { data: ((data as any[]) ?? []).map((r) => ({ ...r, student: toOne(r.student) })), error: null, missing: false };
+}
+
+/** Student: their own bookings that haven't ended. */
+export async function getMyBookings(studentId: string): Promise<BookingsResult> {
+  const { data, error } = await supabase
+    .from("call_bookings")
+    .select(BOOKING_COLUMNS)
+    .eq("student_id", studentId)
+    .gt("ends_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+  if (error) return { data: [], error: missingTable(error) ? null : error, missing: missingTable(error) };
+  return { data: (data as CallBooking[]) ?? [], error: null, missing: false };
+}
+
+/** Books a call, or moves an existing booking (`id`) to a new time. */
+export async function saveBooking(
+  booking: { class_id: string; teacher_id: string; student_id: string; starts_at: string; ends_at: string },
+  id?: string
+): Promise<{ error: { message: string } | null }> {
+  const { error } = id
+    ? await supabase.from("call_bookings").update({ starts_at: booking.starts_at, ends_at: booking.ends_at }).eq("id", id)
+    : await supabase.from("call_bookings").insert(booking);
+  return { error: error ? bookingError(error) : null };
+}
+
+export async function cancelBooking(id: string): Promise<{ error: { message: string } | null }> {
+  const { error } = await supabase.from("call_bookings").delete().eq("id", id);
+  return { error: error ? bookingError(error) : null };
 }

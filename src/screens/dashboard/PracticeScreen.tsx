@@ -58,6 +58,8 @@ type Props = {
   /** The group's signs in curriculum order, and the student's rows for them - for "Next sign". */
   signs: string[];
   rows: Map<string, LessonProgressRow>;
+  /** Practicing a teacher's module: its created_at. "Next sign" skips only signs passed since then. */
+  doneSince?: string | null;
   accentColor: string;
   /** Every saved attempt's returned row, so the dashboard (and "Next sign") stay current. */
   onRowUpdate: (row: LessonProgressRow) => void;
@@ -65,7 +67,21 @@ type Props = {
   onChangeSign: (sign: string) => void;
   /** Called after any pending progress write has finished. */
   onDone: () => void;
+  /**
+   * Where an attempt is saved. Default: the student's lesson_progress
+   * (recordAttempt). The offline Classroom saves on this device instead
+   * (localProgress.ts) - same returned row either way.
+   */
+  saveAttempt?: SaveAttempt;
 };
+
+export type SaveAttempt = (
+  language: SignLanguage,
+  group: SignGroup,
+  sign: string,
+  passed: boolean,
+  confidence: number
+) => Promise<{ data: unknown; error: { message: string } | null }>;
 
 type WriteResult = { counted: boolean; crossed: boolean; alreadyLearned: boolean };
 const GROUP_WORD: Record<SignGroup, string> = { letters: "letter", numbers: "number", words: "word" };
@@ -77,9 +93,11 @@ export default function PracticeScreen({
   sign,
   signs,
   rows,
+  doneSince,
   onRowUpdate,
   onChangeSign,
   onDone,
+  saveAttempt,
 }: Props) {
   const { colors, shadows } = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -156,7 +174,7 @@ export default function PracticeScreen({
   const groupLabel = getGroup(language, group).label;
   // Rises live as soon as this session beats the stored best.
   const stars = accuracyStars(Math.max(storedBest, best), starReference(language, group, sign));
-  const nextSign = nextPracticeSign(signs, rows, sign);
+  const nextSign = nextPracticeSign(signs, rows, sign, doneSince);
   const shownSign = signName(language, sign);
   const shownNext = nextSign ? signName(language, nextSign) : null;
 
@@ -172,7 +190,9 @@ export default function PracticeScreen({
     const target = signRef.current;
     const job = writesRef.current.then(async (): Promise<WriteResult> => {
       const none = { counted: false, crossed: false, alreadyLearned: false };
-      const { data, error } = await recordAttempt(studentId, language, group, target, passed, confidence);
+      const { data, error } = saveAttempt
+        ? await saveAttempt(language, group, target, passed, confidence)
+        : await recordAttempt(studentId, language, group, target, passed, confidence);
       if (error) {
         lastFailedRef.current = { sign: target, passed, confidence };
         if (target === signRef.current) setSaveError(error.message);
@@ -285,7 +305,7 @@ export default function PracticeScreen({
     onChangeSign(next);
   }
 
-  function practiseAgain() {
+  function practiceAgain() {
     lastKindRef.current = "waiting";
     setFeedback({ kind: "waiting" });
     setHold(0);
@@ -331,7 +351,7 @@ export default function PracticeScreen({
       nextSign={shownNext}
       groupWord={GROUP_WORD[group]}
       onNext={() => nextSign && goToSign(nextSign)}
-      onRepeat={practiseAgain}
+      onRepeat={practiceAgain}
       onBack={handleBack}
       compact={!isDesktop}
     />

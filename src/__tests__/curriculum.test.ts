@@ -12,6 +12,7 @@ import {
   groupOff,
   isMastered,
   mostReliableFirst,
+  passedSince,
   planSigns,
   formatPercent,
   UNKNOWN_SIGN_LABEL,
@@ -54,6 +55,19 @@ describe("mastery", () => {
     expect(isMastered(null)).toBe(false);
     expect(isMastered({ passes: MASTERY_PASSES - 1 })).toBe(false);
     expect(isMastered({ passes: MASTERY_PASSES })).toBe(true);
+  });
+
+  it("a module counts only passes since it was made", () => {
+    const made = "2026-11-05T08:00:00+00:00";
+    const before = { passes: MASTERY_PASSES, last_passed_at: "2026-11-01T08:00:00+00:00" };
+    const after = { passes: MASTERY_PASSES, last_passed_at: "2026-11-05T09:30:00.123456+00:00" };
+    expect(passedSince(before, made)).toBe(false); // learned before: still has to do it
+    expect(passedSince(after, made)).toBe(true);
+    expect(passedSince({ passes: 0, last_passed_at: null }, made)).toBe(false);
+    expect(passedSince({ passes: MASTERY_PASSES, last_passed_at: null }, made)).toBe(false);
+    expect(passedSince(null, made)).toBe(false);
+    // No module: same as isMastered.
+    expect(passedSince(before, null)).toBe(true);
   });
 
   it("countMastered ignores signs no longer in the curriculum", () => {

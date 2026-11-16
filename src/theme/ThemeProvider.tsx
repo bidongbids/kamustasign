@@ -13,6 +13,7 @@ import { Appearance, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { palettes, SchemeName, SCHEMES, ThemeColors, ThemeName } from "./theme";
 import { makeShadows, Shadows } from "./shadows";
+import { applyInteractionStates } from "./interactionStates";
 import { useResponsive } from "./responsive";
 
 export type ThemeMode = "light" | "dark";
@@ -108,6 +109,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const colors = palettes[scheme][name];
     return { mode, name, scheme, colors, shadows: makeShadows(name, colors), isMobile, setMode, setScheme, reset };
   }, [mode, name, scheme, isMobile, setMode, setScheme, reset]);
+  // Hover / pressed / focus colours for every control (web stylesheet).
+  useEffect(() => applyInteractionStates(value.name, value.colors), [value.name, value.colors]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 

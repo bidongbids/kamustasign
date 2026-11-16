@@ -3,7 +3,7 @@
 // rule. Mastery, the pass threshold and the cooldown still come from
 // curriculum.ts; this only decides how they are SHOWN (tile state, the
 // "Next" sign). Stars are accuracy (starReference.ts).
-import { isMastered } from "./curriculum";
+import { isMastered, passedSince } from "./curriculum";
 import { accuracyStars } from "./starReference";
 
 export type ProgressLike = {
@@ -27,15 +27,17 @@ export function starsFor(row: ProgressLike | null | undefined, reference: number
 }
 
 /**
- * The sign to practise next, in curriculum order: the first sign after
+ * The sign to practice next, in curriculum order: the first sign after
  * `after` (wrapping once, never `after` itself) that is not learned. Null
  * when every other sign is learned. With `after` null it scans from the start and may
- * return any sign - this is the dashboard's "Next up".
+ * return any sign - this is the dashboard's "Next up". Practicing a module,
+ * `since` is its created_at: "learned" then means passed since (passedSince).
  */
 export function nextPracticeSign(
   signs: string[],
   rows: Map<string, ProgressLike>,
-  after: string | null
+  after: string | null,
+  since?: string | null
 ): string | null {
   if (signs.length === 0) return null;
   const start = after === null ? 0 : signs.indexOf(after) + 1;
@@ -44,7 +46,7 @@ export function nextPracticeSign(
     const sign = signs[(start + i) % signs.length];
     if (sign !== after) ordered.push(sign);
   }
-  return ordered.find((s) => !isMastered(rows.get(s))) ?? null;
+  return ordered.find((s) => !passedSince(rows.get(s), since)) ?? null;
 }
 
 export function chunk<T>(items: T[], size: number): T[][] {

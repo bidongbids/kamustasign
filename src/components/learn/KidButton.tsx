@@ -5,6 +5,7 @@ import React, { forwardRef } from "react";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { kidTypography, sizes, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
+import { focusFromKeyboard } from "../../lib/focusVisible";
 
 type Props = {
   label: string;
@@ -44,7 +45,7 @@ const KidButton = forwardRef<View, Props>(function KidButton(
         variant === "raised" && [styles.raised, shadows.neuRaised(small ? "sm" : "md")],
         variant === "ghost" && styles.ghost,
         state.pressed && { transform: [{ scale: 0.98 }] },
-        state.focused && styles.focused,
+        state.focused && focusFromKeyboard() && styles.focused,
         disabled && styles.disabled,
         style,
       ]}

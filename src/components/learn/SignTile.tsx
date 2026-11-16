@@ -12,6 +12,7 @@ import { StarRow } from "./Stars";
 import { CheckIcon } from "../icons/UiIcons";
 import { fonts, kidTypography, sizes, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
+import { focusFromKeyboard } from "../../lib/focusVisible";
 import { type SignGroup, type SignLanguage } from "../../lib/curriculum";
 import { signName } from "../../lib/signNames";
 import { starReference, starsText } from "../../lib/starReference";
@@ -51,14 +52,14 @@ export default function SignTile({ sign, language, group, word, row, isNext, onP
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Practise ${name}, ${stateWords}${isNext ? ", next up" : ""}`}
+      accessibilityLabel={`Practice ${name}, ${stateWords}${isNext ? ", next up" : ""}`}
       style={(state: any) => [
         styles.tile,
         word ? [styles.word, width ? { width, maxWidth: width } : null] : [styles.glyph, { width: w, height: Math.round(w * 1.1) }],
         notYet && !isNext ? styles.notYet : styles.raised,
         isNext && styles.next,
         state.pressed && { transform: [{ scale: 0.97 }] },
-        state.focused && styles.focused,
+        state.focused && focusFromKeyboard() && styles.focused,
       ]}
     >
       {isNext && (

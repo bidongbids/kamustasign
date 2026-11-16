@@ -1,7 +1,7 @@
 // Teacher: author a class's modules (0009_teacher_classroom.sql) - a named
 // set of signs from one language + group of the curriculum, in the order the
 // teacher picks them, with an optional due date - and see how far each
-// student has got through each one. Students practise a module on the same
+// student has got through each one. Students practice a module on the same
 // screen as its group; "learned" is the curriculum's isMastered(), so the
 // numbers here match the student's own tiles.
 //
@@ -9,24 +9,26 @@
 //  - module cards: up/down with a visible position, the due date as words
 //    ("Due Sun, Nov 1 · in 5 days", gold within a week, red when overdue),
 //    the class average and how many finished; Delete is in the ⋯ menu;
-//  - the editor is a frosted drawer with a date picker, and the sign picker
-//    starts on "In the plan", tying step 2 back to step 1;
+//  - the editor is a drawer in three numbered steps (name it, the kind of
+//    signs, pick them): every sign on one side, the module's own ordered
+//    list on the other; the picker starts on "In the class plan", tying
+//    step 2 back to step 1;
 //  - "Modules by category" previews what it will make before making it:
 //    one module per part of speech in the plan, split into parts of at most
 //    10 when a category is long, leaving out words already in a module.
 import React, { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import SegmentedToggle from "../../components/SegmentedToggle";
 import { ActionButton, ConfirmInline, SearchField, type NoticeState } from "./ManageKit";
 import { CloseButton, Dialog, RowMenu, SideDrawer } from "./Overlays";
 import { Bar } from "./TeacherToday";
+import { LoadErrorCard } from "./TeacherStates";
 import DatePickerField from "../../components/DatePickerField";
 import {
   AlertCircleIcon,
-  ArrowRightIcon,
   CalendarIcon,
   CheckIcon,
   ChevronDownIcon,
-  ChevronLeftIcon,
   ChevronUpIcon,
   CloseIcon,
   GridIcon,
@@ -92,6 +94,8 @@ type Props = {
   klass: ClassRow;
   modules: ModuleRow[];
   loading: boolean;
+  /** The list failed to load: an error card with Try again, not the empty state. */
+  error?: boolean;
   reload: () => void;
   setModules: (next: ModuleRow[]) => void;
   students: StudentProgressSummary[];
@@ -178,6 +182,15 @@ export default function TeacherModules(props: Props) {
     );
   }
 
+  if (props.error && modules.length === 0) {
+    return (
+      <View style={[styles.card, styles.pad]}>
+        <LoadErrorCard compact title="Couldn't load the modules" onRetry={props.reload} />
+        {drawers}
+      </View>
+    );
+  }
+
   if (modules.length === 0) {
     return (
       <View style={[styles.card, styles.empty]}>
@@ -257,7 +270,7 @@ function ModuleCard({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const ids = useMemo(() => students.map((s) => s.id), [students]);
-  const done = moduleCompletion(signs, ids, rows);
+  const done = moduleCompletion(signs, ids, rows, m.created_at);
   const due = dueInfo(m.due_date);
 
   const remove = async () => {
@@ -327,14 +340,11 @@ function ModuleCard({
         </View>
         <View style={styles.cardActions}>
           <ActionButton label={open ? "Hide students" : "Students"} size="md" icon={(c) => <UsersIcon size={16} color={c} />} onPress={() => setOpen((v) => !v)} />
-          <ActionButton label={`Edit ${m.title}`} iconOnly size="md" icon={(c) => <PencilIcon size={16} color={c} />} onPress={onEdit} />
+          <ActionButton label="Edit" size="md" icon={(c) => <PencilIcon size={16} color={c} />} onPress={onEdit} />
           <RowMenu
             label={`More for ${m.title}`}
             size={44}
-            items={[
-              { key: "edit", label: "Edit", icon: (c) => <PencilIcon size={16} color={c} />, onPress: onEdit },
-              { key: "delete", label: "Delete module…", destructive: true, icon: (c) => <TrashIcon size={16} color={c} />, onPress: () => setConfirmDelete(true) },
-            ]}
+            items={[{ key: "delete", label: "Delete module…", destructive: true, icon: (c) => <TrashIcon size={16} color={c} />, onPress: () => setConfirmDelete(true) }]}
           />
         </View>
       </View>
@@ -399,7 +409,12 @@ export function DueChip({ date }: { date: string | null }) {
   );
 }
 
-// ── editor drawer (T6) ──────────────────────────────────────────────────
+// ── editor drawer ───────────────────────────────────────────────────────
+// Three numbered steps, top to bottom: name it, choose the kind of signs,
+// pick the signs. Picking is two columns on a wide screen - every sign on
+// the left (tap to add), the module's own list on the right in the order
+// students will practice it (move up / down, remove) - and one under the
+// other on a narrow one. Save is pinned at the bottom.
 
 function ModuleEditorDrawer({
   klass,
@@ -419,7 +434,7 @@ function ModuleEditorDrawer({
   onClose: (saved: boolean) => void;
 }) {
   return (
-    <SideDrawer visible={!!state} onClose={() => onClose(false)} width={680} tint="frosted" bare>
+    <SideDrawer visible={!!state} onClose={() => onClose(false)} width={EDITOR_W} bare>
       {state ? (
         <ModuleForm
           key={state.module?.id ?? `new-${state.preset?.signs.join(",") ?? ""}`}
@@ -435,6 +450,10 @@ function ModuleEditorDrawer({
     </SideDrawer>
   );
 }
+
+const EDITOR_W = 980;
+// "Add all" only for a short list (letters, a category, a search): never 300 words by one slip.
+const ADD_ALL_MAX = 40;
 
 function ModuleForm({
   klass,
@@ -455,6 +474,11 @@ function ModuleForm({
 }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const { width: W } = useWindowDimensions();
+  const phone = W < 768;
+  // The drawer's own width (SideDrawer: full width on a phone, else up to EDITOR_W).
+  const panelW = phone ? W : Math.min(EDITOR_W, W - 48);
+  const twoCol = panelW >= 820;
   const m = state.module;
   const preset = state.preset;
   const [title, setTitle] = useState(m?.title ?? preset?.title ?? "");
@@ -468,53 +492,69 @@ function ModuleForm({
   const [inPlanOnly, setInPlanOnly] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tried, setTried] = useState(false);
-  const [addingToPlan, setAddingToPlan] = useState<string | null>(null);
+  const [addingToPlan, setAddingToPlan] = useState(false);
+  const [confirmScope, setConfirmScope] = useState<{ language: SignLanguage; group: SignGroup } | null>(null);
 
   const lang = getLanguage(language);
   const groupDef = getGroup(language, group);
   const isWords = group === "words";
+  const kindWord = groupDef.label.toLowerCase(); // "letters", "numbers", "words"
   const planned = useMemo(() => new Set(planSigns(language, group, plan)), [language, group, plan]);
+  const plannedCount = groupDef.signs.filter((s) => planned.has(s)).length;
   const source = isWords && inPlanOnly ? groupDef.signs.filter((s) => planned.has(s)) : groupDef.signs;
   const categories = isWords ? categoriesIn(language, source) : [];
   const pickedSet = new Set(picked);
   const visible = filterByCategory(language, source, isWords ? category : null).filter((s) => signMatches(language, s, search));
+  const notPickedVisible = visible.filter((s) => !pickedSet.has(s));
   const notInPlan = isWords ? picked.filter((s) => !planned.has(s)) : [];
   const titleMissing = !title.trim();
   const signsMissing = picked.length === 0;
   const dueValid = !due || parseDay(due) !== null;
   const canSave = !titleMissing && !signsMissing && dueValid && groupDef.available;
+  const name = (s: string) => signName(language, s);
 
-  // Switching language or group starts a fresh pick: a module's signs all
-  // come from one group, so they'd be meaningless in another.
-  const changeScope = (l: SignLanguage, g: SignGroup) => {
-    if (l === language && g === group) return;
-    const groups = getLanguage(l).groups;
-    const nextGroup = groups.find((x) => x.group === g && x.available)?.group ?? groups.find((x) => x.available)?.group ?? g;
+  // A module's signs all come from one kind, so switching starts a fresh
+  // list - after a confirm when there is a list to lose.
+  const applyScope = (l: SignLanguage, g: SignGroup) => {
     setLanguage(l);
-    setGroup(nextGroup);
+    setGroup(resolveGroup(l, g));
     setPicked([]);
     setCategory(null);
+    setSearch("");
+    setConfirmScope(null);
+  };
+  const changeScope = (l: SignLanguage, g: SignGroup) => {
+    if (l === language && g === group) return;
+    if (picked.length > 0) setConfirmScope({ language: l, group: g });
+    else applyScope(l, g);
   };
 
   const toggle = (sign: string) => setPicked((prev) => (prev.includes(sign) ? prev.filter((s) => s !== sign) : [...prev, sign]));
-  const move = (sign: string, delta: number) =>
+  const move = (i: number, delta: number) =>
     setPicked((prev) => {
-      const i = prev.indexOf(sign);
       const j = i + delta;
       if (i < 0 || j < 0 || j >= prev.length) return prev;
       const next = [...prev];
       [next[i], next[j]] = [next[j], next[i]];
       return next;
     });
+  const addAllShown = () => setPicked((prev) => [...prev, ...notPickedVisible]);
+  const sortByCategory = () =>
+    setPicked((prev) =>
+      prev
+        .map((s, i) => ({ s, i, r: categoryRank(getWordCategory(language, s)) }))
+        .sort((a, b) => a.r - b.r || a.i - b.i)
+        .map((x) => x.s)
+    );
 
-  const addToPlan = async (word: string) => {
-    setAddingToPlan(word);
+  const addToPlan = async (words: string[]) => {
+    setAddingToPlan(true);
     const every = getGroup(language, "words").signs;
-    const nextSet = new Set([...planSigns(language, "words", plan), word]);
+    const nextSet = new Set([...planSigns(language, "words", plan), ...words]);
     const signs = nextSet.size >= every.length ? null : every.filter((s) => nextSet.has(s));
     const off = plan.off?.[language] ?? [];
     const { error } = await saveClassPlan(klass.id, language, signs, off);
-    setAddingToPlan(null);
+    setAddingToPlan(false);
     if (error) {
       setNotice({ kind: "error", message: error.message });
       return;
@@ -544,175 +584,273 @@ function ModuleForm({
     onClose(true);
   };
 
-  const pill = (label: string, active: boolean, onPress: () => void, disabled?: boolean, soon?: boolean) => (
-    <Pressable
-      key={label}
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="radio"
-      accessibilityState={{ checked: active, disabled: !!disabled }}
-      accessibilityLabel={soon ? `${label}, coming soon` : label}
-      style={[styles.fPill, active ? styles.fPillOn : styles.fPillOff, soon && styles.fPillSoon, webCursor]}
-    >
-      <Text style={[styles.fPillText, active && styles.fPillTextOn]}>
-        {label}
-        {soon ? " · soon" : ""}
+  const picker = (
+    <View style={[styles.pickCol, twoCol && styles.flex]}>
+      <Text style={styles.colTitle}>
+        All {isWords && inPlanOnly ? "words in the plan" : kindWord}
       </Text>
-    </Pressable>
+      <SearchField value={search} onChangeText={setSearch} placeholder={`Search ${kindWord}`} />
+      {isWords ? (
+        <>
+          <SegmentedToggle
+            kind="radio"
+            inline
+            size="sm"
+            accessibilityLabel="Which words to show"
+            options={[
+              { key: "plan", label: "In the class plan", count: String(plannedCount) },
+              { key: "all", label: "All words", count: String(groupDef.signs.length) },
+            ]}
+            value={inPlanOnly ? "plan" : "all"}
+            onChange={(k) => {
+              setInPlanOnly(k === "plan");
+              setCategory(null);
+            }}
+          />
+          {categories.length > 1 ? (
+            <View style={styles.catRow} accessibilityRole="radiogroup" accessibilityLabel="Kind of word">
+              {[{ key: null as WordCategory | null, label: "Every kind" }, ...categories.map((c) => ({ key: c.key as WordCategory | null, label: c.label }))].map((c) => {
+                const on = category === c.key;
+                return (
+                  <Pressable
+                    key={c.label}
+                    onPress={() => setCategory(c.key)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                    style={({ hovered }: any) => [styles.catPill, on ? styles.catPillOn : styles.catPillOff, hovered && !on && styles.hover, webCursor]}
+                  >
+                    <Text style={[styles.catText, on && styles.catTextOn]}>{c.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+        </>
+      ) : null}
+      <View style={styles.pickBar}>
+        <Text style={[styles.edMuted, styles.flex]}>
+          {visible.length === 0 ? "" : notPickedVisible.length === 0 ? "All of these are in the module." : `Tap to add. ${notPickedVisible.length} not added yet.`}
+        </Text>
+        {notPickedVisible.length > 1 && notPickedVisible.length <= ADD_ALL_MAX ? (
+          <ActionButton label={`Add all ${notPickedVisible.length}`} size="sm" icon={(c) => <PlusIcon size={13} color={c} />} onPress={addAllShown} />
+        ) : null}
+      </View>
+      <ScrollView style={[styles.chipScroll, !twoCol && styles.chipScrollNarrow]} contentContainerStyle={styles.signChips} nestedScrollEnabled>
+        {visible.map((s) => {
+          const on = pickedSet.has(s);
+          return (
+            <Pressable
+              key={s}
+              onPress={() => toggle(s)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}
+              accessibilityLabel={on ? `${name(s)}, in the module. Tap to take it out` : `Add ${name(s)}`}
+              style={({ hovered }: any) => [styles.signChip, !isWords && styles.signChipLetter, on ? styles.signChipOn : styles.signChipOff, hovered && !on && styles.hover, webCursor]}
+            >
+              {on ? <CheckIcon size={13} color={colors.textOnPrimary} strokeWidth={3} /> : <PlusIcon size={13} color={colors.textSecondary} />}
+              <Text style={[styles.signChipText, on && styles.signChipTextOn]}>{name(s)}</Text>
+            </Pressable>
+          );
+        })}
+        {visible.length === 0 ? (
+          <Text style={styles.edMuted}>
+            {isWords && inPlanOnly && planned.size === 0 ? "No words in the class plan yet. Choose All words, or add words in step 1 of What they learn." : "No signs match."}
+          </Text>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+
+  const selected = (
+    <View style={[styles.selCol, twoCol && styles.selColWide]}>
+      <View style={styles.selHead}>
+        <Text style={[styles.colTitle, styles.flex]}>
+          In this module <Text style={styles.selCount}>· {picked.length}</Text>
+        </Text>
+        {picked.length > 0 ? <ActionButton label="Remove all" size="sm" variant="ghost" onPress={() => setPicked([])} /> : null}
+      </View>
+      <Text style={styles.edMuted}>Students practice them in this order.</Text>
+      {picked.length === 0 ? (
+        <View style={[styles.selEmpty, tried && styles.selEmptyProblem]}>
+          <Text style={styles.selEmptyText}>{tried ? "Pick at least one sign." : `No ${kindWord} yet. Tap ${kindWord} ${twoCol ? "on the left" : "above"} to add them here.`}</Text>
+        </View>
+      ) : (
+        <ScrollView style={[styles.selScroll, !twoCol && styles.selScrollNarrow]} nestedScrollEnabled>
+          {picked.map((s, i) => (
+            <View key={s} style={[styles.selRow, i > 0 && styles.selRule]}>
+              <Text style={styles.selNo}>{i + 1}</Text>
+              <Text style={styles.selName} numberOfLines={1}>
+                {name(s)}
+              </Text>
+              {isWords && !planned.has(s) ? <Text style={styles.selFlag}>not in plan</Text> : null}
+              <RowBtn label={`Move ${name(s)} up`} disabled={i === 0} onPress={() => move(i, -1)}>
+                <ChevronUpIcon size={15} color={colors.textPrimary} />
+              </RowBtn>
+              <RowBtn label={`Move ${name(s)} down`} disabled={i === picked.length - 1} onPress={() => move(i, 1)}>
+                <ChevronDownIcon size={15} color={colors.textPrimary} />
+              </RowBtn>
+              <RowBtn label={`Remove ${name(s)}`} onPress={() => toggle(s)}>
+                <CloseIcon size={13} color={colors.textPrimary} />
+              </RowBtn>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+      {isWords && picked.length > 1 ? (
+        <ActionButton label="Sort by kind of word" size="sm" variant="ghost" onPress={sortByCategory} style={styles.selfStart} />
+      ) : null}
+      {notInPlan.length > 0 ? (
+        <View style={styles.planWarn}>
+          <AlertCircleIcon size={16} color={colors.accentCoralText} />
+          <Text style={[styles.warnText, styles.flex]}>
+            {notInPlan.length === 1 ? `‘${name(notInPlan[0])}’ isn't` : `${notInPlan.length} words aren't`} in the class plan, so{" "}
+            {notInPlan.length === 1 ? "it won't" : "they won't"} count toward overall progress.
+          </Text>
+          <ActionButton label="Add to plan" size="sm" loading={addingToPlan} onPress={() => void addToPlan(notInPlan)} />
+        </View>
+      ) : null}
+    </View>
   );
 
   return (
     <View style={styles.flex}>
-    <ScrollView style={styles.flex} contentContainerStyle={[styles.form, styles.formPad]} keyboardShouldPersistTaps="handled">
-      <View style={styles.formHead}>
-        <Text style={styles.formTitle} accessibilityRole="header">
-          {m ? `Edit “${m.title}”` : "New module"}
-        </Text>
-        <CloseButton onPress={() => onClose(false)} onFrosted />
-      </View>
-
-      <View style={styles.fieldRow}>
+      <View style={[styles.editorHead, phone && styles.editorHeadPhone]}>
         <View style={styles.flex}>
-          <Text style={styles.label}>Title</Text>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="e.g. Greetings"
-            placeholderTextColor={colors.textTertiary}
-            accessibilityLabel="Module title"
-            style={styles.input}
-            autoFocus={!m}
-          />
-          {tried && titleMissing ? <Problem text="Add a title." /> : null}
-        </View>
-        <View style={styles.dueCol}>
-          <Text style={styles.label}>Due date (optional)</Text>
-          <DatePickerField value={due} onChange={setDue} label="Due date" />
-        </View>
-      </View>
-
-      <View>
-        <Text style={styles.label}>Description (optional)</Text>
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          placeholder="What students will learn"
-          placeholderTextColor={colors.textTertiary}
-          accessibilityLabel="Module description"
-          style={styles.input}
-        />
-      </View>
-
-      <View>
-        <Text style={styles.label}>Signs from</Text>
-        <View style={styles.pillRow} accessibilityRole="radiogroup">
-          {CURRICULUM.map((l) => pill(l.label, l.language === language, () => changeScope(l.language, group)))}
-          <View style={styles.pillGap} />
-          {lang.groups.map((g) => pill(g.label, g.group === group, () => changeScope(language, g.group), !g.available, !g.available))}
-        </View>
-        {m && (m.language !== language || m.sign_group !== group) ? <Problem text="Changing where signs come from clears the signs picked so far." /> : null}
-      </View>
-
-      <View style={styles.pickBlock}>
-        <SearchField value={search} onChangeText={setSearch} placeholder={`Search ${groupDef.label.toLowerCase()}`} />
-        {isWords ? (
-          <>
-            <View style={styles.pillRow} accessibilityRole="radiogroup">
-              {pill(`In the plan · ${groupDef.signs.filter((s) => planned.has(s)).length}`, inPlanOnly, () => setInPlanOnly(true))}
-              {pill(`All words · ${groupDef.signs.length}`, !inPlanOnly, () => setInPlanOnly(false))}
-            </View>
-            <View style={styles.pillRow} accessibilityRole="radiogroup">
-              {pill("All", category === null, () => setCategory(null))}
-              {categories.map((c) => pill(c.label, category === c.key, () => setCategory(c.key)))}
-            </View>
-          </>
-        ) : null}
-        <View style={styles.signChips}>
-          {visible.map((s) => {
-            const on = pickedSet.has(s);
-            return (
-              <Pressable
-                key={s}
-                onPress={() => toggle(s)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: on }}
-                accessibilityLabel={signName(language, s)}
-                style={[styles.signChip, on ? styles.signChipOn : styles.signChipOff, webCursor]}
-              >
-                {on ? <CheckIcon size={13} color="#FFFFFF" strokeWidth={3} /> : <PlusIcon size={13} color={colors.textOnFrosted} />}
-                <Text style={[styles.signChipText, on && styles.signChipTextOn]}>{signName(language, s)}</Text>
-              </Pressable>
-            );
-          })}
-          {visible.length === 0 ? (
-            <Text style={styles.formMuted}>{isWords && inPlanOnly && planned.size === 0 ? "No words in the plan yet. Choose All words, or add words in step 1." : "No signs match."}</Text>
-          ) : null}
-        </View>
-        {notInPlan.map((w) => (
-          <View key={w} style={styles.planWarn}>
-            <AlertCircleIcon size={15} color={colors.textOnFrosted} />
-            <Text style={[styles.formMuted, styles.flex]}>
-              ‘{signName(language, w)}’ isn't in the plan. Students can practise it in this module, but it won't count toward their overall until you add it.
-            </Text>
-            <ActionButton label="Add to plan" size="sm" loading={addingToPlan === w} onPress={() => void addToPlan(w)} />
-          </View>
-        ))}
-        {tried && signsMissing ? <Problem text="Pick at least one sign." /> : null}
-      </View>
-
-      {picked.length > 0 ? (
-        <View style={styles.tray}>
-          <Text style={styles.trayTitle}>
-            Order students will practise in · {picked.length} sign{picked.length === 1 ? "" : "s"}
+          <Text style={styles.edTitle} accessibilityRole="header">
+            {m ? `Edit “${m.title}”` : "New module"}
           </Text>
-          <View style={styles.trayChips}>
-            {picked.map((s, i) => (
-              <View key={s} style={styles.trayChip}>
-                <Text style={styles.trayText}>
-                  {i + 1}. {s}
-                </Text>
-                <TrayBtn label={`Move ${s} earlier`} disabled={i === 0} onPress={() => move(s, -1)}>
-                  <ChevronLeftIcon size={12} color={colors.textPrimary} />
-                </TrayBtn>
-                <TrayBtn label={`Move ${s} later`} disabled={i === picked.length - 1} onPress={() => move(s, 1)}>
-                  <ArrowRightIcon size={12} color={colors.textPrimary} />
-                </TrayBtn>
-                <TrayBtn label={`Remove ${s}`} onPress={() => toggle(s)}>
-                  <CloseIcon size={11} color={colors.textPrimary} />
-                </TrayBtn>
-              </View>
-            ))}
-          </View>
-          {isWords && picked.length > 1 ? (
-            <Pressable
-              onPress={() =>
-                setPicked((prev) =>
-                  prev
-                    .map((s, i) => ({ s, i, r: categoryRank(getWordCategory(language, s)) }))
-                    .sort((a, b) => a.r - b.r || a.i - b.i)
-                    .map((x) => x.s)
-                )
-              }
-              accessibilityRole="button"
-              style={webCursor}
-            >
-              <Text style={styles.trayLink}>Group by category</Text>
-            </Pressable>
-          ) : null}
+          <Text style={styles.edSub}>A module is a list of signs for the class to practice in order. Students see it on their dashboard.</Text>
         </View>
-      ) : null}
-    </ScrollView>
-    {/* Pinned, so Save is always in reach however long the sign list is. */}
-    <View style={styles.formFootPinned}>
-      {tried && !canSave ? <Text style={[styles.problemText, styles.flex]}>{titleMissing ? "Add a title." : signsMissing ? "Pick at least one sign." : ""}</Text> : null}
-      <ActionButton label="Cancel" size="lg" variant="ghost" onFrosted style={styles.outlineDark} onPress={() => onClose(false)} disabled={saving} />
-      <ActionButton label={m ? "Save module" : "Create module"} size="lg" variant="primary" onPress={save} loading={saving} />
-    </View>
+        <CloseButton onPress={() => onClose(false)} />
+      </View>
+      <ScrollView style={styles.flex} contentContainerStyle={[styles.form, phone ? styles.formPadPhone : styles.formPad]} keyboardShouldPersistTaps="handled">
+        <Step n={1} title="Name it">
+          <View style={styles.fieldRow}>
+            <View style={[styles.flex, styles.minField]}>
+              <Text style={styles.edLabel}>Title</Text>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="e.g. Greetings"
+                placeholderTextColor={colors.textTertiary}
+                accessibilityLabel="Module title"
+                style={[styles.edInput, tried && titleMissing && styles.edInputProblem]}
+                autoFocus={!m && !phone}
+              />
+              {tried && titleMissing ? <Problem text="Add a title." /> : null}
+            </View>
+            <View style={styles.dueCol}>
+              <Text style={styles.edLabel}>
+                Due date <Text style={styles.optional}>(optional)</Text>
+              </Text>
+              <DatePickerField value={due} onChange={setDue} label="Due date" />
+            </View>
+          </View>
+          <View>
+            <Text style={styles.edLabel}>
+              Description <Text style={styles.optional}>(optional)</Text>
+            </Text>
+            <TextInput
+              value={description}
+              onChangeText={setDescription}
+              placeholder="What students will learn"
+              placeholderTextColor={colors.textTertiary}
+              accessibilityLabel="Module description"
+              style={styles.edInput}
+            />
+          </View>
+        </Step>
+
+        <Step n={2} title="Choose the kind of signs" hint="One module, one kind of sign.">
+          <View style={styles.scopeRow}>
+            <View style={styles.scopeGroup}>
+              <Text style={styles.edLabel}>Sign language</Text>
+              <SegmentedToggle
+                kind="radio"
+                inline
+                size="md"
+                accessibilityLabel="Sign language"
+                options={CURRICULUM.map((l) => ({ key: l.language, label: l.label }))}
+                value={language}
+                onChange={(l) => changeScope(l, group)}
+              />
+            </View>
+            <View style={styles.scopeGroup}>
+              <Text style={styles.edLabel}>Kind</Text>
+              <SegmentedToggle
+                kind="radio"
+                inline
+                size="md"
+                accessibilityLabel="Kind of sign"
+                options={lang.groups.map((g) => ({ key: g.group, label: g.label, disabled: !g.available, badge: g.available ? undefined : ("soon" as const) }))}
+                value={group}
+                onChange={(g) => changeScope(language, g)}
+              />
+            </View>
+          </View>
+          {confirmScope ? (
+            <ConfirmInline
+              message={`Switch to ${getLanguage(confirmScope.language).label} ${getGroup(confirmScope.language, resolveGroup(confirmScope.language, confirmScope.group)).label.toLowerCase()}? The ${picked.length} sign${picked.length === 1 ? "" : "s"} picked so far will be taken out.`}
+              confirmLabel="Switch"
+              onConfirm={() => applyScope(confirmScope.language, confirmScope.group)}
+              onCancel={() => setConfirmScope(null)}
+            />
+          ) : null}
+        </Step>
+
+        <Step n={3} title="Pick the signs">
+          <View style={[styles.pickArea, twoCol && styles.pickAreaWide]}>
+            {picker}
+            {selected}
+          </View>
+        </Step>
+      </ScrollView>
+      {/* Pinned, so Save is always in reach however long the sign list is. */}
+      <View style={[styles.formFootPinned, phone && styles.formFootPhone]}>
+        {tried && !canSave ? (
+          <Text style={[styles.edProblemText, styles.flex]}>{titleMissing ? "Add a title (step 1)." : signsMissing ? "Pick at least one sign (step 3)." : !dueValid ? "Check the due date." : ""}</Text>
+        ) : (
+          <Text style={[styles.edMuted, styles.flex]} numberOfLines={1}>
+            {picked.length ? `${picked.length} ${picked.length === 1 ? groupNoun(group) : kindWord} · ${lang.label}` : ""}
+          </Text>
+        )}
+        <ActionButton label="Cancel" size="lg" variant="ghost" onPress={() => onClose(false)} disabled={saving} />
+        <ActionButton label={m ? "Save module" : "Create module"} size="lg" variant="primary" onPress={save} loading={saving} />
+      </View>
     </View>
   );
 }
 
-function TrayBtn({ label, disabled, onPress, children }: { label: string; disabled?: boolean; onPress: () => void; children: React.ReactNode }) {
+/** `g` in language `l`, or the language's first group that has a model. */
+function resolveGroup(l: SignLanguage, g: SignGroup): SignGroup {
+  const groups = getLanguage(l).groups;
+  return groups.find((x) => x.group === g && x.available)?.group ?? groups.find((x) => x.available)?.group ?? g;
+}
+
+const groupNoun = (g: SignGroup) => (g === "letters" ? "letter" : g === "numbers" ? "number" : "word");
+
+/** A numbered step of the editor: "1  Name it". */
+function Step({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
+  const { width: W } = useWindowDimensions();
+  return (
+    <View style={styles.step}>
+      <View style={styles.stepHead}>
+        <View style={styles.stepNo}>
+          <Text style={styles.stepNoText}>{n}</Text>
+        </View>
+        <Text style={styles.stepTitle} accessibilityRole="header">
+          {title}
+        </Text>
+        {hint ? <Text style={styles.stepHint}>{hint}</Text> : null}
+      </View>
+      <View style={[styles.stepBody, W >= 768 && styles.stepBodyIndent]}>{children}</View>
+    </View>
+  );
+}
+
+function RowBtn({ label, disabled, onPress, children }: { label: string; disabled?: boolean; onPress: () => void; children: React.ReactNode }) {
+  const { shadows } = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
@@ -720,8 +858,9 @@ function TrayBtn({ label, disabled, onPress, children }: { label: string; disabl
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
-      hitSlop={6}
-      style={[styles.trayBtn, disabled && styles.disabled, webCursor]}
+      accessibilityState={{ disabled: !!disabled }}
+      hitSlop={4}
+      style={({ pressed }) => [styles.rowBtn, !disabled && shadows.neuRaised("sm"), disabled && styles.disabled, pressed && styles.pressed, webCursor]}
     >
       {children}
     </Pressable>
@@ -733,8 +872,8 @@ function Problem({ text }: { text: string }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.problem} accessibilityLiveRegion="polite">
-      <AlertCircleIcon size={14} color={colors.textOnFrosted} />
-      <Text style={styles.problemText}>{text}</Text>
+      <AlertCircleIcon size={14} color={colors.needsPracticeText} />
+      <Text style={styles.edProblemText}>{text}</Text>
     </View>
   );
 }
@@ -933,51 +1072,115 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
     borderStyle: "dashed",
     borderColor: theme.name === "dark" ? "rgba(255,255,255,0.16)" : colors.border,
   },
-  // frosted form (textOnFrosted only, no gold / green)
-  form: { gap: 18 },
-  formHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  formTitle: { fontFamily: fonts.heading, fontSize: 25, lineHeight: 31, color: colors.textOnFrosted },
-  fieldRow: { flexDirection: "row", gap: 14, flexWrap: "wrap" },
-  dueCol: { width: 250 },
-  label: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.textOnFrosted, marginBottom: 7 },
-  input: {
-    minHeight: 46,
+  // module editor (themed drawer)
+  editorHead: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 16,
+    paddingHorizontal: 28,
+    paddingTop: 24,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+  },
+  editorHeadPhone: { paddingHorizontal: 16, paddingTop: 16 },
+  edTitle: { fontFamily: fonts.heading, fontSize: 25, lineHeight: 31, color: colors.textPrimary },
+  edSub: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.textOnGlass, marginTop: 4 },
+  form: { gap: 30 },
+  formPad: { padding: 28, paddingBottom: 36 },
+  formPadPhone: { padding: 16, paddingBottom: 28 },
+  step: { gap: 14 },
+  stepHead: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
+  stepNo: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: colors.actionPrimaryFill },
+  stepNoText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: "#FFFFFF" },
+  stepTitle: { fontFamily: fonts.heading, fontSize: 19, color: colors.textPrimary },
+  stepHint: { fontFamily: fonts.body, fontSize: 13.5, color: colors.textOnGlass },
+  stepBody: { gap: 16 },
+  stepBodyIndent: { paddingLeft: 42 },
+  edLabel: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary, marginBottom: 8 },
+  optional: { fontFamily: fonts.body, color: colors.textOnGlass },
+  edInput: {
+    minHeight: 48,
     paddingHorizontal: 14,
     borderRadius: 14,
-    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1.5,
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.16)" : colors.border,
+    backgroundColor: theme.name === "dark" ? colors.neuWell : colors.surface,
     fontFamily: fonts.bodyMedium,
-    fontSize: 15,
+    fontSize: 15.5,
     color: colors.textPrimary,
     ...(Platform.OS === "web" ? ({ outlineColor: colors.primaryTealLight } as any) : null),
   },
-  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
-  pillGap: { width: 6 },
-  fPill: { minHeight: 40, paddingHorizontal: 16, borderRadius: radii.pill, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  fPillOn: { backgroundColor: colors.actionPrimaryFill, borderColor: colors.actionPrimaryFill },
-  fPillOff: { borderColor: "rgba(30,31,38,0.35)", backgroundColor: "transparent" },
-  fPillSoon: { borderStyle: "dashed", opacity: 0.7 },
-  fPillText: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.textOnFrosted },
-  fPillTextOn: { color: "#FFFFFF" },
-  pickBlock: { gap: 12 },
-  signChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, maxHeight: 320, overflow: "scroll" as any },
-  signChip: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 42, paddingHorizontal: 16, borderRadius: radii.pill, borderWidth: 1.5 },
+  edInputProblem: { borderColor: colors.needsPracticeText },
+  minField: { minWidth: 240 },
+  scopeRow: { flexDirection: "row", gap: 28, flexWrap: "wrap" },
+  scopeGroup: {},
+  pickArea: { gap: 16 },
+  pickAreaWide: { flexDirection: "row", alignItems: "flex-start" },
+  pickCol: { gap: 12 },
+  colTitle: { fontFamily: fonts.bodySemiBold, fontSize: 15.5, color: colors.textPrimary },
+  catRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  catPill: { minHeight: 34, paddingHorizontal: 12, borderRadius: radii.pill, borderWidth: 1.5, justifyContent: "center" },
+  catPillOn: { backgroundColor: colors.neuBase, borderColor: colors.primaryTealLight },
+  catPillOff: { borderColor: theme.name === "dark" ? "rgba(255,255,255,0.14)" : colors.border },
+  catText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.textSecondary },
+  catTextOn: { fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
+  hover: { backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.05)" : colors.surfacePressed },
+  pressed: { opacity: 0.8 },
+  pickBar: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 36 },
+  chipScroll: { maxHeight: 360 },
+  chipScrollNarrow: { maxHeight: 280 },
+  signChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingBottom: 4 },
+  signChip: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 42, paddingHorizontal: 14, borderRadius: radii.pill, borderWidth: 1.5 },
+  signChipLetter: { minWidth: 58, justifyContent: "center" },
   signChipOn: { backgroundColor: colors.actionPrimaryFill, borderColor: colors.actionPrimaryFill },
-  signChipOff: { borderColor: "rgba(30,31,38,0.35)" },
-  signChipText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textOnFrosted },
-  signChipTextOn: { color: "#FFFFFF" },
-  formMuted: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.textOnFrosted },
-  planWarn: { flexDirection: "row", alignItems: "center", gap: 10, padding: 10, borderRadius: 12, backgroundColor: "rgba(30,31,38,0.08)" },
-  problem: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
-  problemText: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.textOnFrosted },
-  tray: { gap: 10, padding: 14, borderRadius: 18, backgroundColor: "rgba(30,31,38,0.12)" },
-  trayTitle: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.textOnFrosted },
-  trayChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  trayChip: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 38, paddingLeft: 14, paddingRight: 6, borderRadius: radii.pill, backgroundColor: colors.surfaceElevated },
-  trayText: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.textPrimary, marginRight: 4 },
-  trayBtn: { width: 24, height: 28, alignItems: "center", justifyContent: "center" },
-  trayLink: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.actionPrimaryFill },
-  formFoot: { flexDirection: "row", justifyContent: "flex-end", gap: 12, marginTop: 6 },
-  formPad: { padding: 28, paddingBottom: 32 },
+  signChipOff: { borderColor: theme.name === "dark" ? "rgba(255,255,255,0.16)" : colors.border },
+  signChipText: { fontFamily: fonts.bodySemiBold, fontSize: 14.5, color: colors.textPrimary },
+  signChipTextOn: { color: colors.textOnPrimary },
+  selCol: {
+    gap: 10,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
+    backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.03)" : colors.surface,
+  },
+  selColWide: { width: 340 },
+  selHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  selCount: { fontFamily: fonts.bodyMedium, color: colors.textOnGlass },
+  selEmpty: {
+    padding: 18,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: theme.name === "dark" ? "rgba(255,255,255,0.16)" : colors.border,
+    alignItems: "center",
+  },
+  selEmptyProblem: { borderColor: colors.needsPracticeText },
+  selEmptyText: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.textOnGlass, textAlign: "center" },
+  selScroll: { maxHeight: 380 },
+  selScrollNarrow: { maxHeight: 320 },
+  selRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48 },
+  selRule: { borderTopWidth: 1, borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.08)" : colors.border },
+  selNo: { width: 24, textAlign: "right", fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.textOnGlass },
+  selName: { flex: 1, minWidth: 0, fontFamily: fonts.bodySemiBold, fontSize: 15, color: colors.textPrimary },
+  selFlag: { fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.accentCoralText },
+  rowBtn: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase },
+  selfStart: { alignSelf: "flex-start" },
+  planWarn: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(242,178,62,0.45)",
+    backgroundColor: "rgba(242,178,62,0.08)",
+  },
+  warnText: { fontFamily: fonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textPrimary, minWidth: 160 },
+  edMuted: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.textOnGlass },
+  edProblemText: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.needsPracticeText },
   formFootPinned: {
     flexDirection: "row",
     alignItems: "center",
@@ -986,8 +1189,22 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
     paddingHorizontal: 28,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: "rgba(30,31,38,0.14)",
+    borderTopColor: theme.name === "dark" ? "rgba(255,255,255,0.1)" : colors.border,
   },
+  formFootPhone: { paddingHorizontal: 16 },
+  // "Modules by category" dialog: frosted (textOnFrosted only, no gold / green)
+  formTitle: { fontFamily: fonts.heading, fontSize: 25, lineHeight: 31, color: colors.textOnFrosted },
+  fieldRow: { flexDirection: "row", gap: 14, flexWrap: "wrap" },
+  dueCol: { width: 250 },
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
+  fPill: { minHeight: 40, paddingHorizontal: 16, borderRadius: radii.pill, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  fPillOn: { backgroundColor: colors.actionPrimaryFill, borderColor: colors.actionPrimaryFill },
+  fPillOff: { borderColor: "rgba(30,31,38,0.35)", backgroundColor: "transparent" },
+  fPillText: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.textOnFrosted },
+  fPillTextOn: { color: "#FFFFFF" },
+  formMuted: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.textOnFrosted },
+  problem: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
+  formFoot: { flexDirection: "row", justifyContent: "flex-end", gap: 12, marginTop: 6 },
   outlineDark: { borderWidth: 1.5, borderColor: "rgba(30,31,38,0.4)" },
   dialogBody: { fontFamily: fonts.body, fontSize: 14.5, lineHeight: 21, color: colors.textOnFrosted, marginTop: 10, marginBottom: 14 },
   preview: { marginVertical: 16, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 18, backgroundColor: "rgba(30,31,38,0.1)" },

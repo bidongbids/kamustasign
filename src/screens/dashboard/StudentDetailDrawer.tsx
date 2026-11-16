@@ -12,11 +12,12 @@ import { PresenceDot } from "./CallHistory";
 import { Bar } from "./TeacherToday";
 import CurriculumTabs, { availableGroupFor } from "./CurriculumTabs";
 import { StarRow } from "../../components/learn/Stars";
-import { BookIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon, TrashIcon, VideoIcon } from "../../components/icons/UiIcons";
+import { BookIcon, CalendarIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon, TrashIcon, VideoIcon } from "../../components/icons/UiIcons";
 import { fonts, radii, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
-import { computeOverall, getGroup, groupKey, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
-import { moduleSigns, type CallNoteRow, type ClassRow, type ModuleRow, type ProgressEmbed, type StudentProgressSummary } from "../../lib/queries";
+import { computeOverall, getGroup, groupKey, passedSince, planSigns, type ClassPlan, type SignGroup, type SignLanguage } from "../../lib/curriculum";
+import { moduleSigns, type CallBooking, type CallNoteRow, type ClassRow, type ModuleRow, type ProgressEmbed, type StudentProgressSummary } from "../../lib/queries";
+import { bookingWords } from "../../lib/callSchedule";
 import { starReference, starsText } from "../../lib/starReference";
 import { signName } from "../../lib/signNames";
 import { starsFor, tileStatus, type ProgressLike } from "../../lib/practiceFlow";
@@ -37,6 +38,10 @@ type Props = {
   phone: boolean;
   onClose: () => void;
   onCall: () => void;
+  /** Their next booked call (0017); undefined hides booking (table not there yet). */
+  booking?: CallBooking | null;
+  /** Book a call with them, or move `booking`. */
+  onBook?: (booking: CallBooking | null) => void;
   onRemove: () => Promise<boolean>;
 };
 
@@ -54,7 +59,7 @@ export default function StudentDetailDrawer(props: Props) {
   );
 }
 
-function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules, notes, phone, onClose, onCall, onRemove }: Props & { student: StudentProgressSummary }) {
+function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules, notes, phone, onClose, onCall, onRemove, booking, onBook }: Props & { student: StudentProgressSummary }) {
   const { colors, shadows } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [language, setLanguage] = useState<SignLanguage>("asl");
@@ -94,6 +99,17 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
       style={phone ? styles.fullWidth : undefined}
     />
   );
+  // Their next booked call: they can only call you then (0017).
+  const bookingStrip =
+    booking !== undefined && onBook ? (
+      <View style={[styles.bookingStrip, shadows.neuInset("sm")]}>
+        <CalendarIcon size={17} color={colors.textOnGlass} />
+        <Text style={[styles.bookingText, styles.flex]}>
+          {booking ? `Next call: ${bookingWords(booking, Date.now())}` : `No call booked. ${first} can only call you at a time you book.`}
+        </Text>
+        <ActionButton label={booking ? "Change" : "Book a call"} size="sm" onPress={() => onBook(booking)} />
+      </View>
+    ) : null;
   const menu = (
     <RowMenu
       label={`More for ${student.full_name}`}
@@ -167,7 +183,8 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
           const ms = moduleSigns(m);
           const rows = rowsFor(m.language, m.sign_group)?.get(student.id) ?? [];
           const set = new Set(ms);
-          const learned = rows.filter((r) => set.has(r.sign) && tileStatus(asRow(r)) === "learned").length;
+          // Only passes since the module was made count toward it.
+          const learned = rows.filter((r) => set.has(r.sign) && passedSince(r, m.created_at)).length;
           const done = ms.length > 0 && learned >= ms.length;
           const due = dueInfo(m.due_date);
           const dueText = !done && due.days !== null ? ` · ${due.tone === "overdue" ? "was due" : "due"} ${new Date(`${m.due_date}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : "";
@@ -198,7 +215,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
         const passed = n.practice.filter((p) => p.passed);
         const date = new Date(n.started_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
         const line = n.practice.length
-          ? `Practised ${n.practice.map((p) => signName(p.language, p.sign)).join(", ")}${passed.length ? ` · got ${passed.map((p) => `${signName(p.language, p.sign)} (${Math.round(p.confidence * 100)}%)`).join(", ")}` : ""}`
+          ? `Practiced ${n.practice.map((p) => signName(p.language, p.sign)).join(", ")}${passed.length ? ` · got ${passed.map((p) => `${signName(p.language, p.sign)} (${Math.round(p.confidence * 100)}%)`).join(", ")}` : ""}`
           : "No practice";
         const open = openNote === n.id;
         return (
@@ -260,6 +277,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
           </View>
         </View>
         {callButton}
+        {bookingStrip}
         {confirm ? <ConfirmInline message={removeText(student, klass)} confirmLabel="Remove" busy={removing} onCancel={() => setConfirm(false)} onConfirm={remove} /> : null}
         <View style={[styles.overall, shadows.neuInset("sm")]}>
           <Text style={styles.overallValue}>{Math.round(overall * 100)}%</Text>
@@ -322,6 +340,7 @@ function Detail({ student, klass, plan, presence, rowsFor, ensureGroup, modules,
         {menu}
         <CloseButton onPress={onClose} />
       </View>
+      {bookingStrip}
       {confirm ? <ConfirmInline message={removeText(student, klass)} confirmLabel="Remove" busy={removing} onCancel={() => setConfirm(false)} onConfirm={remove} /> : null}
       <View style={[styles.overall, shadows.neuInset("sm")]} accessible accessibilityLabel={`Overall ${Math.round(overall * 100)}%. ${groupLine}`}>
         <View>
@@ -438,6 +457,8 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
   phoneStack: { gap: 16 },
   phoneTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.neuBase },
+  bookingStrip: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 16, backgroundColor: colors.neuWell, marginBottom: 14 },
+  bookingText: { fontFamily: fonts.bodyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textPrimary },
   identity: { flexDirection: "row", alignItems: "center", gap: 14 },
   cardPhone: {
     padding: 16,

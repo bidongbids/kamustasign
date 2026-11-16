@@ -53,6 +53,8 @@ type Props = {
   onOpenModule: (moduleId: string) => void;
   onAddWaiting: (ids: string[]) => Promise<void>;
   onCall: (s: { id: string; name: string }) => void;
+  /** The booked-calls card (CallSchedule.tsx), first in the side column. */
+  booked?: React.ReactNode;
   onAllNotes: () => void;
   onGoStudents: () => void;
 };
@@ -81,6 +83,7 @@ export default function TeacherToday(props: Props) {
           {items.length ? <NeedsCard {...props} /> : <AllCaughtUp onGoStudents={props.onGoStudents} />}
         </View>
         <View style={[styles.side, { width: compact ? 300 : 356 }]}>
+          {props.booked}
           <OnlineCard {...props} />
           <WhereCard groups={props.groups} compact={compact} />
           {!compact ? <NotesCard {...props} /> : null}
@@ -394,7 +397,7 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2,
 export function noteLine(n: CallNoteRow): string {
   const date = new Date(n.started_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
   const got = n.practice.filter((p) => p.passed).length;
-  return n.practice.length ? `${date} · practised ${n.practice.length}, got ${got}` : `${date} · no practice`;
+  return n.practice.length ? `${date} · practiced ${n.practice.length}, got ${got}` : `${date} · no practice`;
 }
 
 // ── phone (T11a) ────────────────────────────────────────────────────────
@@ -432,6 +435,7 @@ function TodayPhone(props: Props) {
           </View>
         );
       })}
+      {props.booked}
       <OnlineCard {...props} />
       {under ? (
         <View style={styles.card}>

@@ -32,7 +32,8 @@ type Props = {
   accentColor: string;
   roleLabel: string;
   userName: string;
-  onSignOut: () => void;
+  /** Left out: no account (offline Classroom practice), so no account chip or menu. */
+  onSignOut?: () => void;
   onExitToStart: () => void;
   children: React.ReactNode;
   /** Desktop content width; the student learning plan uses 880 (default 720). */
@@ -58,6 +59,8 @@ type Props = {
   leaveGuard?: string | null;
   /** Shows the Translator button; it leaves the dashboard, so leaveGuard asks first. */
   onOpenTranslator?: () => void;
+  /** What Back says to a screen reader, when it isn't "Back to the start screen". */
+  backAccessibilityLabel?: string;
 };
 
 /** The role's colour in the scheme (handoff §4: primary / accent / neutral). */
@@ -95,6 +98,7 @@ export default function DashboardShell({
   backLabel = "Back",
   leaveGuard,
   onOpenTranslator,
+  backAccessibilityLabel,
 }: Props) {
   const theme = useTheme();
   const { colors } = theme;
@@ -122,7 +126,8 @@ export default function DashboardShell({
   useEffect(() => {
     if (!leaveGuard) setPendingLeave(null);
   }, [leaveGuard]);
-  const backA11y = onBack ? `Back to ${backLabel === "Back" ? "the previous screen" : backLabel}` : "Back to the start screen";
+  const backA11y =
+    backAccessibilityLabel ?? (onBack ? `Back to ${backLabel === "Back" ? "the previous screen" : backLabel}` : "Back to the start screen");
   const role = roleColor(colors, roleLabel);
 
   return (
@@ -147,27 +152,29 @@ export default function DashboardShell({
           </Pressable>
         ) : null}
         <AppearanceButton compact={isMobile} />
-        <Pressable
-          onPress={() => setMenuOpen(true)}
-          style={(s: any) => [styles.chip, isMobile && styles.chipPhone, s.pressed && styles.chipPressed, s.focused && styles.focused]}
-          accessibilityRole="button"
-          accessibilityLabel={`${userName}, ${roleLabel}. Account menu`}
-        >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(userName)}</Text>
-          </View>
-          {isMobile ? null : (
-            <>
-              <View style={styles.identity}>
-                <Text style={styles.userName} numberOfLines={1}>
-                  {userName}
-                </Text>
-                <Text style={[styles.roleText, { color: role }]}>{roleLabel}</Text>
-              </View>
-              <ChevronDownIcon size={15} color={colors.textSecondary} />
-            </>
-          )}
-        </Pressable>
+        {onSignOut ? (
+          <Pressable
+            onPress={() => setMenuOpen(true)}
+            style={(s: any) => [styles.chip, isMobile && styles.chipPhone, s.pressed && styles.chipPressed, s.focused && styles.focused]}
+            accessibilityRole="button"
+            accessibilityLabel={`${userName}, ${roleLabel}. Account menu`}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials(userName)}</Text>
+            </View>
+            {isMobile ? null : (
+              <>
+                <View style={styles.identity}>
+                  <Text style={styles.userName} numberOfLines={1}>
+                    {userName}
+                  </Text>
+                  <Text style={[styles.roleText, { color: role }]}>{roleLabel}</Text>
+                </View>
+                <ChevronDownIcon size={15} color={colors.textSecondary} />
+              </>
+            )}
+          </Pressable>
+        ) : null}
       </GlassCard>
 
       <Modal visible={menuOpen} transparent animationType="none" onRequestClose={() => setMenuOpen(false)}>
@@ -197,7 +204,7 @@ export default function DashboardShell({
             <Pressable
               onPress={() => {
                 setMenuOpen(false);
-                onSignOut();
+                onSignOut?.();
               }}
               accessibilityRole="menuitem"
               style={(s: any) => [styles.menuItem, (s.pressed || s.hovered) && styles.menuItemOn, s.focused && styles.focused]}

@@ -6,6 +6,7 @@ import { Platform, Pressable, StyleSheet, Text } from "react-native";
 import { ChevronLeftIcon } from "./icons/UiIcons";
 import { fonts, radii, type ThemeColors } from "../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../theme/ThemeProvider";
+import { focusFromKeyboard } from "../lib/focusVisible";
 
 type Props = {
   onPress: () => void;
@@ -25,7 +26,7 @@ export default function BackButton({ onPress, label = "Back", accessibilityLabel
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? (label === "Back" ? "Back" : `Back to ${label}`)}
       hitSlop={4}
-      style={(state: any) => [styles.pill, iconOnly && styles.icon, state.pressed && styles.pressed, state.focused && styles.focused]}
+      style={(state: any) => [styles.pill, iconOnly && styles.icon, state.pressed && styles.pressed, state.focused && focusFromKeyboard() && styles.focused]}
     >
       <ChevronLeftIcon size={iconOnly ? 20 : 18} color={colors.textPrimary} />
       {iconOnly ? null : <Text style={styles.label}>{label}</Text>}

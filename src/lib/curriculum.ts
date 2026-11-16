@@ -55,7 +55,7 @@ export const MASTERY_PASSES = 1;
 export const LIVE_PASS_HOLD_MS = 500;
 
 export const PROGRESS_RULES_TEXT =
-  `Attempted: practised at least once. ` +
+  `Attempted: practiced at least once. ` +
   `Passed: recognised as the target sign at ${Math.round(PASS_CONFIDENCE * 100)}% confidence or more ` +
   `(letters and numbers must hold it for ${LIVE_PASS_HOLD_MS / 1000}s). ` +
   `Mastered: passed once. ` +
@@ -210,6 +210,23 @@ export type ProgressRowLike = {
 
 export function isMastered(row: { passes: number } | null | undefined): boolean {
   return !!row && row.passes >= MASTERY_PASSES;
+}
+
+/**
+ * Done in a teacher's module: passed since the module was made (`since` =
+ * its created_at). A sign the student learned before doesn't count - the
+ * teacher set the module, so the student still does it. Overall progress
+ * (isMastered) keeps every pass. No `since` = any pass, like isMastered.
+ * Both times are the database's now(), so the device clock doesn't matter.
+ */
+export function passedSince(
+  row: { passes: number; last_passed_at?: string | null } | null | undefined,
+  since: string | null | undefined
+): boolean {
+  if (!isMastered(row)) return false;
+  if (!since) return true;
+  const last = row!.last_passed_at ? Date.parse(row!.last_passed_at) : NaN;
+  return Number.isFinite(last) && last >= Date.parse(since);
 }
 
 /**

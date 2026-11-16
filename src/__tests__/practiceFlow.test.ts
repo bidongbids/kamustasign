@@ -41,7 +41,7 @@ describe("starsFor", () => {
 describe("nextPracticeSign", () => {
   const signs = ["A", "B", "C", "D"];
 
-  it("starts from the beginning when nothing was practised", () => {
+  it("starts from the beginning when nothing was practiced", () => {
     expect(nextPracticeSign(signs, new Map(), null)).toBe("A");
   });
 
@@ -64,6 +64,17 @@ describe("nextPracticeSign", () => {
     );
     expect(nextPracticeSign(signs, rows, "A")).toBeNull();
     expect(nextPracticeSign([], new Map(), null)).toBeNull();
+  });
+
+  it("in a module, doesn't skip signs learned before the module was made", () => {
+    const rows = new Map<string, ProgressLike>([
+      ["B", row(MASTERY_PASSES, MASTERY_PASSES, 60 * 24 * 3)], // learned 3 days ago
+      ["C", row(MASTERY_PASSES, MASTERY_PASSES, 5)], // passed 5 minutes ago
+    ]);
+    const made = minutesAgo(60);
+    expect(nextPracticeSign(signs, rows, "A", made)).toBe("B");
+    expect(nextPracticeSign(signs, rows, "B", made)).toBe("D");
+    expect(nextPracticeSign(signs, rows, "A")).toBe("D"); // outside a module, both count
   });
 });
 

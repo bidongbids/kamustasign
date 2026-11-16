@@ -76,7 +76,7 @@ export default function JoinClassCard({
           {error}
         </Text>
       ) : (
-        <Text style={styles.hint}>You can still practise every sign while you wait.</Text>
+        <Text style={styles.hint}>You can still practice every sign while you wait.</Text>
       )}
     </GlassCard>
   );

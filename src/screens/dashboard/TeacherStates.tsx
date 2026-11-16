@@ -1,10 +1,12 @@
 // The teacher dashboard's whole-page states (design T9): the first run - a
 // teacher with no class yet - as a centred card with a three-step strip, so
 // it's clear what comes next; and the static skeleton shown while the
-// dashboard loads (no shimmer).
+// dashboard loads (no shimmer). Plus the error card a failed load shows in
+// place of its content.
 import React, { useState } from "react";
 import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import HandLandmarkMark from "../../components/HandLandmarkMark";
+import { AlertCircleIcon, RetryIcon } from "../../components/icons/UiIcons";
 import { ActionButton } from "./ManageKit";
 import { fonts, radii, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
@@ -57,6 +59,56 @@ export function FirstRunCard({ onCreate }: { onCreate: (name: string) => Promise
             </View>
           ))}
         </View>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * A load that failed, in place of the content it was meant to fill - so a
+ * dropped connection never reads as "nothing here yet" (an empty class, no
+ * modules, no accounts). Teacher and admin dashboards.
+ */
+export function LoadErrorCard({
+  title,
+  message = "Check the internet connection, then try again. Nothing you saved was lost.",
+  onRetry,
+  compact,
+}: {
+  title: string;
+  message?: string;
+  onRetry: () => void | Promise<void>;
+  /** Inside a card or drawer: no outer card of its own. */
+  compact?: boolean;
+}) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const [busy, setBusy] = useState(false);
+  const retry = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onRetry();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <View style={compact ? styles.errorCompact : styles.wrap}>
+      <View style={compact ? styles.errorCompactInner : [styles.card, styles.errorCard]} accessibilityRole="alert" accessibilityLiveRegion="polite">
+        <View style={[styles.errorIcon, compact && styles.errorIconSm]}>
+          <AlertCircleIcon size={compact ? 20 : 26} color={colors.needsPracticeText} />
+        </View>
+        <Text style={[styles.title, compact && styles.errorTitleSm]}>{title}</Text>
+        <Text style={styles.body}>{message}</Text>
+        <ActionButton
+          label="Try again"
+          variant="primary"
+          size={compact ? "sm" : "md"}
+          icon={(c) => <RetryIcon size={14} color={c} />}
+          onPress={() => void retry()}
+          loading={busy}
+        />
       </View>
     </View>
   );
@@ -120,6 +172,20 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
   stepNoTextOn: { color: "#FFFFFF" },
   stepText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.textOnGlass },
   stepTextOn: { fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
+  errorCard: { maxWidth: 520, gap: 10 },
+  errorIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.needsPractice + "1F",
+    marginBottom: 4,
+  },
+  errorIconSm: { width: 40, height: 40, borderRadius: 12, marginBottom: 0 },
+  errorTitleSm: { fontSize: 18, lineHeight: 24 },
+  errorCompact: { paddingVertical: 20 },
+  errorCompactInner: { alignItems: "center", gap: 8 },
   skel: { gap: 14 },
   skelRow: { flexDirection: "row", alignItems: "center", gap: 16, height: 56 },
   dot: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.name === "dark" ? "rgba(255,255,255,0.07)" : colors.well },

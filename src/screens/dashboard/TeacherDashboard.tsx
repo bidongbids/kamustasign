@@ -31,11 +31,12 @@ import TeacherStudents, { printClassCode } from "./TeacherStudents";
 import StudentDetailDrawer from "./StudentDetailDrawer";
 import TeacherLearn, { type LearnStep } from "./TeacherLearn";
 import TeacherProgress from "./TeacherProgress";
-import { FirstRunCard, PageSkeleton } from "./TeacherStates";
+import { FirstRunCard, LoadErrorCard, PageSkeleton } from "./TeacherStates";
 import { SaveBar, type SaveBarState } from "./ClassPlanEditor";
 import type { ModuleEditorState } from "./TeacherModules";
 import { InviteStudentsCard, JoinCodeCard } from "./InviteStudents";
 import { CallNotesCard } from "./CallHistory";
+import { BookedCallsCard, CallScheduleDrawer, type ScheduleState } from "./CallSchedule";
 import {
   addStudentsToClass,
   createClass,
@@ -47,6 +48,7 @@ import {
   getClassProgressSummary,
   getMissedCalls,
   getModulesForClass,
+  getTeacherBookings,
   getMyClassesAsTeacher,
   getMyProfile,
   listUnassignedStudents,
@@ -54,6 +56,7 @@ import {
   moduleSigns,
   removeStudentFromClass,
   renameClass,
+  type CallBooking,
   type CallNoteRow,
   type ClassRow,
   type MissedCallRow,
@@ -77,8 +80,10 @@ import {
   type RosterFilter,
 } from "../../lib/teacherInsights";
 import { useVideoCall } from "../../hooks/useVideoCall";
+import { CLOCK_SLACK_MS, nextBooking, openBooking } from "../../lib/callSchedule";
 import VideoCallScreen from "../videocall/VideoCallScreen";
 import type { CallPeer, PresenceStatus } from "../../lib/callSignaling";
+import { isAndroidApp } from "../../lib/androidApp";
 
 type Props = {
   accentColor: string;
@@ -113,6 +118,12 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
   const [notesLoading, setNotesLoading] = useState(false);
   const [modules, setModules] = useState<ModuleRow[]>([]);
   const [modulesLoading, setModulesLoading] = useState(false);
+  // Failed loads, shown as an error card where the data would be (not as an
+  // empty state): the account / class list, the roster, modules, call notes.
+  const [loadError, setLoadError] = useState<{ title: string; retry: () => void | Promise<void> } | null>(null);
+  const [rosterError, setRosterError] = useState(false);
+  const [modulesError, setModulesError] = useState(false);
+  const [notesError, setNotesError] = useState(false);
   const [waiting, setWaiting] = useState<UnassignedStudent[]>([]);
   const [groupRows, setGroupRows] = useState<Record<string, Map<string, ProgressEmbed[]>>>({});
 
@@ -126,6 +137,12 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
   const [progressTab, setProgressTab] = useState<{ language: SignLanguage; group: SignGroup }>({ language: "asl", group: "letters" });
   const [inviteOpen, setInviteOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  // Booked calls (0017), across all this teacher's classes.
+  const [bookings, setBookings] = useState<CallBooking[]>([]);
+  const [bookingsMissing, setBookingsMissing] = useState(false);
+  const [bookingsReady, setBookingsReady] = useState(false);
+  const [bookingsError, setBookingsError] = useState(false);
+  const [schedule, setSchedule] = useState<ScheduleState | null>(null);
 
   const klass = classes.find((c) => c.id === selectedClassId) ?? null;
 
@@ -141,7 +158,16 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
   // another of this teacher's classes reaches them only while that class is
   // selected.
   const rosterIds = useMemo(() => progress.map((p) => p.id), [progress]);
-  const call = useVideoCall(klass?.id ?? null, self, rosterIds);
+  // A student can only ring during their booked time (0017); the teacher's
+  // app turns other rings down. Until the bookings have loaded - or without
+  // the 0017 table - rings get through as before.
+  const bookingGate = useRef({ bookings, on: false });
+  bookingGate.current = { bookings, on: bookingsReady && !bookingsMissing };
+  const canBeRungBy = useCallback(
+    (studentId: string) => !bookingGate.current.on || !!openBooking(bookingGate.current.bookings, studentId, Date.now(), CLOCK_SLACK_MS),
+    []
+  );
+  const call = useVideoCall(klass?.id ?? null, self, rosterIds, canBeRungBy);
   const presence = call.presence as Record<string, PresenceStatus>;
 
   // ---- each group's lesson_progress rows, loaded once per class ----
@@ -190,17 +216,35 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
     const classId = classIdRef.current;
     if (!classId) return;
     setNotesLoading(true);
+    setNotesError(false);
     const notes = await getCallNotes(classId);
     setNotesLoading(false);
-    if (notes.error) setNotice({ kind: "error", message: notes.error.message });
-    setCallNotes(notes.data);
+    if (notes.error) setNotesError(true);
+    else setCallNotes(notes.data);
   }, [profileId]);
+
+  // Every minute too, so a booking made on another device shows up.
+  const loadBookings = useCallback(async () => {
+    if (!profileId) return;
+    const res = await getTeacherBookings(profileId);
+    setBookingsError(!!res.error);
+    if (res.error) return; // keep the last list
+    setBookings(res.data);
+    setBookingsMissing(res.missing);
+    setBookingsReady(true);
+  }, [profileId]);
+  useEffect(() => {
+    void loadBookings();
+    const id = setInterval(() => void loadBookings(), 60_000);
+    return () => clearInterval(id);
+  }, [loadBookings]);
 
   const loadRoster = useCallback(async (classId: string) => {
     setRosterLoading(true);
+    setRosterError(false);
     const { data, error } = await getClassProgressSummary(classId);
     setRosterLoading(false);
-    if (error) setNotice({ kind: "error", ...LOAD_ERROR, retry: () => void loadRoster(classId) });
+    if (error) setRosterError(true);
     else setProgress(data ?? []);
   }, []);
 
@@ -213,9 +257,10 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
 
   const loadModules = useCallback(async (classId: string) => {
     setModulesLoading(true);
+    setModulesError(false);
     const { data, error } = await getModulesForClass(classId);
     setModulesLoading(false);
-    if (error) setNotice({ kind: "error", message: error.message });
+    if (error) setModulesError(true);
     else setModules(data);
   }, []);
 
@@ -238,16 +283,17 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
   const load = useCallback(
     async (preferClassId?: string | null) => {
       setLoading(true);
+      setLoadError(null);
       const { data: me, error: profileError } = await getMyProfile();
       if (profileError || !me) {
-        setNotice({ kind: "error", title: "Couldn't load your account", message: profileError?.message ?? "Check the internet connection, then try again.", retry: () => void load(preferClassId) });
+        setLoadError({ title: "Couldn't load your account", retry: () => load(preferClassId) });
         setLoading(false);
         return;
       }
       setProfile(me as Profile);
       const { data: mine, error: classErr } = await getMyClassesAsTeacher(me.id);
       if (classErr) {
-        setNotice({ kind: "error", ...LOAD_ERROR, retry: () => void load(preferClassId) });
+        setLoadError({ title: "Couldn't load your classes", retry: () => load(preferClassId) });
         setLoading(false);
         return;
       }
@@ -348,7 +394,13 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
       .catch(() => setNotice({ kind: "error", message: "Couldn't copy. Select the code instead." }));
   };
   const print = () => {
-    if (klass && !printClassCode(klass)) setNotice({ kind: "error", message: "Allow pop-ups for LCSign to print the class code." });
+    if (klass && !printClassCode(klass))
+      setNotice({
+        kind: "error",
+        message: isAndroidApp()
+          ? "The Android app can't print. Copy the class code instead, or print it from a computer."
+          : "Allow pop-ups for LCSign to print the class code.",
+      });
   };
 
   const removeStudent = async (student: StudentProgressSummary) => {
@@ -422,7 +474,7 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
   const studentIds = rosterIds;
   const moduleFacts = modules.map((m) => {
     const signs = moduleSigns(m);
-    return { id: m.id, title: m.title, due_date: m.due_date, signs: signs.length, finished: moduleCompletion(signs, studentIds, rowsFor(m.language, m.sign_group)).finished };
+    return { id: m.id, title: m.title, due_date: m.due_date, signs: signs.length, finished: moduleCompletion(signs, studentIds, rowsFor(m.language, m.sign_group), m.created_at).finished };
   });
 
   const missedHere = missedCalls.filter((c) => c.class_id === klass?.id);
@@ -459,12 +511,22 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
     return (
       <DashboardShell {...shell} contentMaxWidth={1100}>
         <Notice notice={notice} onDismiss={() => setNotice(null)} />
-        {loading ? <PageSkeleton /> : <FirstRunCard onCreate={classActions.onCreate} />}
+        {loading ? (
+          <PageSkeleton />
+        ) : loadError ? (
+          <LoadErrorCard title={loadError.title} onRetry={loadError.retry} />
+        ) : (
+          <FirstRunCard onCreate={classActions.onCreate} />
+        )}
       </DashboardShell>
     );
   }
 
   const detailStudent = progress.find((p) => p.id === detailId) ?? null;
+  // No roster to show: Today, Students and Progress show the error instead
+  // of an empty class. Learn still works (plan and modules), with a notice.
+  const rosterBlocked = rosterError && progress.length === 0 && section !== "learn";
+  const retryRoster = () => loadRoster(klass.id);
   const tabs = SECTIONS.map((s) => ({
     key: s.key,
     label: s.short,
@@ -502,9 +564,14 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
         </View>
       ) : null}
       <Notice notice={notice} onDismiss={() => setNotice(null)} />
+      {rosterError && !rosterBlocked ? (
+        <Notice notice={{ kind: "error", ...LOAD_ERROR, retry: retryRoster }} onDismiss={() => setRosterError(false)} />
+      ) : null}
 
       {loading && progress.length === 0 && rosterLoading ? (
         <PageSkeleton />
+      ) : rosterBlocked ? (
+        <LoadErrorCard title={LOAD_ERROR.title} message={LOAD_ERROR.message} onRetry={retryRoster} />
       ) : section === "today" ? (
         <TeacherToday
           klass={klass}
@@ -539,6 +606,21 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
           }}
           onAddWaiting={addWaiting}
           onCall={startCall}
+          booked={
+            <BookedCallsCard
+              bookings={bookings}
+              missing={bookingsMissing}
+              error={bookingsError}
+              onRetry={() => void loadBookings()}
+              klass={klass}
+              classes={classes}
+              nameOf={nameOf}
+              onBook={() => setSchedule({ mode: "form" })}
+              onOpenAll={() => setSchedule({ mode: "list" })}
+              onCall={startCall}
+              onOpenClass={selectClass}
+            />
+          }
           onAllNotes={() => setNotesOpen(true)}
           onGoStudents={() => setSection("students")}
         />
@@ -568,6 +650,7 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
           onStep={setLearnStep}
           modules={modules}
           modulesLoading={modulesLoading}
+          modulesError={modulesError}
           reloadModules={() => void loadModules(klass.id)}
           setModules={setModules}
           students={progress}
@@ -602,7 +685,7 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
               preset: { language: progressTab.language, group: progressTab.group, signs, title: `${groupLabel(progressTab.language, progressTab.group)} to review` },
             })
           }
-          onPractiseInCall={() => {
+          onPracticeInCall={() => {
             setRosterFilter("online");
             setSection("students");
           }}
@@ -623,8 +706,30 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
         phone={phone}
         onClose={() => setDetailId(null)}
         onCall={() => detailStudent && startCall({ id: detailStudent.id, name: detailStudent.full_name })}
+        booking={bookingsMissing || !detailStudent ? undefined : nextBooking(bookings, detailStudent.id, Date.now())}
+        onBook={(b) => {
+          if (!detailStudent) return;
+          setDetailId(null);
+          setSchedule(b ? { mode: "form", booking: b } : { mode: "form", studentId: detailStudent.id });
+        }}
         onRemove={() => (detailStudent ? removeStudent(detailStudent) : Promise.resolve(false))}
       />
+
+      {profile ? (
+        <CallScheduleDrawer
+          state={schedule}
+          onState={setSchedule}
+          teacherId={profile.id}
+          klass={klass}
+          classes={classes}
+          students={progress}
+          bookings={bookings}
+          missing={bookingsMissing}
+          nameOf={nameOf}
+          onChanged={loadBookings}
+          setNotice={setNotice}
+        />
+      ) : null}
 
       <SideDrawer visible={inviteOpen} onClose={() => setInviteOpen(false)} width={560}>
         <View style={styles.drawerHead}>
@@ -653,7 +758,7 @@ export default function TeacherDashboard({ accentColor, onSignOut, onExitToStart
           </Text>
           <CloseButton onPress={() => setNotesOpen(false)} />
         </View>
-        <CallNotesCard notes={callNotes} nameOf={nameOf} onDelete={removeNote} loading={notesLoading} />
+        <CallNotesCard notes={callNotes} nameOf={nameOf} onDelete={removeNote} loading={notesLoading} onRetry={notesError ? loadCallHistory : undefined} />
       </SideDrawer>
     </DashboardShell>
   );

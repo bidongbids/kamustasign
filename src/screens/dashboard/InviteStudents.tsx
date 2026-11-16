@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { DashboardCard, useDashboardStyles } from "./DashboardShell";
 import { ActionButton, Avatar, CheckRow, ConfirmInline, FieldLabel, SearchField, type NoticeState } from "./ManageKit";
+import { LoadErrorCard } from "./TeacherStates";
 import { LoopIcon, PlusIcon } from "../../components/icons/UiIcons";
 import { fonts, radii, spacing, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
@@ -108,16 +109,18 @@ export function InviteStudentsCard({
   const styles = useThemedStyles(makeStyles);
   const [students, setStudents] = useState<UnassignedStudent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadFailed(false);
     const { data, error } = await listUnassignedStudents();
     setLoading(false);
     if (error) {
-      setNotice({ kind: "error", message: error.message });
+      setLoadFailed(true);
       return;
     }
     setStudents(data);
@@ -183,6 +186,8 @@ export function InviteStudentsCard({
 
       {loading && students.length === 0 ? (
         <Text style={ds.emptyText}>Loading students…</Text>
+      ) : loadFailed && students.length === 0 ? (
+        <LoadErrorCard compact title="Couldn't load the student list" onRetry={load} />
       ) : students.length === 0 ? (
         <Text style={ds.emptyText}>
           Every student account is already in a class. New students can sign up, then join with the class code.

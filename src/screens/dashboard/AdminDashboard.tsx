@@ -23,6 +23,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import DashboardShell from "./DashboardShell";
 import { ActionButton, Avatar, ChoicePills, ConfirmInline, Notice, RoleBadge, roleColors, SearchField, type NoticeState } from "./ManageKit";
+import { LoadErrorCard } from "./TeacherStates";
 import { CloseButton, SelectPill, SideDrawer } from "./Overlays";
 import SegmentedToggle from "../../components/SegmentedToggle";
 import { AlertCircleIcon, CheckIcon, ChevronDownIcon, InboxIcon, PencilIcon, SearchIcon, ShieldIcon } from "../../components/icons/UiIcons";
@@ -57,7 +58,7 @@ import {
 const webCursor = Platform.OS === "web" ? ({ cursor: "pointer" } as any) : null;
 const ROLES: ProfileRole[] = ["student", "teacher", "admin"];
 const ROLE_TEXT: Record<ProfileRole, { title: string; desc: string }> = {
-  student: { title: "Student", desc: "Practises signs. Can be in one class." },
+  student: { title: "Student", desc: "Practices signs. Can be in one class." },
   teacher: { title: "Teacher", desc: "Makes classes, sees their students' progress, calls them." },
   admin: { title: "Admin", desc: "Manages accounts like you do." },
 };
@@ -81,6 +82,9 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToStart, 
   const [emailsAvailable, setEmailsAvailable] = useState(true);
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // A failed load shows an error card where the list would be, not "No
+  // accounts match" (and no "nobody is waiting" inbox).
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<NoticeState>(null);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -90,16 +94,19 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToStart, 
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     const { data: me, error: profileError } = await getMyProfile();
     if (profileError || !me) {
-      setNotice({ kind: "error", title: "Couldn't load your account", message: profileError?.message ?? "Check the connection and try again.", retry: () => void load() });
+      setLoadError("Couldn't load your account");
       setLoading(false);
       return;
     }
     setProfile(me as Profile);
     const [acc, { data: c, error: cErr }] = await Promise.all([adminListAccounts(), listAllClasses()]);
-    const firstError = acc.error ?? cErr;
-    if (firstError) setNotice({ kind: "error", title: "Couldn't load accounts", message: "Check the connection, then try again.", retry: () => void load() });
+    // No accounts: nothing to show, so the error replaces the list. Only the
+    // class names missing: keep the list and say so.
+    if (acc.error) setLoadError("Couldn't load the accounts");
+    else if (cErr) setNotice({ kind: "error", title: "Couldn't load the class names", message: "Check the connection, then try again.", retry: () => void load() });
     if (acc.data) setAccounts([...acc.data].sort((a, b) => b.created_at.localeCompare(a.created_at)));
     setEmailsAvailable(acc.emailsAvailable);
     if (!cErr) setClasses((c as ClassRow[]) ?? []);
@@ -153,11 +160,11 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToStart, 
 
       <Notice notice={notice} onDismiss={() => setNotice(null)} />
 
-      {!loading ? (
+      {!loading && !loadError ? (
         <ApprovalsInbox accounts={pending} isSuper={isSuper} phone={phone} accentColor={accentColor} setNotice={setNotice} onSaved={replace} onRemoved={remove} />
       ) : null}
 
-      {!emailsAvailable ? <Text style={styles.migrationNote}>Emails are hidden until the 0008_class_management.sql migration is run in the Supabase SQL Editor.</Text> : null}
+      {!emailsAvailable && !loadError ? <Text style={styles.migrationNote}>Emails are hidden until the 0008_class_management.sql migration is run in the Supabase SQL Editor.</Text> : null}
 
       <View style={[styles.toolbar, phone && styles.toolbarPhone]}>
         <View style={phone ? undefined : styles.search}>
@@ -197,6 +204,8 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToStart, 
           ))}
           <Text style={styles.muted}>Loading accounts…</Text>
         </View>
+      ) : loadError ? (
+        <LoadErrorCard title={loadError} onRetry={load} />
       ) : visible.length === 0 ? (
         <View style={[styles.card, styles.empty]}>
           <SearchIcon size={26} color={colors.textOnGlass} />
@@ -241,7 +250,7 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToStart, 
 // ── approvals inbox (A1, A3) ────────────────────────────────────────────
 
 const APPROVED_TEXT: Record<ProfileRole, string> = {
-  student: "can now practise and join a class.",
+  student: "can now practice and join a class.",
   teacher: "can now use the teacher dashboard.",
   admin: "can now manage accounts.",
 };

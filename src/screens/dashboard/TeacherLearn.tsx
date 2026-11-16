@@ -26,6 +26,8 @@ type Props = {
   onStep: (s: LearnStep) => void;
   modules: ModuleRow[];
   modulesLoading: boolean;
+  /** The modules failed to load (shown as an error, not as "No modules yet"). */
+  modulesError?: boolean;
   reloadModules: () => void;
   setModules: (next: ModuleRow[]) => void;
   students: StudentProgressSummary[];
@@ -72,7 +74,7 @@ export default function TeacherLearn(props: Props) {
           </Text>
           <Text style={styles.lede}>
             {step === "plan"
-              ? "Two steps. The plan is every word the class can practise. Modules take words from the plan, put them in order and give them a due date."
+              ? "Two steps. The plan is every word the class can practice. Modules take words from the plan, put them in order and give them a due date."
               : "Students see modules on their dashboard in this order."}
           </Text>
         </View>
@@ -119,6 +121,7 @@ export default function TeacherLearn(props: Props) {
           klass={klass}
           modules={modules}
           loading={props.modulesLoading}
+          error={props.modulesError}
           reload={props.reloadModules}
           setModules={props.setModules}
           students={props.students}

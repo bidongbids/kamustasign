@@ -38,7 +38,7 @@ export default function NextSignActions({ sign, nextSign, groupWord, onNext, onR
         iconRight={<ArrowRightIcon size={20} color={colors.textOnAccent} />}
         style={styles.grow}
       />
-      <KidButton label={`Practise ${sign} again`} onPress={onRepeat} style={styles.grow} />
+      <KidButton label={`Practice ${sign} again`} onPress={onRepeat} style={styles.grow} />
       {compact ? (
         <KidButton variant="ghost" label="Back to my plan" onPress={onBack} iconLeft={<ChevronLeftIcon size={18} color={colors.textPrimary} />} />
       ) : null}
