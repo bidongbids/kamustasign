@@ -16,10 +16,9 @@
 // bump of this pin is needed, check that issue thread for which versions
 // people report as working before moving off it, and replace the vendored
 // files too (see public/mediapipe/tasks-vision/README.md).
+// The CDN fallback URLs in public/mediapipe/load-tasks-vision.js and
+// holistic-worker.js repeat this version - change them together.
 export const TASKS_VISION_VERSION = "0.10.15";
-
-const LOCAL_BASE = "/mediapipe/tasks-vision";
-const CDN_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}`;
 
 type TasksVision = {
   FilesetResolver: any;
@@ -32,8 +31,15 @@ type TasksVision = {
 let tasksVision: Promise<TasksVision> | null = null;
 let visionFileset: Promise<any> | null = null;
 
-// Injected as a module <script> rather than import() so Metro doesn't try to
-// bundle the URL. Top-level await in the inline module does the fallback.
+// public/mediapipe/load-tasks-vision.js does the loading (local copy, then
+// CDN) and signals with an "mp-tasks-vision-ready" event. It's added as a
+// module <script src> rather than import() so Metro doesn't try to bundle the
+// URL, and as a file rather than inline code so the desktop app's
+// Content-Security-Policy can refuse inline scripts.
+const LOADER_URL = "/mediapipe/load-tasks-vision.js";
+// A module runs once per URL, so a retry after a failure needs a fresh one.
+let loaderRuns = 0;
+
 export function loadTasksVision(): Promise<TasksVision> {
   if (tasksVision) return tasksVision;
   tasksVision = new Promise<TasksVision>((resolve, reject) => {
@@ -51,26 +57,11 @@ export function loadTasksVision(): Promise<TasksVision> {
 
     const script = document.createElement("script");
     script.type = "module";
-    script.textContent = `
-      let m, base;
-      try {
-        m = await import("${LOCAL_BASE}/vision_bundle.js"); base = "${LOCAL_BASE}/wasm";
-      } catch (localErr) {
-        console.warn("[mediapipe] local bundle unavailable, using CDN", localErr);
-        try {
-          m = await import("${CDN_BASE}/vision_bundle.mjs"); base = "${CDN_BASE}/wasm";
-        } catch (cdnErr) {
-          window.__mpTasksVisionError = "Couldn't load MediaPipe (no local copy and the CDN is unreachable).";
-        }
-      }
-      if (m) window.__mpTasksVision = {
-        FilesetResolver: m.FilesetResolver,
-        HandLandmarker: m.HandLandmarker,
-        HolisticLandmarker: m.HolisticLandmarker,
-        wasmBase: base,
-      };
-      window.dispatchEvent(new Event("mp-tasks-vision-ready"));
-    `;
+    script.src = loaderRuns++ === 0 ? LOADER_URL : `${LOADER_URL}?retry=${loaderRuns}`;
+    script.onerror = () => {
+      window.removeEventListener("mp-tasks-vision-ready", onReady);
+      reject(new Error("Couldn't load MediaPipe (its loader script didn't load)."));
+    };
     document.head.appendChild(script);
   });
   // Let a later attempt retry (e.g. the network came back) instead of
