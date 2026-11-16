@@ -1,0 +1,79 @@
+# Builds the Windows installer on GitHub's Windows machines.
+#
+# Why not on the development PC: Windows 11's Smart App Control blocks
+# programs that aren't code-signed, and building the installer has to run
+# one (the step that makes the uninstaller). Since 2026-11 that stops the
+# build on the development PC. GitHub's build machines don't have Smart
+# App Control.
+#
+# Runs when a version tag is pushed (git tag v1.1.0 && git push origin v1.1.0)
+# or by hand: Actions > Desktop installer > Run workflow. The installer,
+# its .blockmap and latest.yml (what auto-update reads) come out as a
+# downloadable artifact on the run's page.
+#
+# Needs these repository secrets (Settings > Secrets and variables >
+# Actions), the same values as the project's .env:
+#   EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY,
+#   EXPO_PUBLIC_TURN_CREDENTIALS_URL, EXPO_PUBLIC_MYMEMORY_EMAIL
+# (EXPO_PUBLIC_PASSWORD_RESET is set to true below.)
+#
+# Builds exactly what is committed, so work in progress (like word-list
+# entries the model doesn't know yet) can't slip in.
+name: Desktop installer
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Write .env from secrets
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          TURN_URL: ${{ secrets.EXPO_PUBLIC_TURN_CREDENTIALS_URL }}
+          MYMEMORY_EMAIL: ${{ secrets.EXPO_PUBLIC_MYMEMORY_EMAIL }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Add the EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY repository secrets first."
+            exit 1
+          fi
+          {
+            echo "EXPO_PUBLIC_SUPABASE_URL=$SUPABASE_URL"
+            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+            echo "EXPO_PUBLIC_TURN_CREDENTIALS_URL=$TURN_URL"
+            echo "EXPO_PUBLIC_MYMEMORY_EMAIL=$MYMEMORY_EMAIL"
+            echo "EXPO_PUBLIC_PASSWORD_RESET=true"
+          } > .env
+
+      - run: npx expo export --platform web
+      - run: npm ci
+        working-directory: electron
+      - run: node write-server-config.mjs
+        working-directory: electron
+      - run: npx electron-builder --win nsis --publish never
+        working-directory: electron
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LCSign-desktop-${{ github.ref_name }}
+          path: |
+            electron/dist/*.exe
+            electron/dist/*.blockmap
+            electron/dist/latest.yml
+          if-no-files-found: error
+          retention-days: 30

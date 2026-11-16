@@ -25,9 +25,13 @@ The steps for every build that goes to the school's PCs or phones.
 
 ## 3. Build
 
-- **Windows:** `npm run electron:build` produces
-  `electron/dist/LCSign-Setup-x.y.z.exe`, plus `latest.yml` and the
-  `.blockmap` for auto-update.
+- **Windows:** push the version tag (`git push origin vx.y.z`), and GitHub
+  builds it (`.github/workflows/desktop-installer.yml`). Download
+  `LCSign-Setup-x.y.z.exe`, its `.blockmap` and `latest.yml` from the run's
+  artifacts. `npm run electron:build` does the same locally, but on a PC with
+  Windows 11's **Smart App Control** on it fails at the uninstaller step
+  ("spawn UNKNOWN"): Windows won't run the unsigned helper it builds. That
+  PC can't run unsigned LCSign either; see "Code signing" below.
 - **Android:** `npm run mobile:build` produces
   `mobile/dist/LCSign-x.y.z.apk` (to install directly on phones) and
   `LCSign-x.y.z.aab` (for the Play Store). It's signed with the release key
@@ -58,6 +62,17 @@ shows nothing new.
 3. Desktop apps with a feed URL download the update within ~4 hours, or at
    their next start, and install it when they close. Phones show "Version
    x.y.z is out" in About LCSign. Install the APK by hand.
+
+## Code signing (Windows)
+
+The installer and LCSign.exe aren't code-signed. On most PCs Windows only
+warns ("Windows protected your PC" > More info > Run anyway). On a Windows
+11 PC where **Smart App Control** is on, Windows blocks them with no way
+around it. Check on each school PC: Windows Security > App & browser
+control > Smart App Control. Either it's Off there, or LCSign needs a
+code-signing certificate. On many Windows 11 versions, Smart App Control
+can't be turned back on without resetting Windows once it's off, so that's
+the school's call.
 
 ## Keys and secrets (never in git)
 
