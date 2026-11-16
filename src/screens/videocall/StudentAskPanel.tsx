@@ -18,7 +18,6 @@ import { accuracyStars, starReference, starsText } from "../../lib/starReference
 import { PASS_PERCENT, closerText, percent } from "../../lib/learnCopy";
 import type { SignGroup, SignLanguage } from "../../lib/curriculum";
 import type { PracticeResult } from "../../lib/callSignaling";
-import type { ReaderPhase } from "../../hooks/useCallSignReader";
 import { CallPill, HoldRing } from "./CallParts";
 
 type Props = {
@@ -32,14 +31,12 @@ type Props = {
   checking: boolean;
   cameraOff: boolean;
   captionsOff: boolean;
-  /** The student's own reader: hold progress while a letter is held still. */
+  /** Letters: the pass check's hold, 0-1 - full exactly when the sign counts. */
   hold: number;
-  guess: string;
-  phase: ReaderPhase;
   reduceMotion: boolean;
 };
 
-export default function StudentAskPanel({ phone, sign, language, group, results, checking, cameraOff, captionsOff, hold, guess, phase, reduceMotion }: Props) {
+export default function StudentAskPanel({ phone, sign, language, group, results, checking, cameraOff, captionsOff, hold, reduceMotion }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [showHow, setShowHow] = useState(false);
@@ -94,8 +91,10 @@ export default function StudentAskPanel({ phone, sign, language, group, results,
     );
   }
 
-  // Waiting for the first try.
-  const holdingTarget = letters && phase === "holding" && guess === sign;
+  // Waiting for the first try. The ring is the pass check's own hold, so it
+  // fills only while the asked sign is held well enough to count, and full
+  // means it counted.
+  const holdingTarget = letters && hold > 0;
   const status = cameraOff
     ? { icon: <VideoIcon size={18} color={colors.accentCoral} off />, text: "Turn your camera on so the computer can see your sign.", sub: null }
     : captionsOff
@@ -113,6 +112,7 @@ export default function StudentAskPanel({ phone, sign, language, group, results,
         <HoldRing
           size={phone ? 108 : 150}
           progress={holdingTarget ? hold : 0}
+          done={holdingTarget && hold >= 1}
           glyph={name}
           glyphSize={letters ? (phone ? 44 : kidTypography.kidTarget.fontSize * 0.62) : phone ? 18 : 22}
         />

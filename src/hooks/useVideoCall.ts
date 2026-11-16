@@ -25,7 +25,9 @@
 //  - connection quality: getStats() every few seconds; on a weak link the
 //    video we send is lowered (bitrate + resolution) until it recovers;
 //  - practice: the student's results for a sign the teacher asked for come
-//    back as "practice-result" signals (`practiceResults`, teacher side).
+//    back as "practice-result" signals (`practiceResults`, teacher side);
+//  - transcript edits: the teacher's Clear / delete / space on someone's
+//    signs-as-text reach the student as `transcriptEdit` (student side).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import {
@@ -38,9 +40,11 @@ import {
   type CallSignalBody,
   type PracticeResult,
   type PresenceMap,
+  type TranscriptEdit,
 } from "../lib/callSignaling";
 import { recordMissedCall } from "../lib/queries";
 import { CAMERA_VIDEO } from "./useSharedCameraStream";
+import { openCamera } from "../lib/cameraDevice";
 
 export type CallState =
   | "idle"
@@ -158,6 +162,7 @@ export type EndReason =
   | "theyLeft" // the other side left
   | "declined"
   | "busy" // the other side was on another call
+  | "notBooked" // a student rang outside their booked call time (0017)
   | "noAnswer"
   | "cameraBlocked"
   | "cameraBusy"
@@ -200,7 +205,14 @@ function mediaErrorMessage(err: any): string {
 
 // `studentIds` is null on the student side; on the teacher side it is the
 // class roster - the students this teacher can ring or be rung by.
-export function useVideoCall(classId: string | null, self: CallPeer | null, studentIds: string[] | null = null) {
+// `canBeRungBy` (teacher side): false turns a student's ring down as
+// "not-booked" - they can only call in their booked time (0017).
+export function useVideoCall(
+  classId: string | null,
+  self: CallPeer | null,
+  studentIds: string[] | null = null,
+  canBeRungBy?: (peerId: string) => boolean
+) {
   const [callState, setCallStateRaw] = useState<CallState>("idle");
   const [peer, setPeer] = useState<CallPeer | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -217,6 +229,9 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
   const [endedAt, setEndedAt] = useState<number | null>(null);
   // Teacher side: every practice result the student sent during this call.
   const [practiceResults, setPracticeResults] = useState<PracticeResult[]>([]);
+  // Student side: the teacher's last edit to a transcript; `n` counts them,
+  // so the same edit twice ("Clear", "Clear") still arrives as a change.
+  const [transcriptEdit, setTranscriptEdit] = useState<(TranscriptEdit & { n: number }) | null>(null);
   // Bumped whenever this side writes a missed call, so a dashboard can refresh.
   const [missedCallWrites, setMissedCallWrites] = useState(0);
   // The settings this side last sent (teacher side only), re-sent when the
@@ -233,6 +248,8 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
   classIdRef.current = classId;
   const channelRef = useRef<CallChannel | null>(null);
   const isTeacher = studentIds !== null;
+  const canBeRungByRef = useRef(canBeRungBy);
+  canBeRungByRef.current = canBeRungBy;
   const studentIdsRef = useRef(studentIds);
   studentIdsRef.current = studentIds;
   const studentKey = studentIds ? [...studentIds].sort().join(",") : "";
@@ -270,6 +287,7 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
     setEndedAt(null);
     setEndReason(null);
     setPracticeResults([]);
+    setTranscriptEdit(null);
     setQuality(null);
   }, []);
 
@@ -345,7 +363,8 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
   // Opens camera + mic for the call identified by callId. Returns null if the
   // call was abandoned while the browser was still opening the camera.
   const acquireLocalMedia = useCallback(async (callId: string) => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: CAMERA_VIDEO, audio: true });
+    // A real camera over a virtual one (lib/cameraDevice), plus the mic.
+    const stream = await openCamera(CAMERA_VIDEO, true);
     if (callIdRef.current !== callId) {
       stream.getTracks().forEach((t) => t.stop());
       return null;
@@ -424,6 +443,10 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
       const state = callStateRef.current;
 
       if (signal.kind === "ring") {
+        if (canBeRungByRef.current && !canBeRungByRef.current(signal.from.id)) {
+          channelRef.current?.send({ kind: "decline", reason: "not-booked", from: me, to: signal.from.id, callId: signal.callId });
+          return;
+        }
         if (state !== "idle" && state !== "ended") {
           // Busy - auto-decline rather than silently dropping the request.
           channelRef.current?.send({ kind: "decline", reason: "busy", from: me, to: signal.from.id, callId: signal.callId });
@@ -453,9 +476,13 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
       if (signal.kind === "decline") {
         if (state !== "ringing-outgoing") return;
         fail(
-          signal.reason === "busy" ? `${signal.from.name} is on another call.` : `${signal.from.name} declined the call.`,
+          signal.reason === "busy"
+            ? `${signal.from.name} is on another call.`
+            : signal.reason === "not-booked"
+              ? "It isn't your booked call time."
+              : `${signal.from.name} declined the call.`,
           false,
-          signal.reason === "busy" ? "busy" : "declined"
+          signal.reason === "busy" ? "busy" : signal.reason === "not-booked" ? "notBooked" : "declined"
         );
         return;
       }
@@ -540,6 +567,14 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
       if (signal.kind === "practice-result") {
         if (!isTeacher) return;
         setPracticeResults((prev) => [...prev, signal.result].slice(-200));
+        return;
+      }
+
+      if (signal.kind === "transcript-edit") {
+        if (isTeacher) return;
+        if (signal.whose !== "teacher" && signal.whose !== "student") return;
+        if (signal.edit !== "clear" && signal.edit !== "backspace" && signal.edit !== "space") return;
+        setTranscriptEdit((prev) => ({ whose: signal.whose, edit: signal.edit, n: (prev?.n ?? 0) + 1 }));
         return;
       }
 
@@ -767,6 +802,9 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
   // Student side: report one attempt at the sign the teacher asked for.
   const sendPracticeResult = useCallback((result: PracticeResult) => send({ kind: "practice-result", result }), [send]);
 
+  // Teacher side: make the same edit to the student's copy of a transcript.
+  const sendTranscriptEdit = useCallback((e: TranscriptEdit) => send({ kind: "transcript-edit", ...e }), [send]);
+
   return {
     callState,
     incomingCallFrom: callState === "ringing-incoming" ? peer : null,
@@ -780,6 +818,8 @@ export function useVideoCall(classId: string | null, self: CallPeer | null, stud
     requestSettings,
     sendPracticeResult,
     practiceResults,
+    sendTranscriptEdit,
+    transcriptEdit,
     presence,
     quality,
     connectedAt,

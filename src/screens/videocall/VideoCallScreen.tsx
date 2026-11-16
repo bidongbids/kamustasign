@@ -12,23 +12,27 @@
 //
 // Calls are always teacher <-> student, and the teacher runs the call: the
 // model, whose signs are read, and "Show big" (which opens on both screens)
-// are set in the teacher's Tools and sent to the student (CallSettings in
-// ../../lib/callSignaling.ts). The student's screen doesn't show those
-// controls at all; mic, camera, captions and speech language stay each
-// person's own.
+// are set on the teacher's screen and sent to the student (CallSettings in
+// ../../lib/callSignaling.ts). So are the teacher's edits to the text of
+// someone's signs: Clear on the teacher's screen clears the student's too.
+// The student's screen doesn't show those controls at all; mic, camera,
+// captions and speech language stay each person's own.
 //
 // Layout: a focus layout - the other person big, one caption strip below the
-// video, tools in a drawer (desktop) or sheet (phone), and a control bar that
-// never scrolls away. The two <video> elements are created once, at the top
-// of the in-call tree, and only moved and resized (callGeometry.ts); a
-// different element tree per layout is what used to leave them black.
+// video, and a control bar that never scrolls away. The teacher has two
+// buttons, Practice and Sign reader, each opening its own panel: a drawer
+// (desktop) or sheet (phone). The two <video> elements are created once, at
+// the top of the in-call tree, and only moved and resized (callGeometry.ts);
+// a different element tree per layout is what used to leave them black.
 //
 // Practice in the call: the teacher picks a sign (letters, or the class
 // plan's words) and asks the student for it. The student's own device
 // checks it with the classroom's pass rule (callPractice.ts), records the
 // attempt in lesson_progress like the practice screen does, and sends the
 // result back so the teacher sees it at once. While asked, the student's own
-// video becomes the big one: the check reads it.
+// video becomes the big one: the check reads it. While asked, the student's
+// signs are also written as text only by that same pass rule, on both
+// screens, so a sign never appears in the captions without being counted.
 //
 // After a call that connected, the teacher gets a summary to save to the
 // class's call notes (0013) or download; the student a short summary.
@@ -47,11 +51,11 @@ import {
   HandIcon,
   MicIcon,
   PhoneOffIcon,
-  SlidersIcon,
   SpeakerIcon,
   VideoIcon,
 } from "../../components/icons/UiIcons";
 import { fonts, type ThemeColors } from "../../theme/theme";
+import { stateHints } from "../../theme/interactionStates";
 import { DarkTheme, useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
 import { isVideoCallSupported, type VideoCall } from "../../hooks/useVideoCall";
@@ -61,12 +65,13 @@ import { findLanguage } from "../../lib/languages";
 import { CallPracticeGrader, callModelScope, practiceSignsFor, summarizePractice } from "../../lib/callPractice";
 import { recordAttempt, saveCallNotes } from "../../lib/queries";
 import type { ClassPlan } from "../../lib/curriculum";
-import type { CallModelKey, CallPeer, CallSettings, PracticeResult } from "../../lib/callSignaling";
+import type { CallModelKey, CallPeer, CallSettings, PracticeResult, TranscriptEdit } from "../../lib/callSignaling";
+import { signName } from "../../lib/signNames";
 import { callLayout, type Rect } from "./callGeometry";
 import { MODELS, MODEL_NAMES, firstName, fromRead, clock, toRead, type ReadFrom } from "./callUi";
 import { CallAvatar, CallPill, ControlToggle, PhaseChip, QualityBadge, QualityBars, SpinnerArc } from "./CallParts";
 import CaptionStrip from "./CaptionStrip";
-import CallToolsPanel, { type ToolsTab } from "./CallToolsPanel";
+import CallToolsPanel, { type CallPanel } from "./CallToolsPanel";
 import StudentAskPanel from "./StudentAskPanel";
 import { CallErrorScreen, CallingScreen, IncomingScreen, StudentEnded, TeacherSummary, WebOnlyScreen, type NotesData } from "./CallScreens";
 
@@ -79,7 +84,7 @@ type Props = {
   classId: string;
   /** Shown on the teacher's summary ("Back to Grade 5 - Mabini") and incoming calls. */
   className?: string | null;
-  /** Teacher side: the class learning plan, which words can be practised. */
+  /** Teacher side: the class learning plan, which words can be practiced. */
   plan?: ClassPlan | null;
   accentColor: string;
 };
@@ -154,8 +159,9 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [autoSpeak, setAutoSpeak] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const [toolsTab, setToolsTab] = useState<ToolsTab>("practice");
+  // Teacher: the open panel (Practice or Sign reader), if any.
+  const [panel, setPanel] = useState<CallPanel | null>(null);
+  const toolsOpen = panel !== null;
   const [yourSignsOpen, setYourSignsOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -225,8 +231,20 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
   // Student side: grade the local feed against the requested sign. A new
   // request (new id) starts a fresh grader.
   const graderRef = useRef<{ id: number; grader: CallPracticeGrader } | null>(null);
+  // The pass check's own hold (letters), for the student's ring: it fills
+  // only as the sign counts, never ahead of it. Throttled to ~20 steps.
+  const [askHold, setAskHold] = useState(0);
+  const askHoldRef = useRef(0);
+  const showAskHold = (h: number) => {
+    const last = askHoldRef.current;
+    if (h === last || (h !== 0 && h !== 1 && Math.abs(h - last) < 0.05)) return;
+    askHoldRef.current = h;
+    setAskHold(h);
+  };
   useEffect(() => {
     graderRef.current = !isTeacher && practice ? { id: practice.id, grader: new CallPracticeGrader(practice.sign, practiceScope.group) } : null;
+    askHoldRef.current = 0;
+    setAskHold(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTeacher, practice?.id, practice?.sign, practiceScope.group]);
 
@@ -234,6 +252,7 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
     const current = graderRef.current;
     if (isTeacher || !current || !practice) return;
     const attempt = current.grader.push(r);
+    showAskHold(current.grader.hold);
     if (!attempt) return;
     const result: PracticeResult = { practiceId: current.id, sign: current.grader.sign, ...attempt };
     setOwnResults((prev) => [...prev, result].slice(-200));
@@ -254,11 +273,54 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
   }, [isTeacher, teacherModel]);
 
   const model = MODELS[modelKey];
-  const remote = useCallSignReader(remoteVideoRef, connected && captionsOn && readFrom !== "me", model);
+  // While a sign is asked for, the student's signs become text only by the
+  // pass rule (useCallSignReader `strictFor`) - the teacher reads them
+  // remotely, the student locally.
+  const remote = useCallSignReader(remoteVideoRef, connected && captionsOn && readFrom !== "me", model, {
+    strictFor: isTeacher && practice ? practice.id : null,
+  });
   const local = useCallSignReader(localVideoRef, connected && captionsOn && readFrom !== "them" && camOn, model, {
     mirrorLandmarks: handedness === "left",
     onReading: onLocalReading,
+    strictFor: !isTeacher && practice ? practice.id : null,
   });
+
+  // Teacher: an edit to a transcript (Clear, delete last, space) is made here
+  // and sent, so the student's copy of the same text changes too.
+  type Reader = typeof remote;
+  const sendEdit = call.sendTranscriptEdit;
+  const shared = (reader: Reader, whose: TranscriptEdit["whose"]): Reader =>
+    isTeacher
+      ? {
+          ...reader,
+          clear: () => {
+            reader.clear();
+            sendEdit({ whose, edit: "clear" });
+          },
+          backspace: () => {
+            reader.backspace();
+            sendEdit({ whose, edit: "backspace" });
+          },
+          addSpace: () => {
+            reader.addSpace();
+            sendEdit({ whose, edit: "space" });
+          },
+        }
+      : reader;
+  const remoteText = shared(remote, isTeacher ? "student" : "teacher");
+  const localText = shared(local, isTeacher ? "teacher" : "student");
+  // Student: the teacher's edit, made to this screen's copy. "student" is
+  // this side's own signs (local); "teacher" the teacher's (remote).
+  const readersRef = useRef({ local, remote });
+  readersRef.current = { local, remote };
+  const edit = call.transcriptEdit;
+  useEffect(() => {
+    if (isTeacher || !edit) return;
+    const reader = edit.whose === "student" ? readersRef.current.local : readersRef.current.remote;
+    if (edit.edit === "clear") reader.clear();
+    else if (edit.edit === "backspace") reader.backspace();
+    else reader.addSpace();
+  }, [isTeacher, edit]);
   // FSL word captions are Tagalog (signNames.ts); everything else reads as English.
   const captionLang = model.kind === "words" && model.language === "fsl" ? "fil" : "en";
   const remoteSpeech = useTranslateAndSpeak(speechLang, captionLang);
@@ -313,7 +375,7 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
   escapeRef.current = () => {
     if (big) closeBig();
     else if (yourSignsOpen) setYourSignsOpen(false);
-    else if (toolsOpen) setToolsOpen(false);
+    else if (panel) setPanel(null);
   };
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined" || !inCall) return;
@@ -413,25 +475,25 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
 
   const remoteSource = {
     label: `${first} is signing`,
-    reader: remote,
+    reader: remoteText,
     active: readingRemote,
     pausedText: !captionsOn
       ? "Captions are off."
       : isTeacher
-        ? `Not reading ${first}'s signs. In Tools → Reading, choose ${first} or Both of us.`
+        ? `Not reading ${first}'s signs. Open Sign reader and choose ${first} or Both of us.`
         : "Your teacher isn't reading their own signs right now.",
     placeholder: `${first}'s signs appear here as text.`,
   };
   const localSource = {
     label: isTeacher ? "You" : "Your signs",
-    reader: local,
+    reader: localText,
     active: readingLocal,
     pausedText: !camOn
       ? "Your camera is off."
       : !captionsOn
         ? "Captions are off."
         : isTeacher
-          ? "Not reading your signs. In Tools → Reading, choose Me or Both of us."
+          ? "Not reading your signs. Open Sign reader and choose Me or Both of us."
           : "Your teacher isn't reading your signs right now.",
     placeholder: isTeacher ? "Your signs appear here as text." : "Your signs appear here. Speak them aloud for people near you.",
   };
@@ -497,48 +559,54 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
       {connected && quality ? <QualityBadge quality={quality} /> : null}
     </View>
   );
-  const readingChip = isTeacher && connected ? (
-    <Pressable
-      onPress={() => {
-        setToolsTab("reading");
-        setToolsOpen(true);
-      }}
-      style={[styles.readingChip, shadows.neuRaised("sm")]}
-      accessibilityRole="button"
-      accessibilityLabel={`${readingNote}. Change in Tools`}
-    >
-      <EyeIcon size={16} color={colors.textOnGlass} />
-      <Text style={styles.readingChipText} numberOfLines={1}>
-        Reading <Text style={styles.readingChipStrong}>{readFrom === "both" ? "both" : readFrom === "me" ? "you" : first}</Text> · {MODEL_NAMES[modelKey]}
-      </Text>
-    </Pressable>
-  ) : null;
-  const toolsButton = (size: "md" | "phone") => (
-    <Pressable
-      onPress={() => {
-        if (!toolsOpen) setToolsTab(practice ? "practice" : toolsTab);
-        setToolsOpen((v) => !v);
-      }}
-      style={size === "phone" ? styles.phoneCtrl : [styles.toolsBtn, toolsOpen ? [styles.toolsBtnOn, shadows.neuInset("sm")] : shadows.neuRaised("sm")]}
-      accessibilityRole="button"
-      accessibilityLabel={toolsOpen ? "Close Tools" : "Open Tools"}
-      accessibilityState={{ expanded: toolsOpen }}
-    >
-      {size === "phone" ? (
-        <>
-          <View style={[styles.phoneCtrlBtn, toolsOpen ? [styles.toolsBtnOn, shadows.neuInset("sm")] : shadows.neuRaised("sm")]}>
-            <SlidersIcon size={20} color={toolsOpen ? colors.accentCoral : colors.textPrimary} />
+  // Teacher: Practice and Sign reader, each opening its own panel (one tap
+  // to what you want; pressing the open one closes it).
+  const togglePanel = (p: CallPanel) => setPanel((cur) => (cur === p ? null : p));
+  const readingWhom = readFrom === "both" ? "both of you" : readFrom === "me" ? "you" : first;
+  const askedName = practice ? signName(practiceScope.language, practice.sign) : null;
+  const panelButton = (p: CallPanel, size: "md" | "phone") => {
+    const open = panel === p;
+    const isPractice = p === "practice";
+    const label = isPractice ? (askedName && size === "md" ? `Practice · ${askedName}` : "Practice") : size === "md" ? MODEL_NAMES[modelKey] : "Reader";
+    const sub = isPractice ? (askedName ? "Asking now" : `Ask ${first} to sign`) : `Reading ${readingWhom}`;
+    const a11y = isPractice
+      ? `${open ? "Close" : "Open"} Practice: ask ${first} to sign${askedName ? `. Asking for ${askedName}` : ""}`
+      : `${open ? "Close" : "Open"} Sign reader. Reading ${readingWhom} with ${MODEL_NAMES[modelKey]}`;
+    const iconColor = isPractice ? colors.accentCoral : colors.primaryTealLight;
+    const iconSize = size === "phone" ? 22 : 20;
+    const icon = isPractice ? <HandIcon size={iconSize} color={iconColor} /> : <EyeIcon size={iconSize} color={iconColor} />;
+    if (size === "phone") {
+      return (
+        <Pressable onPress={() => togglePanel(p)} style={styles.phoneCtrl} accessibilityRole="button" accessibilityLabel={a11y} accessibilityState={{ expanded: open }}>
+          <View style={[styles.phoneCtrlBtn, open ? [styles.panelBtnOn, shadows.neuInset("sm")] : shadows.neuRaised("sm")]}>
+            {icon}
+            {askedName && isPractice && !open ? <View style={styles.askDot} /> : null}
           </View>
-          <Text style={[styles.ctrlCaption, toolsOpen && { color: colors.accentCoralText }]}>Tools</Text>
-        </>
-      ) : (
-        <>
-          <SlidersIcon size={17} color={toolsOpen ? colors.accentCoral : colors.textPrimary} />
-          <Text style={[styles.toolsText, toolsOpen && { color: colors.accentCoralText }]}>Tools</Text>
-        </>
-      )}
-    </Pressable>
-  );
+          <Text style={[styles.ctrlCaption, open && { color: colors.accentCoralText }]}>{label}</Text>
+        </Pressable>
+      );
+    }
+    return (
+      <Pressable
+        onPress={() => togglePanel(p)}
+        style={({ pressed }) => [styles.panelBtn, open ? [styles.panelBtnOn, shadows.neuInset("sm")] : shadows.neuRaised("sm"), pressed && { opacity: 0.85 }]}
+        accessibilityRole="button"
+        accessibilityLabel={a11y}
+        accessibilityState={{ expanded: open }}
+      >
+        {icon}
+        <View style={styles.flexShrink}>
+          <Text style={[styles.panelBtnText, open && { color: colors.accentCoralText }]} numberOfLines={1}>
+            {label}
+          </Text>
+          <Text style={styles.panelBtnSub} numberOfLines={1}>
+            {sub}
+          </Text>
+        </View>
+        {open ? <CloseIcon size={13} color={colors.textOnGlass} /> : <ChevronDownIcon size={14} color={colors.textOnGlass} />}
+      </Pressable>
+    );
+  };
 
   const ctrlSize = phone ? 52 : isTeacher ? (compact ? 48 : 56) : compact ? 56 : 64;
   const toggles = (
@@ -623,7 +691,7 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
         )}
       </View>
 
-      {/* Top bar: who, status, quality; the teacher's reading chip and Tools. */}
+      {/* Top bar: who, status, quality; the teacher's Practice and Sign reader buttons. */}
       <View style={[rect(layout.topBar), phone ? styles.topBarPhone : styles.topBar]} pointerEvents="box-none">
         <View style={styles.who}>
           <CallAvatar name={peerName} size={phone ? 36 : 44} color={peerAccent} />
@@ -635,10 +703,10 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
             {statusLine}
           </View>
         </View>
-        {!phone ? (
+        {!phone && isTeacher && connected ? (
           <View style={styles.topRight}>
-            {readingChip}
-            {isTeacher && connected ? toolsButton("md") : null}
+            {panelButton("practice", "md")}
+            {panelButton("reading", "md")}
           </View>
         ) : null}
       </View>
@@ -685,13 +753,13 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
         </View>
       ) : null}
 
-      {layout.panel && isTeacher && toolsOpen && peer ? (
+      {layout.panel && isTeacher && panel && peer ? (
         <View style={[rect(layout.panel), styles.layer]}>
           <CallToolsPanel
             phone={phone}
-            tab={toolsTab}
-            onTab={setToolsTab}
-            onClose={() => setToolsOpen(false)}
+            panel={panel}
+            onPanel={setPanel}
+            onClose={() => setPanel(null)}
             peer={peer}
             modelKey={modelKey}
             onModel={setTeacherModel}
@@ -704,6 +772,10 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
             modelOf={modelOf}
             onAsk={askFor}
             reading={readFrom !== "me" && captionsOn}
+            onFixReading={() => {
+              setCaptionsOn(true);
+              if (teacherReadFrom === "me") setTeacherReadFrom("both");
+            }}
             transcriptTools={
               phone ? (
                 <>
@@ -726,9 +798,7 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
             checking={readingLocal}
             cameraOff={!camOn}
             captionsOff={!captionsOn}
-            hold={local.hold}
-            guess={local.guess.label}
-            phase={local.phase}
+            hold={askHold}
             reduceMotion={reduceMotion}
           />
         </View>
@@ -739,7 +809,12 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
         {phone ? (
           <>
             {toggles}
-            {isTeacher && connected ? toolsButton("phone") : null}
+            {isTeacher && connected ? (
+              <>
+                {panelButton("practice", "phone")}
+                {panelButton("reading", "phone")}
+              </>
+            ) : null}
             {leave}
           </>
         ) : (
@@ -758,6 +833,7 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
           style={styles.bigScrim}
           onPress={closeBig}
           accessibilityRole="button"
+          {...stateHints({ stateLayer: "off" })}
           accessibilityLabel={isTeacher ? "Close the big view for both of you" : "Close the big view"}
         >
           <View style={styles.bigTop} pointerEvents="box-none">
@@ -794,7 +870,7 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
       {!isTeacher ? (
         <Modal visible={yourSignsOpen} transparent animationType={reduceMotion ? "none" : "slide"} onRequestClose={() => setYourSignsOpen(false)}>
           <View style={styles.sheetScrim}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setYourSignsOpen(false)} accessibilityRole="button" accessibilityLabel="Close your signs" />
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setYourSignsOpen(false)} accessibilityRole="button" {...stateHints({ stateLayer: "off" })} accessibilityLabel="Close your signs" />
             <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]}>
               <View style={styles.sheetHead}>
                 <Text style={styles.sheetTitle}>Your signs</Text>
@@ -810,7 +886,7 @@ function CallView({ role, call, self, classId, className, plan, accentColor }: P
                 </Text>
               </View>
               <View style={styles.sheetTools}>
-                {transcriptTools(local, localSpeech, "student", "Show big")}
+                {transcriptTools(localText, localSpeech, "student", "Show big")}
                 {phone ? speechPicker(true) : null}
               </View>
             </View>
@@ -904,12 +980,21 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
   statusDot: { width: 7, height: 7, borderRadius: 3.5 },
   statusText: { fontFamily: fonts.bodyMedium, fontSize: 13 },
   topRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-  readingChip: { flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingHorizontal: 16, borderRadius: 999, backgroundColor: colors.neuBase, maxWidth: 360 },
-  readingChipText: { fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.textOnGlass },
-  readingChipStrong: { fontFamily: fonts.bodySemiBold, color: colors.textPrimary },
-  toolsBtn: { flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingHorizontal: 16, borderRadius: 999, backgroundColor: colors.neuBase },
-  toolsBtnOn: { backgroundColor: colors.neuWell },
-  toolsText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.textPrimary },
+  panelBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    height: 52,
+    paddingLeft: 16,
+    paddingRight: 14,
+    borderRadius: 16,
+    backgroundColor: colors.neuBase,
+    maxWidth: 300,
+  },
+  panelBtnOn: { backgroundColor: colors.neuWell },
+  panelBtnText: { fontFamily: fonts.bodySemiBold, fontSize: 15.5, color: colors.textPrimary },
+  panelBtnSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.textOnGlass, marginTop: 1 },
+  askDot: { position: "absolute", top: 6, right: 6, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accentCoral },
 
   banner: {
     position: "absolute",

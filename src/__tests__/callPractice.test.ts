@@ -49,6 +49,22 @@ describe("CallPracticeGrader", () => {
   });
 });
 
+describe("CallPracticeGrader.hold (the student's ring)", () => {
+  it("fills only while the target is held at the pass level, is full on the pass, and empties when the hand goes", () => {
+    const g = new CallPracticeGrader("B", "letters");
+    g.push({ kind: "frame", label: "B", confidence: 0.7, at: 0 }); // read as B, but under 80%
+    expect(g.hold).toBe(0);
+    g.push({ kind: "frame", label: "B", confidence: 0.9, at: 100 });
+    g.push({ kind: "frame", label: "B", confidence: 0.9, at: 100 + LIVE_PASS_HOLD_MS / 2 });
+    expect(g.hold).toBeCloseTo(0.5, 1);
+    const pass = g.push({ kind: "frame", label: "B", confidence: 0.9, at: 100 + LIVE_PASS_HOLD_MS });
+    expect(pass?.passed).toBe(true);
+    expect(g.hold).toBe(1);
+    g.push({ kind: "no-hand", at: 2000 });
+    expect(g.hold).toBe(0);
+  });
+});
+
 describe("summarizePractice", () => {
   it("one entry per request: passed if any try passed, best confidence, try count", () => {
     const out = summarizePractice(

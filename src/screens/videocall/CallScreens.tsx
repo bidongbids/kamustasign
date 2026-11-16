@@ -37,7 +37,7 @@ export type NotesData = {
 export function notesText(n: NotesData, selfName: string, peerName: string, isTeacher: boolean): string {
   const lines = ["LCSign call notes", `With: ${peerName}`, `Started: ${new Date(n.startedAt).toLocaleString()}`, `Length: ${clock(n.seconds)}`, ""];
   if (n.practice.length) {
-    lines.push("Practised:");
+    lines.push("Practiced:");
     for (const p of n.practice) {
       lines.push(
         `  - ${signName(p.language, p.sign)} (${p.language.toUpperCase()} ${p.group === "words" ? "word" : p.group === "numbers" ? "number" : "letter"}): ${p.passed ? "passed" : "not yet"}${
@@ -183,7 +183,7 @@ export function IncomingScreen({
         </Text>
         <Text style={styles.incomingSub}>
           {selfRole === "student"
-            ? "Your teacher wants to practise signs with you."
+            ? "Your teacher wants to practice signs with you."
             : `${callerName}${className ? ` from ${className}` : ""} is calling.`}
         </Text>
         <View style={[styles.incomingActions, phone && styles.incomingActionsPhone]}>
@@ -277,7 +277,7 @@ export function TeacherSummary({
         </View>
         <View style={styles.tiles}>
           <Tile value={clock(notes.seconds)} label="Call length" />
-          <Tile value={String(notes.practice.length)} label="Signs practised" />
+          <Tile value={String(notes.practice.length)} label="Signs practiced" />
           <Tile value={String(got)} label="Got it" color={colors.successText} />
           <Tile value={String(notes.practice.length - got)} label="Not yet" color={colors.accentCoral} />
         </View>
@@ -285,7 +285,7 @@ export function TeacherSummary({
           <View style={styles.summaryCols}>
             {notes.practice.length > 0 ? (
               <View style={[styles.card, styles.col]}>
-                <Text style={styles.cardTitle}>Practised</Text>
+                <Text style={styles.cardTitle}>Practiced</Text>
                 {notes.practice.map((p, i) => (
                   <View key={`${p.sign}-${i}`} style={[styles.practRow, i > 0 && styles.rowRule]}>
                     <View style={[styles.signChip, shadows.neuRaised("sm")]}>
@@ -319,7 +319,7 @@ export function TeacherSummary({
             </View>
           </View>
         ) : (
-          <Text style={[styles.sub, styles.mt8]}>Nothing was signed or practised in this call.</Text>
+          <Text style={[styles.sub, styles.mt8]}>Nothing was signed or practiced in this call.</Text>
         )}
         {hasContent ? (
           <View style={styles.saveRow}>
@@ -370,8 +370,8 @@ export function StudentEnded({
 }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const practised = notes?.practice ?? [];
-  const got = practised.filter((p) => p.passed);
+  const practiced = notes?.practice ?? [];
+  const got = practiced.filter((p) => p.passed);
   return (
     <GradientBackground variant="subtle" style={styles.center}>
       <ScrollView contentContainerStyle={styles.centerScroll}>
@@ -380,14 +380,14 @@ export function StudentEnded({
           The call has ended
         </Text>
         <Text style={styles.endedBody}>
-          {practised.length > 0
-            ? `You practised ${practised.length} sign${practised.length === 1 ? "" : "s"} and got ${got.length} of them!`
+          {practiced.length > 0
+            ? `You practiced ${practiced.length} sign${practiced.length === 1 ? "" : "s"} and got ${got.length} of them!`
             : "Thanks for the call!"}
         </Text>
         {reason === "dropped" ? <Text style={styles.sub}>The connection was lost.</Text> : null}
-        {practised.length > 0 ? (
+        {practiced.length > 0 ? (
           <View style={styles.learnedRow}>
-            {practised.map((p, i) => (
+            {practiced.map((p, i) => (
               <View key={`${p.sign}-${i}`} style={[styles.learnedTile, p.passed ? styles.learnedTileOn : styles.learnedTileOff]}>
                 <Text style={[styles.learnedText, !p.passed && { color: colors.textTertiary }]} numberOfLines={1}>
                   {signName(p.language, p.sign)}
@@ -397,7 +397,7 @@ export function StudentEnded({
           </View>
         ) : null}
         <View style={styles.endedActions}>
-          {notes && Platform.OS === "web" && (notes.mine || notes.theirs || practised.length) ? (
+          {notes && Platform.OS === "web" && (notes.mine || notes.theirs || practiced.length) ? (
             <CallPill size="lg" label="Download notes" onPress={() => downloadNotes(notes, selfName, teacherName, false)} icon={(c) => <DownloadIcon size={17} color={c} />} />
           ) : null}
           <CallPill size="xl" variant="gold" label="Back" onPress={onBack} style={styles.backWide} />
@@ -454,6 +454,8 @@ function errorCard(reason: EndReason | null, first: string, error: string | null
       return { icon: <PhoneOffIcon size={22} color={red} />, title: `${first} declined the call`, body: "Try again later, or send a reminder in class.", action: "back" as const, actionLabel: "" };
     case "busy":
       return { icon: <PhoneIcon size={22} color={colors.accentCoral} />, title: `${first} is on another call`, body: "Call them again in a few minutes.", action: "back" as const, actionLabel: "" };
+    case "notBooked":
+      return { icon: <ClockIcon size={22} color={colors.textOnGlass} />, title: "It isn't your call time", body: "Your teacher books a time for your call. Call then: the Call button turns on 5 minutes before.", action: "back" as const, actionLabel: "" };
     case "noAnswer":
       return { icon: <ClockIcon size={22} color={colors.textOnGlass} />, title: `${first} didn't answer`, body: "They'll see that you called when they next open LCSign.", action: "back" as const, actionLabel: "" };
     case "cameraBlocked":

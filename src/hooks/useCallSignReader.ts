@@ -13,6 +13,13 @@
 // classified frame (letters) or clip (words), and a lost hand - the in-call
 // practice check (VideoCallScreen) grades the student's sign from these.
 //
+// `strictFor`: while the teacher has asked for a sign (the request's id), the
+// feed of the student being checked writes text only by the classroom pass
+// rule (PASS_CONFIDENCE, letters held LIVE_PASS_HOLD_MS), on both screens.
+// Otherwise a sign could show up in the captions at 60% and still not count,
+// which reads as "it saw my sign but didn't mark it right". A change of rule
+// (a request starts or ends) restarts the hold under the new one.
+//
 // Each feed builds its OWN landmarker (not useSharedLandmarkers, which keeps
 // exactly one alive for the translator tabs) because a call can read two
 // feeds at once. They're closed when the feed stops being read.
@@ -35,7 +42,7 @@ import { SignSegmenter } from "../ml/signSegmenter";
 import { frameAspect, handshapeInput } from "../ml/handshapeInput";
 import { loadTasksVision, getVisionFileset } from "../lib/mediapipeVision";
 import { createHolisticTracker } from "../lib/holisticTracker";
-import { UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
+import { LIVE_PASS_HOLD_MS, PASS_CONFIDENCE, UNKNOWN_SIGN_LABEL } from "../lib/curriculum";
 import { createFrameGate } from "./useFpsMeter";
 import { signName } from "../lib/signNames";
 
@@ -61,7 +68,7 @@ export function useCallSignReader(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   active: boolean,
   model: CallModel,
-  options: { mirrorLandmarks?: boolean; onReading?: (r: SignReading) => void } = {}
+  options: { mirrorLandmarks?: boolean; onReading?: (r: SignReading) => void; strictFor?: number | null } = {}
 ) {
   const [phase, setPhase] = useState<ReaderPhase>("off");
   const [guess, setGuess] = useState<{ label: string; confidence: number }>({ label: "", confidence: 0 });
@@ -72,6 +79,9 @@ export function useCallSignReader(
   mirrorRef.current = !!options.mirrorLandmarks;
   const onReadingRef = useRef(options.onReading);
   onReadingRef.current = options.onReading;
+  // Read every frame, so turning it on or off never reloads the model.
+  const strictRef = useRef<number | null>(options.strictFor ?? null);
+  strictRef.current = options.strictFor ?? null;
   const lastCommittedRef = useRef("");
 
   const modelKey = `${model.kind}:${model.language}`;
@@ -115,6 +125,7 @@ export function useCallSignReader(
       let holdLabel: string | null = null;
       let holdStart = 0;
       let busy = false;
+      let strictSeen: number | null = null;
 
       const loop = () => {
         if (stopped) return;
@@ -136,13 +147,22 @@ export function useCallSignReader(
               const pct = arr[i] * 100;
               setGuess({ label, confidence: pct });
               onReadingRef.current?.({ kind: "frame", label, confidence: arr[i], at: now });
-              if (pct >= COMMIT_PCT && label !== "-" && label !== "nothing") {
+              // A new request (or the end of one) starts the hold over, under its rule.
+              if (strictRef.current !== strictSeen) {
+                strictSeen = strictRef.current;
+                holdLabel = null;
+              }
+              const strict = strictSeen !== null;
+              const holdMs = strict ? LIVE_PASS_HOLD_MS : HOLD_MS;
+              // Strict compares 0-1 like the pass check does (0.8 * 100 isn't exactly 80).
+              const above = strict ? arr[i] >= PASS_CONFIDENCE : pct >= COMMIT_PCT;
+              if (above && label !== "-" && label !== "nothing") {
                 if (label !== holdLabel) {
                   holdLabel = label;
                   holdStart = now;
                   setHold(0);
                   setPhase("holding");
-                } else if (now - holdStart >= HOLD_MS && label !== lastCommittedRef.current) {
+                } else if (now - holdStart >= holdMs && label !== lastCommittedRef.current) {
                   lastCommittedRef.current = label;
                   add(label, false);
                   setHold(1);
@@ -151,7 +171,7 @@ export function useCallSignReader(
                   setHold(1);
                   setPhase("added");
                 } else {
-                  setHold(Math.min(1, (now - holdStart) / HOLD_MS));
+                  setHold(Math.min(1, (now - holdStart) / holdMs));
                   setPhase("holding");
                 }
               } else {
@@ -209,7 +229,8 @@ export function useCallSignReader(
             confidence: probs[i],
             at: performance.now(),
           });
-          if (pct >= WORD_MIN_PCT && classes[i] !== UNKNOWN_SIGN_LABEL) {
+          const above = strictRef.current !== null ? probs[i] >= PASS_CONFIDENCE : pct >= WORD_MIN_PCT;
+          if (above && classes[i] !== UNKNOWN_SIGN_LABEL) {
             // Captions are read by people: FSL words go in as their Tagalog names.
             const word = signName(language, classes[i] ?? "?");
             setGuess({ label: word, confidence: pct });
@@ -269,18 +290,16 @@ export function useCallSignReader(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, modelKey, videoRef]);
 
-  const clear = useCallback(() => {
-    setText("");
-    lastCommittedRef.current = "";
-  }, []);
-  const backspace = useCallback(() => {
-    setText((t) => (model.kind === "words" ? t.replace(/\s*\S+\s*$/, "") : t.slice(0, -1)));
-    lastCommittedRef.current = "";
-  }, [model.kind]);
-  const addSpace = useCallback(() => {
-    setText((t) => (t && !t.endsWith(" ") ? t + " " : t));
-    lastCommittedRef.current = "";
-  }, []);
+  // Edits keep lastCommittedRef: a letter still held up when the text is
+  // cleared (or deleted) isn't written straight back on the next frame -
+  // which made Clear look like it did nothing. Lowering the hand, or a
+  // different letter, starts a new one as usual.
+  const clear = useCallback(() => setText(""), []);
+  const backspace = useCallback(
+    () => setText((t) => (model.kind === "words" ? t.replace(/\s*\S+\s*$/, "") : t.slice(0, -1))),
+    [model.kind]
+  );
+  const addSpace = useCallback(() => setText((t) => (t && !t.endsWith(" ") ? t + " " : t)), []);
 
   return { phase, guess, hold, text, lastAdded, clear, backspace, addSpace };
 }

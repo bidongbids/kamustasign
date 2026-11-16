@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { DashboardCard, useDashboardStyles } from "./DashboardShell";
 import { ActionButton, ConfirmInline } from "./ManageKit";
+import { LoadErrorCard } from "./TeacherStates";
 import { CheckIcon, PhoneIcon, TrashIcon, VideoIcon } from "../../components/icons/UiIcons";
 import { fonts, spacing, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
@@ -120,11 +121,14 @@ export function CallNotesCard({
   nameOf,
   onDelete,
   loading,
+  onRetry,
 }: {
   notes: CallNoteRow[];
   nameOf: (studentId: string) => string;
   onDelete: (id: string) => Promise<void>;
   loading?: boolean;
+  /** Set when the notes failed to load: an error with Try again, not "no notes". */
+  onRetry?: () => void | Promise<void>;
 }) {
   const ds = useDashboardStyles();
   const styles = useThemedStyles(makeStyles);
@@ -135,9 +139,11 @@ export function CallNotesCard({
     <DashboardCard title={`Call notes (${notes.length})`} style={styles.card}>
       {loading && notes.length === 0 ? (
         <Text style={ds.emptyText}>Loading call notes…</Text>
+      ) : onRetry && notes.length === 0 ? (
+        <LoadErrorCard compact title="Couldn't load the call notes" onRetry={onRetry} />
       ) : notes.length === 0 ? (
         <Text style={ds.emptyText}>
-          After a call, tap “Save notes” to keep what was signed and practised. Saved notes show up here.
+          After a call, tap “Save notes” to keep what was signed and practiced. Saved notes show up here.
         </Text>
       ) : (
         notes.map((n, i) => {
@@ -152,7 +158,7 @@ export function CallNotesCard({
                   </Text>
                   <Text style={ds.itemMeta}>
                     {formatWhen(n.started_at)} · {length(n.duration_seconds)}
-                    {n.practice.length ? ` · practised ${n.practice.length}, passed ${passed}` : ""}
+                    {n.practice.length ? ` · practiced ${n.practice.length}, passed ${passed}` : ""}
                   </Text>
                 </View>
                 <ActionButton label={open ? "Hide" : "View"} variant="ghost" onPress={() => setOpenId(open ? null : n.id)} />

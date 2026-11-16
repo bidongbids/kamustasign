@@ -1,7 +1,7 @@
 // Where everything goes on the call screen, as absolute rectangles in the
 // screen's own coordinates. The two <video> elements are created once and
-// only moved and resized with these numbers, so a layout change (the Tools
-// drawer, a practice request, Show big, crossing the phone breakpoint) never
+// only moved and resized with these numbers, so a layout change (the
+// teacher's drawer, a practice request, Show big, crossing the phone breakpoint) never
 // re-creates them. Re-creating them is what left both videos black after a
 // window was resized mid-call (design_handoff_teacher_admin_videocall
 // README, RN note 1).
@@ -12,7 +12,7 @@ export type CallLayoutInput = {
   width: number;
   height: number;
   role: "teacher" | "student";
-  /** Teacher: the Tools drawer (desktop) or sheet (phone) is open. */
+  /** Teacher: the Practice or Sign reader drawer (desktop) or sheet (phone) is open. */
   toolsOpen: boolean;
   /** Student: a practice request is up - their own video becomes the big one. */
   asked: boolean;
@@ -52,7 +52,8 @@ function desktopLayout({ width, height, role, toolsOpen, asked, showBig, twoRows
   const gap = 16;
   const topH = 64;
   const controlsH = compact ? 80 : 104;
-  const panelW = width < 1400 ? 360 : 388;
+  // The teacher's Practice / Sign reader drawer: wider on bigger screens.
+  const panelW = width >= 1600 ? 440 : width >= 1280 ? 400 : 360;
   const areaTop = topH + (compact ? 12 : 20);
   const areaBottom = height - controlsH - 10;
 

@@ -21,18 +21,23 @@ describe("callLayout, desktop", () => {
     expect(within(l.remote, 1440, 900)).toBe(true);
   });
 
-  it("Tools open: the drawer sits beside the video, never on it", () => {
+  it("a panel open: the drawer sits beside the video, never on it", () => {
     const l = callLayout({ ...base, toolsOpen: true });
-    expect(l.panel!.width).toBe(388);
+    expect(l.panel!.width).toBe(400);
     expect(overlaps(l.remote, l.panel!)).toBe(false);
     expect(overlaps(l.caption!, l.panel!)).toBe(false);
     expect(l.remote.width).toBeLessThan(callLayout(base).remote.width);
   });
 
-  it("a laptop height (1366×768) gets the compact bars and the 360 drawer", () => {
+  it("the drawer grows with the screen: 360 below 1280, 400, then 440 from 1600", () => {
+    expect(callLayout({ ...base, width: 1100, toolsOpen: true }).panel!.width).toBe(360);
+    expect(callLayout({ ...base, width: 1600, toolsOpen: true }).panel!.width).toBe(440);
+  });
+
+  it("a laptop height (1366×768) gets the compact bars and the 400 drawer", () => {
     const l = callLayout({ ...base, width: 1366, height: 768, toolsOpen: true });
     expect(l.compact).toBe(true);
-    expect(l.panel!.width).toBe(360);
+    expect(l.panel!.width).toBe(400);
     expect(l.controls.height).toBe(80);
     expect(l.remote.height).toBeGreaterThan(400);
   });
@@ -72,7 +77,7 @@ describe("callLayout, phone", () => {
     expect(within(l.self, 390, 844)).toBe(true);
   });
 
-  it("the teacher's Tools sheet shrinks the video but keeps it readable", () => {
+  it("the teacher's Practice / Sign reader sheet shrinks the video but keeps it readable", () => {
     const l = callLayout({ ...phone, toolsOpen: true });
     expect(l.remote.height).toBeGreaterThanOrEqual(300);
     expect(l.remote.width).toBeGreaterThanOrEqual(160);

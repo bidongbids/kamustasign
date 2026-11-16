@@ -30,6 +30,8 @@ const MIN_FRAMES_FOR_TRY = 8;
 
 export class CallPracticeGrader {
   private tracker = new LivePassTracker();
+  /** Letters: how far the current hold is toward a pass, 0-1 (the student's ring). */
+  hold = 0;
   private frames = 0;
   private best = 0;
   private lastSeen: string | null = null;
@@ -48,7 +50,7 @@ export class CallPracticeGrader {
       return { passed, seen: r.label, confidence: r.label === this.sign ? r.confidence : 0 };
     }
     if (r.kind === "no-hand") {
-      this.tracker.handLost();
+      this.hold = this.tracker.handLost();
       const tried = this.frames >= MIN_FRAMES_FOR_TRY && !this.passedThisHold;
       const attempt = tried ? { passed: false, seen: this.lastSeen, confidence: this.best } : null;
       this.frames = 0;
@@ -62,6 +64,7 @@ export class CallPracticeGrader {
     if (r.confidence >= 0.6) this.lastSeen = r.label;
     if (r.label === this.sign) this.best = Math.max(this.best, r.confidence);
     const update = this.tracker.frame(this.sign, r.label, r.confidence, r.at);
+    this.hold = update.hold;
     const pass = update.reports.find((x) => x.passed);
     if (pass) {
       this.passedThisHold = true;

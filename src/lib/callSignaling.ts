@@ -51,6 +51,15 @@ export type PracticeResult = {
   confidence: number;
 };
 
+/**
+ * The teacher edited someone's signs-as-text (Clear, delete last, add a
+ * space). Each screen builds its own copy of the text from the video it
+ * sees, so the student's screen makes the same edit to its copy: a Clear
+ * from the teacher empties the student's "Your signs" too. `whose` is by
+ * role, like `read`.
+ */
+export type TranscriptEdit = { whose: "teacher" | "student"; edit: "clear" | "backspace" | "space" };
+
 /** What each person shows on the topics they're on. */
 export type PresenceStatus = "available" | "busy";
 
@@ -61,14 +70,16 @@ type Base = { from: CallPeer; to: string; callId: string };
 export type CallSignal =
   | (Base & { kind: "ring" })
   | (Base & { kind: "accept" })
-  | (Base & { kind: "decline"; reason?: "busy" })
+  // "not-booked": the teacher's app turned down a student with no booked call open (0017).
+  | (Base & { kind: "decline"; reason?: "busy" | "not-booked" })
   | (Base & { kind: "hangup"; reason?: "failed" })
   | (Base & { kind: "offer"; sdp: RTCSessionDescriptionInit })
   | (Base & { kind: "answer"; sdp: RTCSessionDescriptionInit })
   | (Base & { kind: "ice-candidate"; candidate: RTCIceCandidateInit })
   | (Base & { kind: "settings"; settings: CallSettings })
   | (Base & { kind: "settings-request" })
-  | (Base & { kind: "practice-result"; result: PracticeResult });
+  | (Base & { kind: "practice-result"; result: PracticeResult })
+  | (Base & { kind: "transcript-edit" } & TranscriptEdit);
 
 // A signal minus the envelope fields the sender fills in for every message.
 export type CallSignalBody = CallSignal extends infer S
