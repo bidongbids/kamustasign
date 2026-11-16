@@ -2,6 +2,7 @@ import React, { forwardRef, useState } from "react";
 import { Platform, Pressable, Text, TextInput, View, StyleSheet, TextInputProps } from "react-native";
 import { fonts, spacing, radii, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
+import { stateHints } from "../../theme/interactionStates";
 
 type Props = TextInputProps & {
   label: string;
@@ -47,6 +48,9 @@ const AuthTextField = forwardRef<TextInput, Props>(function AuthTextField(
           // The visible label above isn't tied to the input for screen
           // readers, so name the input itself.
           accessibilityLabel={label}
+          // Focus shows as the border colour below; error is announced too.
+          {...stateHints({ focusRing: "own" })}
+          {...(error && Platform.OS === "web" ? ({ "aria-invalid": true } as object) : null)}
           secureTextEntry={canReveal && !revealed}
           onFocus={(e) => {
             setFocused(true);

@@ -3,6 +3,8 @@ import { ActivityIndicator, Animated, Platform, Pressable, Text, StyleSheet, Vie
 import { fonts, spacing, radii, type ThemeColors } from "../../theme/theme";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
+import { focusFromKeyboard } from "../../lib/focusVisible";
+import { stateHints } from "../../theme/interactionStates";
 
 type Props = {
   label: string;
@@ -55,13 +57,16 @@ export default function AuthButton({
       onPress={onPress}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
-      onFocus={() => setFocused(true)}
+      // Ring for keyboard focus only (a click also focuses on the web).
+      onFocus={() => setFocused(focusFromKeyboard())}
       onBlur={() => setFocused(false)}
       onPressIn={() => animatePress(0.97)}
       onPressOut={() => animatePress(lifted ? 1.015 : 1)}
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityLabel={label}
+      // The ring is drawn on the pill inside, not on this wrapper.
+      {...stateHints({ focusRing: "own" })}
       style={styles.pressable}
     >
       <Animated.View
@@ -94,6 +99,8 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
   StyleSheet.create({
   pressable: {
     width: "100%",
+    // The hover/press tint (interactionStates) takes this shape.
+    borderRadius: radii.pill,
   },
   base: {
     borderRadius: radii.pill,

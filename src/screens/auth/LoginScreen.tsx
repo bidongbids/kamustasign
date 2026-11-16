@@ -2,13 +2,18 @@
 // account (StartLayout). There's no role to pick first - the account's role
 // decides the dashboard. When a session survived a reload, the card says
 // whose it is instead of showing the form (a shared classroom computer).
+// With no internet the card says so, and the Classroom joins the Translator
+// below it, for practice without an account. The form stays: the check can
+// be wrong, and logging in is still worth a try.
 import React, { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, Platform, TextInput, View } from "react-native";
 import AuthTextField from "../../components/auth/AuthTextField";
 import AuthButton from "../../components/auth/AuthButton";
 import StartLayout from "./StartLayout";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
-import { friendlyAuthError } from "../../lib/authForms";
+import { friendlyAuthError, isNetworkError } from "../../lib/authForms";
+import { recheckConnection } from "../../lib/connectivity";
+import { WifiOffIcon } from "../../components/icons/UiIcons";
 import type { ProfileRole } from "../../lib/queries";
 import { useAuthStyles } from "./authStyles";
 import { fonts, spacing, type ThemeColors } from "../../theme/theme";
@@ -30,7 +35,12 @@ type Props = {
   onNeedsMfa: () => void;
   /** Shows "Forgot password?" - only when reset emails can be sent (AuthNavigator). */
   onForgotPassword?: (email: string) => void;
+  /** Signed up but never typed the emailed code: enter it (or get a new one). */
+  onConfirmEmail: (email: string) => void;
   onOpenTranslator: () => void;
+  /** The server can't be reached: say so, and offer the Classroom without an account. */
+  offline?: boolean;
+  onOpenClassroom?: () => void;
   /** Someone is still signed in on this device (sessions survive reloads). */
   signedInAs: { name: string; role: ProfileRole | null } | null;
   onContinueSignedIn: () => void;
@@ -46,18 +56,23 @@ export default function LoginScreen({
   onNavigateRegister,
   onNeedsMfa,
   onForgotPassword,
+  onConfirmEmail,
   onOpenTranslator,
+  offline = false,
+  onOpenClassroom,
   signedInAs,
   onContinueSignedIn,
   onSignOut,
   notice,
   onDismissNotice,
 }: Props) {
+  const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const s = useAuthStyles();
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const passwordRef = useRef<TextInput>(null);
 
@@ -65,6 +80,7 @@ export default function LoginScreen({
     // Enter in the password field can fire while a sign-in is still running.
     if (loading) return;
     setError(null);
+    setUnconfirmed(false);
     if (!isSupabaseConfigured) {
       setError("Backend isn't connected yet (no Supabase project configured). This screen is UI-only for now.");
       return;
@@ -79,6 +95,10 @@ export default function LoginScreen({
     if (signInError) {
       setLoading(false);
       setError(friendlyAuthError(signInError));
+      // Lost the internet since the last check: offer offline practice now.
+      if (isNetworkError(signInError)) void recheckConnection();
+      // Supabase only says this after the password was right.
+      setUnconfirmed(signInError.code === "email_not_confirmed" || /email not confirmed/i.test(signInError.message));
       return;
     }
     if (!data.session) {
@@ -120,10 +140,24 @@ export default function LoginScreen({
     </View>
   ) : null;
 
+  const classroom = offline ? onOpenClassroom : undefined;
+  const offlineRow = offline ? (
+    <View style={styles.offline} accessibilityRole="alert">
+      <WifiOffIcon size={18} color={colors.textOnFrosted} />
+      <Text style={styles.offlineText}>
+        <Text style={styles.offlineTitle}>No internet right now. </Text>
+        {signedInAs
+          ? "Your account needs it to open, but you can still practice below without one."
+          : "Logging in needs it, but you can still practice below without an account."}
+      </Text>
+    </View>
+  ) : null;
+
   if (signedInAs) {
     const shown = signedInAs.name || "Your account";
     return (
-      <StartLayout onOpenTranslator={onOpenTranslator}>
+      <StartLayout onOpenTranslator={onOpenTranslator} onOpenClassroom={classroom}>
+        {offlineRow}
         {noticeRow}
         <Text style={[s.title, { color: accentColor }]} accessibilityRole="header">
           Welcome back
@@ -145,7 +179,8 @@ export default function LoginScreen({
   }
 
   return (
-    <StartLayout onOpenTranslator={onOpenTranslator}>
+    <StartLayout onOpenTranslator={onOpenTranslator} onOpenClassroom={classroom}>
+      {offlineRow}
       {noticeRow}
       <Text style={[s.title, { color: accentColor }]} accessibilityRole="header">
         Log In
@@ -189,7 +224,19 @@ export default function LoginScreen({
         </Text>
       )}
 
-      {error ? <Text style={s.errorText}>{error}</Text> : null}
+      {error ? (
+        <Text style={s.errorText}>
+          {error}
+          {unconfirmed && (
+            <>
+              {" "}
+              <Text style={[s.switchLink, { color: accentColor }]} onPress={() => onConfirmEmail(email.trim())} accessibilityRole="link">
+                Enter the code
+              </Text>
+            </>
+          )}
+        </Text>
+      ) : null}
 
       <AuthButton label="Log In" onPress={handleLogin} loading={loading} accentColor={accentColor} />
 
@@ -226,6 +273,18 @@ const makeStyles = (colors: ThemeColors, theme: Theme) =>
   },
   noticeText: { flex: 1, minWidth: 160, fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textOnFrosted },
   noticeLink: { fontSize: 13, textDecorationLine: "underline" },
+  offline: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(30,31,38,0.16)",
+    borderRadius: 10,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  offlineText: { flex: 1, fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textOnFrosted },
+  offlineTitle: { fontFamily: fonts.bodySemiBold },
   who: {
     borderWidth: 1,
     borderColor: "rgba(30,31,38,0.16)",

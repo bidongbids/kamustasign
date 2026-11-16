@@ -1,6 +1,6 @@
-// Where a password-reset email link lands (authGate.recovering, see App):
-// the link has already signed the person in, so the new password is set on
-// that session. A 2FA account enters its code first (App shows
+// After a password-reset code (ForgotPasswordScreen) or link (web), shown by
+// App while authGate.recovering: the code has already signed the person in,
+// so the new password is set on that session. A 2FA account enters its code first (App shows
 // Verify2FAScreen while the session is still aal1).
 import React, { useRef, useState } from "react";
 import { Text, TextInput } from "react-native";
@@ -9,6 +9,7 @@ import AuthButton from "../../components/auth/AuthButton";
 import AuthScreenShell from "./AuthScreenShell";
 import { supabase } from "../../lib/supabase";
 import { friendlyAuthError, newPasswordProblem } from "../../lib/authForms";
+import { leakedPasswordProblem } from "../../lib/pwnedPassword";
 import { useAuthStyles } from "./authStyles";
 
 type Props = {
@@ -37,6 +38,12 @@ export default function ResetPasswordScreen({ accentColor, onDone, onCancel }: P
       return;
     }
     setLoading(true);
+    const leaked = await leakedPasswordProblem(password);
+    if (leaked) {
+      setLoading(false);
+      setError(leaked);
+      return;
+    }
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (updateError) {
@@ -59,7 +66,7 @@ export default function ResetPasswordScreen({ accentColor, onDone, onCancel }: P
   return (
     <AuthScreenShell accentColor={accentColor}>
       <Text style={[s.title, { color: accentColor }]}>Choose a new password</Text>
-      <Text style={s.subtitle}>You opened a password reset link. Pick a new password for your LCSign account.</Text>
+      <Text style={s.subtitle}>Pick a new password for your LCSign account.</Text>
 
       <AuthTextField
         label="New password"

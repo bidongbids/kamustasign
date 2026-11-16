@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "./supabase";
-import { friendlyAuthError } from "./authForms";
+import { friendlyAuthError, isNetworkError } from "./authForms";
 import type { Profile } from "./queries";
 
 export type AuthGateStatus = "loading" | "signedOut" | "needsMfa" | "authenticated";
@@ -11,6 +11,9 @@ export type AuthGateState = {
   status: AuthGateStatus;
   session: Session | null;
   mfaFactorId: string | null;
+  /** This session entered an authenticator code (aal2). Admins must have
+   *  it (0016_admin_requires_2fa.sql); App sends one without it to set up 2FA. */
+  aal2: boolean;
   /** The signed-in account's profile - its role decides the dashboard, never
    *  the tile picked on the role-select screen. Null until loaded. */
   profile: Profile | null;
@@ -48,6 +51,7 @@ export function useAuthGate(): AuthGateState {
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<AuthGateStatus>("loading");
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [aal2, setAal2] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [recovering, setRecovering] = useState(recoveryLinkOnLoad);
@@ -63,6 +67,7 @@ export function useAuthGate(): AuthGateState {
     if (!nextSession) {
       setSession(null);
       setMfaFactorId(null);
+      setAal2(false);
       setProfile(null);
       setProfileError(null);
       setRecovering(false);
@@ -73,6 +78,7 @@ export function useAuthGate(): AuthGateState {
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (stale()) return;
     setSession(nextSession);
+    setAal2(aal?.currentLevel === "aal2");
     if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== aal.nextLevel) {
       const { data: factors } = await supabase.auth.mfa.listFactors();
       if (stale()) return;
@@ -86,7 +92,10 @@ export function useAuthGate(): AuthGateState {
     if (stale()) return;
     setMfaFactorId(null);
     setProfile((data as Profile | null) ?? null);
-    setProfileError(error ? error.message : data ? null : "This account has no profile. Ask an admin for help.");
+    // No internet: say so, not the browser's "TypeError: Failed to fetch".
+    setProfileError(
+      error ? (isNetworkError(error) ? friendlyAuthError(error) : error.message) : data ? null : "This account has no profile. Ask an admin for help."
+    );
     setStatus("authenticated");
   }, []);
 
@@ -126,6 +135,7 @@ export function useAuthGate(): AuthGateState {
     status,
     session,
     mfaFactorId,
+    aal2,
     profile,
     profileError,
     recovering,

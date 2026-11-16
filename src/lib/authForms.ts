@@ -41,6 +41,17 @@ export function cleanTotpCode(text: string) {
   return text.replace(/\D/g, "").slice(0, 6);
 }
 
+/**
+ * Codes Supabase emails (sign-up confirmation, password reset) - the
+ * {{ .Token }} in the email templates. Their length is the project's "Email
+ * OTP Length" setting (Authentication > Sign In / Providers > Email): 6.
+ */
+export const EMAIL_CODE_LENGTH = 6;
+
+export function cleanEmailCode(text: string) {
+  return text.replace(/\D/g, "").slice(0, EMAIL_CODE_LENGTH);
+}
+
 type AuthErrorLike = { message?: string; code?: string; status?: number; name?: string; reasons?: string[] } | null | undefined;
 
 const NETWORK = "Can't reach the LCSign server. Check your internet connection and try again.";
@@ -51,7 +62,7 @@ const EXISTING = "There's already an account with this email.";
 // Supabase's error codes (auth-js lib/error-codes.ts) -> what to tell the person.
 const MESSAGES: Record<string, string> = {
   invalid_credentials: "That email and password don't match. Check them and try again.",
-  email_not_confirmed: "Confirm your email first: open the link we sent you, then log in.",
+  email_not_confirmed: "Confirm your email first: enter the 6-digit code we emailed you.",
   user_already_exists: EXISTING,
   email_exists: EXISTING,
   email_address_invalid: "That doesn't look like an email address.",
@@ -65,7 +76,8 @@ const MESSAGES: Record<string, string> = {
   insufficient_aal: "Enter your 2FA code first.",
   reauthentication_needed: LOG_IN_AGAIN,
   reauth_nonce_missing: LOG_IN_AGAIN,
-  otp_expired: "That link has expired. Ask for a new one.",
+  // Supabase answers a wrong email code and an old one the same way.
+  otp_expired: "That code didn't work. It may be mistyped or more than an hour old - check it, or ask for a new one.",
   session_not_found: SIGNED_OUT,
   session_expired: SIGNED_OUT,
   refresh_token_not_found: SIGNED_OUT,
@@ -91,7 +103,7 @@ function codeOf(error: NonNullable<AuthErrorLike>) {
 
 // supabase-js reports a failed fetch (offline, DNS, a 5xx from the gateway)
 // as AuthRetryableFetchError; the browser's own wording varies.
-function isNetworkError(error: NonNullable<AuthErrorLike>) {
+export function isNetworkError(error: NonNullable<AuthErrorLike>) {
   return (
     error.name === "AuthRetryableFetchError" ||
     /failed to fetch|networkerror|load failed|network request failed/i.test(error.message ?? "")

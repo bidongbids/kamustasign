@@ -8,37 +8,47 @@
 // signing in (the account's role decides the dashboard), and the sign-up
 // form asks for the kind of account instead.
 import React, { useEffect, useState } from "react";
-import { Platform, View, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
 import Verify2FAScreen from "../screens/auth/Verify2FAScreen";
 import Setup2FAScreen from "../screens/auth/Setup2FAScreen";
 import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
+import ConfirmEmailScreen from "../screens/auth/ConfirmEmailScreen";
 import type { AuthGateState } from "../lib/authGate";
 import type { ProfileRole } from "../lib/queries";
 
-type Step = "login" | "register" | "verify2fa" | "setup2fa" | "forgot";
+type Step = "login" | "register" | "verify2fa" | "setup2fa" | "forgot" | "confirmEmail";
 
 // "Forgot password?" is opt-in: reset emails need custom SMTP in Supabase
-// (its built-in mailer only sends to the project team), and the link has to
-// open a web page - Electron's app:// shell can't receive it.
-const passwordResetEnabled =
-  process.env.EXPO_PUBLIC_PASSWORD_RESET === "true" &&
-  Platform.OS === "web" &&
-  typeof window !== "undefined" &&
-  window.location.protocol.startsWith("http");
+// (its built-in mailer only sends to the project team). The email carries a
+// code, typed into ForgotPasswordScreen, so it works in the desktop app too.
+// LCSign's project has SMTP since 2026-11-04; .env turns this on.
+const passwordResetEnabled = process.env.EXPO_PUBLIC_PASSWORD_RESET === "true";
 
 type Props = {
   accentColor: string;
   authGate: AuthGateState;
   onOpenTranslator: () => void;
+  /** No internet: LoginScreen says so and offers the Classroom without an account. */
+  offline?: boolean;
+  onOpenClassroom?: () => void;
   /** A session survived a reload: the start screen says whose it is. */
   signedInAs: { name: string; role: ProfileRole | null } | null;
   onContinueSignedIn: () => void;
   onSetupPromptActive: (active: boolean) => void;
 };
 
-export default function AuthNavigator({ accentColor, authGate, onOpenTranslator, signedInAs, onContinueSignedIn, onSetupPromptActive }: Props) {
+export default function AuthNavigator({
+  accentColor,
+  authGate,
+  onOpenTranslator,
+  offline,
+  onOpenClassroom,
+  signedInAs,
+  onContinueSignedIn,
+  onSetupPromptActive,
+}: Props) {
   // A reload mid-2FA keeps the password step's (aal1) session, so start at
   // the code instead of asking for the password again.
   const [step, setStep] = useState<Step>(authGate.status === "needsMfa" ? "verify2fa" : "login");
@@ -70,7 +80,13 @@ export default function AuthNavigator({ accentColor, authGate, onOpenTranslator,
                 }
               : undefined
           }
+          onConfirmEmail={(email) => {
+            setEmailHint(email);
+            setStep("confirmEmail");
+          }}
           onOpenTranslator={onOpenTranslator}
+          offline={offline}
+          onOpenClassroom={onOpenClassroom}
           signedInAs={signedInAs}
           onContinueSignedIn={onContinueSignedIn}
           onSignOut={() => authGate.signOut()}
@@ -85,9 +101,10 @@ export default function AuthNavigator({ accentColor, authGate, onOpenTranslator,
           onNavigateLogin={toLogin}
           onRegistered={(role) => {
             // Fresh account, session already exists, no factor enrolled yet.
-            // Teachers and admins are offered 2FA before the approval
-            // notice; students go straight there (Setup2FAScreen explains why).
-            if (role !== "student") {
+            // Teachers are offered 2FA before the approval notice; students
+            // go straight there (Setup2FAScreen explains why). Admins must
+            // have 2FA (0016): App sends them to the setup with no skip.
+            if (role === "teacher") {
               onSetupPromptActive(true);
               setStep("setup2fa");
             }
@@ -96,6 +113,8 @@ export default function AuthNavigator({ accentColor, authGate, onOpenTranslator,
       )}
 
       {step === "forgot" && <ForgotPasswordScreen accentColor={accentColor} initialEmail={emailHint} onBack={toLogin} />}
+
+      {step === "confirmEmail" && <ConfirmEmailScreen accentColor={accentColor} email={emailHint} onBack={toLogin} />}
 
       {step === "verify2fa" && (
         <Verify2FAScreen
@@ -112,9 +131,7 @@ export default function AuthNavigator({ accentColor, authGate, onOpenTranslator,
       {step === "setup2fa" && (
         <Setup2FAScreen
           accentColor={accentColor}
-          onDone={() => {
-            onSetupPromptActive(false);
-          }}
+          onDone={() => onSetupPromptActive(false)}
         />
       )}
     </View>

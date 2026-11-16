@@ -1,13 +1,17 @@
-// "Forgot password?": emails a reset link. Only reachable when
+// "Forgot password?": emails a 6-digit reset code. Only reachable when
 // EXPO_PUBLIC_PASSWORD_RESET=true (see AuthNavigator), because Supabase's
 // built-in mailer only sends to the project team's own addresses - the
-// project needs custom SMTP first. The link opens LCSign signed in, and
-// ResetPasswordScreen asks for the new password (authGate.recovering).
+// project needs custom SMTP first (set up 2026-11-04: the LCSign Gmail).
+// A code, not a link: the installed app (app://) can't be opened from an
+// email. The right code signs the person in and fires PASSWORD_RECOVERY, so
+// App shows ResetPasswordScreen (authGate.recovering), after the 2FA code on
+// an account that has 2FA.
 import React, { useState } from "react";
-import { Text } from "react-native";
+import { Platform, Text } from "react-native";
 import AuthTextField from "../../components/auth/AuthTextField";
 import AuthButton from "../../components/auth/AuthButton";
 import AuthScreenShell from "./AuthScreenShell";
+import EmailCodeForm from "../../components/auth/EmailCodeForm";
 import { supabase } from "../../lib/supabase";
 import { friendlyAuthError, isEmailShaped } from "../../lib/authForms";
 import { useAuthStyles } from "./authStyles";
@@ -18,6 +22,13 @@ type Props = {
   /** Back to the login form, pre-filled with `email`. */
   onBack: (email?: string) => void;
 };
+
+// The web build still passes its own address, in case the email template
+// carries a link again; the desktop app has no address an email can open.
+const redirectTo =
+  Platform.OS === "web" && typeof window !== "undefined" && window.location.protocol.startsWith("http")
+    ? `${window.location.origin}${window.location.pathname}`
+    : undefined;
 
 export default function ForgotPasswordScreen({ accentColor, initialEmail = "", onBack }: Props) {
   const s = useAuthStyles();
@@ -35,9 +46,7 @@ export default function ForgotPasswordScreen({ accentColor, initialEmail = "", o
       return;
     }
     setLoading(true);
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-      redirectTo: `${window.location.origin}${window.location.pathname}`,
-    });
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, redirectTo ? { redirectTo } : undefined);
     setLoading(false);
     if (resetError) {
       setError(friendlyAuthError(resetError));
@@ -50,12 +59,12 @@ export default function ForgotPasswordScreen({ accentColor, initialEmail = "", o
     // Supabase answers the same whether or not the address has an account,
     // so this can't say which - and shouldn't.
     return (
-      <AuthScreenShell accentColor={accentColor}>
+      <AuthScreenShell accentColor={accentColor} onBack={() => onBack(sentTo)} backLabel="Back to Log In">
         <Text style={[s.title, { color: accentColor }]}>Check your email</Text>
         <Text style={s.subtitle}>
-          If an account uses {sentTo}, we've sent it a link to choose a new password. Open the link on this device.
+          If an account uses {sentTo}, we've emailed it a 6-digit code. Enter it here to choose a new password.
         </Text>
-        <AuthButton label="Back to Log In" onPress={() => onBack(sentTo)} accentColor={accentColor} />
+        <EmailCodeForm accentColor={accentColor} email={sentTo} purpose="recovery" onVerified={() => {}} />
       </AuthScreenShell>
     );
   }
@@ -63,7 +72,7 @@ export default function ForgotPasswordScreen({ accentColor, initialEmail = "", o
   return (
     <AuthScreenShell accentColor={accentColor} onBack={() => onBack(email.trim() || undefined)} backLabel="Back to Log In">
       <Text style={[s.title, { color: accentColor }]}>Forgot your password?</Text>
-      <Text style={s.subtitle}>Enter your email and we'll send you a link to choose a new one.</Text>
+      <Text style={s.subtitle}>Enter your email and we'll send you a code to choose a new one.</Text>
 
       <AuthTextField
         label="Email"
@@ -80,7 +89,7 @@ export default function ForgotPasswordScreen({ accentColor, initialEmail = "", o
 
       {error ? <Text style={s.errorText}>{error}</Text> : null}
 
-      <AuthButton label="Send reset link" onPress={handleSend} loading={loading} accentColor={accentColor} />
+      <AuthButton label="Send code" onPress={handleSend} loading={loading} accentColor={accentColor} />
     </AuthScreenShell>
   );
 }

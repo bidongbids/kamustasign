@@ -3,9 +3,11 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-na
 import AuthTextField from "../../components/auth/AuthTextField";
 import AuthButton from "../../components/auth/AuthButton";
 import AuthScreenShell from "./AuthScreenShell";
+import EmailCodeForm from "../../components/auth/EmailCodeForm";
 import { CheckBox } from "../dashboard/ManageKit";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 import { NAME_MAX, friendlyAuthError, isEmailShaped, isExistingAccountError, newPasswordProblem } from "../../lib/authForms";
+import { leakedPasswordProblem } from "../../lib/pwnedPassword";
 import { useAuthStyles } from "./authStyles";
 import type { ProfileRole } from "../../lib/queries";
 import { fonts, radii, spacing, type ThemeColors } from "../../theme/theme";
@@ -22,7 +24,7 @@ type Props = {
 // approves it can still change the kind of account, so Student is a safe
 // default for the children who make most accounts.
 const ROLE_CHOICES: { role: ProfileRole; label: string; note: string }[] = [
-  { role: "student", label: "Student", note: "Practise signs with your camera and earn stars. An admin approves your account first." },
+  { role: "student", label: "Student", note: "Practice signs with your camera and earn stars. An admin approves your account first." },
   { role: "teacher", label: "Teacher", note: "Run classes, follow progress and call students. An admin approves teacher accounts first." },
   { role: "admin", label: "Admin", note: "Manage LCSign accounts. The LCSign super admin approves admin accounts first." },
 ];
@@ -83,6 +85,12 @@ export default function RegisterScreen({ accentColor, onNavigateLogin, onRegiste
       return;
     }
     setLoading(true);
+    const leaked = await leakedPasswordProblem(password);
+    if (leaked) {
+      setLoading(false);
+      setError(leaked);
+      return;
+    }
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -96,7 +104,7 @@ export default function RegisterScreen({ accentColor, onNavigateLogin, onRegiste
       return;
     }
     if (!data.session) {
-      // Email confirmation is required before a session is issued.
+      // "Confirm email" is on: no session until the emailed code is entered.
       setConfirmationSentTo(email.trim());
       return;
     }
@@ -105,12 +113,10 @@ export default function RegisterScreen({ accentColor, onNavigateLogin, onRegiste
 
   if (confirmationSentTo) {
     return (
-      <AuthScreenShell accentColor={accentColor}>
+      <AuthScreenShell accentColor={accentColor} onBack={() => onNavigateLogin(confirmationSentTo)} backLabel="Back to Log In">
         <Text style={[s.title, { color: accentColor }]}>Check your email</Text>
-        <Text style={s.subtitle}>
-          We sent a confirmation link to {confirmationSentTo}. Confirm it, then come back and log in.
-        </Text>
-        <AuthButton label="Back to Log In" onPress={() => onNavigateLogin(confirmationSentTo)} accentColor={accentColor} />
+        <Text style={s.subtitle}>We sent a 6-digit code to {confirmationSentTo}. Enter it to confirm your email.</Text>
+        <EmailCodeForm accentColor={accentColor} email={confirmationSentTo} purpose="signup" onVerified={() => onRegistered(role)} />
       </AuthScreenShell>
     );
   }

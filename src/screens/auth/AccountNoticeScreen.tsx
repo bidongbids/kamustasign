@@ -26,9 +26,21 @@ type Props = {
   detail?: string;
   /** Small print at the end, e.g. what to do about a wrong role. */
   footnote?: string;
+  /** A "Practice offline" button: the Classroom without an account (profile couldn't load). */
+  onPracticeOffline?: () => void;
 };
 
-export default function AccountNoticeScreen({ accentColor, title, message, onCheckAgain, onSignOut, kind = "pending", detail, footnote }: Props) {
+export default function AccountNoticeScreen({
+  accentColor,
+  title,
+  message,
+  onCheckAgain,
+  onSignOut,
+  kind = "pending",
+  detail,
+  footnote,
+  onPracticeOffline,
+}: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const s = useAuthStyles();
@@ -54,6 +66,11 @@ export default function AccountNoticeScreen({ accentColor, title, message, onChe
           setChecking(false);
         }}
       />
+      {onPracticeOffline ? (
+        <View style={{ marginTop: spacing.sm, width: "100%" }}>
+          <AuthButton label="Practice offline" onPress={onPracticeOffline} variant="secondary" />
+        </View>
+      ) : null}
       <View style={{ marginTop: spacing.sm, width: "100%" }}>
         <AuthButton label="Sign out" onPress={onSignOut} variant="secondary" />
       </View>

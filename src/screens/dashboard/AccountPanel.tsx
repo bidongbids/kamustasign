@@ -1,6 +1,8 @@
 // "Your account", opened from the name in the dashboard header
 // (DashboardShell): change your name and password, and turn 2FA on or off.
-// Teachers and admins are offered 2FA - they can see other people's data.
+// Teachers are offered 2FA - they can see other people's data; admins must
+// have it (0016) and can't turn it off here. New passwords are checked
+// against leaked-password lists (pwnedPassword.ts).
 // Students only see the 2FA section when their account already has it, so
 // they can turn it off (Setup2FAScreen explains why they aren't offered it).
 // Frosted card, so the auth screens' fields, buttons and styles fit as-is.
@@ -14,8 +16,10 @@ import { CloseIcon } from "../../components/icons/UiIcons";
 import { supabase } from "../../lib/supabase";
 import { changePassword, getTotpFactor, turnOffTwoFactor } from "../../lib/account";
 import { NAME_MAX, cleanTotpCode, newPasswordProblem } from "../../lib/authForms";
+import { leakedPasswordProblem } from "../../lib/pwnedPassword";
 import { updateProfileName, type Profile } from "../../lib/queries";
 import { fonts, radii, spacing, type ThemeColors } from "../../theme/theme";
+import { stateHints } from "../../theme/interactionStates";
 import { useTheme, useThemedStyles, type Theme } from "../../theme/ThemeProvider";
 
 type Props = {
@@ -34,7 +38,7 @@ export default function AccountPanel({ visible, onClose, accentColor, profile, o
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close account settings" />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close account settings" {...stateHints({ stateLayer: "off" })} />
         <ScrollView style={styles.scroller} contentContainerStyle={styles.scrollerContent}>
           <GlassCard tint="frosted" dropShadow radius={radii.lg} padding={spacing.lg}>
             <View style={styles.header}>
@@ -151,6 +155,12 @@ function PasswordSection({ accentColor, email }: { accentColor: string; email: s
       return;
     }
     setSaving(true);
+    const leaked = await leakedPasswordProblem(next);
+    if (leaked) {
+      setSaving(false);
+      setStatus({ kind: "error", text: leaked });
+      return;
+    }
     const { error } = await changePassword(email, current, next);
     setSaving(false);
     if (error) {
@@ -276,6 +286,10 @@ function TwoFactorSection({ accentColor, role }: { accentColor: string; role: Pr
             }}
           />
         </>
+      ) : factorId && role === "admin" ? (
+        // Admins must keep 2FA (0016_admin_requires_2fa.sql): without it their
+        // admin powers stop, and App would send them straight back to set it up.
+        <Text style={styles.body}>On. Admin accounts must keep 2FA, so it can't be turned off here.</Text>
       ) : factorId ? (
         <>
           <Text style={styles.body}>On. Logging in asks for a code from your authenticator app.</Text>
