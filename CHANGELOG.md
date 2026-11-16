@@ -44,5 +44,9 @@ installed as "1.0.0", whatever the date of the build.
 - Dependency fixes (`npm audit fix`): the critical and most high issues
   gone. What's left is in Expo's build tools (not shipped in the app) and
   needs the Expo 58 upgrade.
+- Red-team test (docs/RED_TEAM_REPORT.md): 126 attacks, 117 refused. Fixed:
+  desktop content policy (no scripts from a CDN, connections only to
+  LCSign's server), Android backups no longer copy the log-in, builds always
+  clear their cache. Known limit: a student can fake stars through the API.
 
 **Database:** apply 0015 (if not applied yet), 0016, 0017 and 0018 in order.
