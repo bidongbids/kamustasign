@@ -1,6 +1,6 @@
 {
   "name": "kamustasign",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
@@ -9,11 +9,14 @@
     "ios": "expo start --ios",
     "electron:install": "cd electron && npm install",
     "electron:dev": "concurrently \"npm run web\" \"cd electron && npm start\"",
-    "electron:build": "npx expo export --platform web && cd electron && npx electron-builder",
+    "electron:build": "npx expo export --platform web && cd electron && node write-server-config.mjs && npx electron-builder --publish never",
+    "mobile:install": "cd mobile && npm install",
+    "mobile:build": "npx expo export --platform web && cd mobile && node build-apk.mjs",
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "db:backup": "node scripts/db-backup.mjs backup",
-    "db:restore": "node scripts/db-backup.mjs restore"
+    "db:restore": "node scripts/db-backup.mjs restore",
+    "version:set": "node scripts/set-version.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/baloo-2": "0.4.2",

@@ -47,3 +47,11 @@ ml/ab_test/*.npy
 
 # Database backups (npm run db:backup) - names, emails, password hashes
 backups/
+
+# Built by electron/write-server-config.mjs from .env
+electron/server.json
+
+# Android release key settings (path + passwords) - keep out of git
+mobile/android/keystore.properties
+*.jks
+*.keystore

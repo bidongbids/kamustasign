@@ -487,6 +487,8 @@ export default function LiveTranslatorScreen({
             ? "blocked"
             : "camera"
       );
+      // The screen says what failed in plain words; the detail goes to the error report.
+      console.error(`[hand reader] ${stage} failed`, err);
       setStatus("ERROR: " + (err && err.message ? err.message : String(err)));
     });
 

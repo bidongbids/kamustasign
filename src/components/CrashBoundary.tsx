@@ -1,7 +1,8 @@
 // Catches a crash anywhere below it and shows "Something went wrong" with a
 // Reload button, instead of leaving a blank window. Copy details puts the
 // error on the clipboard so a teacher can send it to whoever looks after
-// LCSign - nothing is sent anywhere by itself.
+// LCSign - nothing is sent anywhere by itself. The details start with the
+// version and end with the errors just before the crash (errorLog.ts).
 //
 // App.tsx uses two: a themed one around the screens, and a plain one outside
 // the theme in case the themed screen (or the theme itself) is what broke.
@@ -13,6 +14,8 @@ import { useAuthStyles } from "../screens/auth/authStyles";
 import { AlertCircleIcon } from "./icons/UiIcons";
 import { spacing } from "../theme/theme";
 import { useTheme } from "../theme/ThemeProvider";
+import { APP_VERSION, PLATFORM_LABEL, appPlatform } from "../lib/appVersion";
+import { recentErrors, recordError, type ErrorEntry } from "../lib/errorLog";
 
 type Props = {
   children: React.ReactNode;
@@ -24,12 +27,17 @@ type State = { error: Error | null; componentStack: string };
 
 export default class CrashBoundary extends React.Component<Props, State> {
   state: State = { error: null, componentStack: "" };
+  /** Errors recorded before this crash, for Copy details. */
+  before: ErrorEntry[] = [];
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // Taken before console.error, which the error log also copies.
+    this.before = recentErrors();
+    recordError("crash", error);
     console.error("[crash]", error, info.componentStack);
     this.setState({ componentStack: info.componentStack ?? "" });
   }
@@ -42,7 +50,7 @@ export default class CrashBoundary extends React.Component<Props, State> {
   render() {
     const { error, componentStack } = this.state;
     if (!error) return this.props.children;
-    const details = crashDetails(error, componentStack);
+    const details = crashDetails(error, componentStack, this.before);
     return this.props.plain ? (
       <PlainCrashScreen details={details} onReload={this.reload} />
     ) : (
@@ -51,11 +59,12 @@ export default class CrashBoundary extends React.Component<Props, State> {
   }
 }
 
-function crashDetails(error: Error, componentStack: string) {
+function crashDetails(error: Error, componentStack: string, before: ErrorEntry[]) {
   const where = Platform.OS === "web" && typeof navigator !== "undefined" ? navigator.userAgent : Platform.OS;
   const trim = (text: string | undefined, lines: number) => (text ?? "").trim().split("\n").slice(0, lines).join("\n");
+  const earlier = before.slice(-5).flatMap((e) => [`${e.at} [${e.source}]${e.count > 1 ? ` (x${e.count})` : ""}`, trim(e.message, 4)]);
   return [
-    `LCSign crash, ${new Date().toISOString()}`,
+    `LCSign ${APP_VERSION} (${PLATFORM_LABEL[appPlatform()]}) crash, ${new Date().toISOString()}`,
     `Where: ${where}`,
     `${error.name}: ${error.message}`,
     "",
@@ -63,6 +72,7 @@ function crashDetails(error: Error, componentStack: string) {
     "",
     "Screen:",
     trim(componentStack, 12),
+    ...(earlier.length ? ["", "Errors just before:", ...earlier] : []),
   ].join("\n");
 }
 

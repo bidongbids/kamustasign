@@ -9,19 +9,45 @@ import StudentDashboard from "./src/screens/dashboard/StudentDashboard";
 import TeacherDashboard from "./src/screens/dashboard/TeacherDashboard";
 import AdminDashboard from "./src/screens/dashboard/AdminDashboard";
 import { useAuthGate } from "./src/lib/authGate";
+import { useConnection } from "./src/lib/connectivity";
 import { isPendingApproval, type ProfileRole } from "./src/lib/queries";
 import AccountNoticeScreen from "./src/screens/auth/AccountNoticeScreen";
 import Verify2FAScreen from "./src/screens/auth/Verify2FAScreen";
 import ResetPasswordScreen from "./src/screens/auth/ResetPasswordScreen";
+import Setup2FAScreen from "./src/screens/auth/Setup2FAScreen";
 import { ThemeColors } from "./src/theme/theme";
 import { ThemeProvider, useTheme, useThemedStyles } from "./src/theme/ThemeProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import CrashBoundary from "./src/components/CrashBoundary";
+import { isAndroidApp } from "./src/lib/androidApp";
+import { installErrorCapture } from "./src/lib/errorLog";
+import { useAppRelease } from "./src/lib/appRelease";
+import UpdateRequiredScreen from "./src/screens/auth/UpdateRequiredScreen";
 
 // "start": the login screen (or, with a saved session, who is signed in);
 // "app": the signed-in account's dashboard; "translator": no account needed,
-// opened from either one, and Back returns there.
-type Screen = "start" | "app" | "translator";
+// opened from either one, and Back returns there; "classroom": the offline
+// Classroom - practice with no account, progress kept on this device
+// (StudentDashboard `guest`) - offered when the internet is down.
+type Screen = "start" | "app" | "translator" | "classroom";
+
+// Launching offline with a saved session, supabase-js retries the token
+// refresh for ~25 s before it gives up. The start screen doesn't wait for it
+// once the connectivity check says offline, or after this long anyway: the
+// Translator and offline practice need no account.
+const AUTH_WAIT_MS = 5000;
+
+/** True once `active` has stayed true for `ms`; false again when it isn't. */
+function useAfter(active: boolean, ms: number) {
+  const [over, setOver] = useState(false);
+  useEffect(() => {
+    setOver(false);
+    if (!active) return;
+    const id = setTimeout(() => setOver(true), ms);
+    return () => clearTimeout(id);
+  }, [active, ms]);
+  return over;
+}
 
 const roleAccentFor = (colors: ThemeColors): Record<ProfileRole, string> => ({
   student: colors.accentCoral,
@@ -32,22 +58,30 @@ const roleAccentFor = (colors: ThemeColors): Record<ProfileRole, string> => ({
 // Who has to act on a sign-up (0014_account_approval.sql) and what waits.
 const PENDING_MESSAGE: Record<ProfileRole, string> = {
   student:
-    "An admin at Liloan Central School needs to approve your account. Until then you can't practise or join a class. Once they have, choose Check again.",
+    "An admin at Liloan Central School needs to approve your account. Until then you can't practice or join a class. Once they have, choose Check again.",
   teacher:
     "An admin at Liloan Central School needs to approve your teacher account. Until then you can't make classes or calls. Once they have, choose Check again.",
   admin: "The LCSign super admin needs to approve your admin account. Until then you can't manage accounts. Once they have, choose Check again.",
 };
 const ROLE_WITH_ARTICLE: Record<ProfileRole, string> = { student: "a student", teacher: "a teacher", admin: "an admin" };
 
+// Keep the last few errors on this device for "Copy error report"
+// (Appearance > About LCSign) - production builds; in dev the console is right there.
+if (!__DEV__ && Platform.OS === "web") installErrorCapture();
+
 // Installable app / offline shell (public/sw.js). Production web builds only:
 // in dev it would cache Metro's bundles, and Electron's app:// scheme has no
-// service worker support (it's offline anyway).
+// service worker support (it's offline anyway). The Android app (mobile/,
+// Capacitor) serves https://localhost from files inside the APK, so a worker
+// would only keep a second copy of the models and could hand out an old one
+// after an app update.
 if (
   !__DEV__ &&
   Platform.OS === "web" &&
   typeof window !== "undefined" &&
   "serviceWorker" in navigator &&
-  window.location.protocol.startsWith("http")
+  window.location.protocol.startsWith("http") &&
+  !isAndroidApp()
 ) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch((err) => console.warn("[sw] registration failed", err));
@@ -91,8 +125,17 @@ function AppContent() {
 
   const [screen, setScreen] = useState<Screen>("start");
   const [translatorFrom, setTranslatorFrom] = useState<Screen>("start");
+  const [classroomFrom, setClassroomFrom] = useState<Screen>("start");
   const [setupPromptActive, setSetupPromptActive] = useState(false);
   const authGate = useAuthGate();
+  // Is the server reachable? Checked everywhere but inside a working
+  // dashboard (which has its own "check the internet" cards).
+  const connection = useConnection(!(screen === "app" && authGate.status === "authenticated"));
+  const offline = connection === "offline";
+  const authSlow = useAfter(authGate.status === "loading", AUTH_WAIT_MS);
+  // Too old for the server (app_release.min_version, 0018)? Then the
+  // Translator still works, but nothing that needs an account.
+  const appRelease = useAppRelease();
 
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
@@ -116,26 +159,70 @@ function AppContent() {
     const prev = lastStatus.current;
     lastStatus.current = authGate.status;
     if (authGate.status === "authenticated" && (prev === "signedOut" || prev === "needsMfa")) setScreen("app");
-    if (authGate.status === "signedOut") setScreen((s) => (s === "translator" ? s : "start"));
+    if (authGate.status === "signedOut") setScreen((s) => (s === "translator" || s === "classroom" ? s : "start"));
   }, [authGate.status]);
 
   const openTranslator = (from: Screen) => {
     setTranslatorFrom(from);
     setScreen("translator");
   };
+  const openClassroom = (from: Screen) => {
+    setClassroomFrom(from);
+    setScreen("classroom");
+  };
 
-  if (!fontsLoaded || authGate.status === "loading") {
+  const spinner = (
+    <View style={styles.loading}>
+      <ActivityIndicator size="large" color={colors.primaryTeal} />
+    </View>
+  );
+  if (!fontsLoaded) return spinner;
+
+  // Neither needs an account, so neither waits for the session check.
+  if (screen === "translator") {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.primaryTeal} />
-      </View>
+      <>
+        <StatusBar style={statusBarStyle} />
+        <TranslatorHubScreen
+          onBack={() => setScreen(translatorFrom)}
+          backLabel={
+            translatorFrom === "app" ? "Back to your dashboard" : translatorFrom === "classroom" ? "Back to the Classroom" : "Back to the log-in screen"
+          }
+          signerName={authGate.status === "authenticated" ? authGate.profile?.full_name ?? undefined : undefined}
+        />
+      </>
     );
   }
+  if (screen === "classroom") {
+    return (
+      <>
+        <StatusBar style={statusBarStyle} />
+        <StudentDashboard
+          guest
+          accentColor={roleAccent.student}
+          exitLabel={classroomFrom === "app" ? "Back to my account" : "Back to log in"}
+          onExitToStart={() => setScreen(classroomFrom)}
+          onOpenTranslator={() => openTranslator("classroom")}
+        />
+      </>
+    );
+  }
+
+  if (appRelease.need === "required" && appRelease.release) {
+    return (
+      <>
+        <StatusBar style={statusBarStyle} />
+        <UpdateRequiredScreen accentColor={colors.primaryTeal} release={appRelease.release} onOpenTranslator={() => openTranslator("start")} />
+      </>
+    );
+  }
+
+  if (authGate.status === "loading" && !offline && !authSlow) return spinner;
 
   // Opened from a password-reset email: the link signed the person in, and
   // the new password comes before anything else. A 2FA account's session is
   // still aal1, so its code comes first.
-  if (authGate.recovering && authGate.status !== "signedOut") {
+  if (authGate.recovering && authGate.status !== "signedOut" && authGate.status !== "loading") {
     const leave = async () => {
       authGate.endRecovery();
       await authGate.signOut();
@@ -158,19 +245,6 @@ function AppContent() {
     );
   }
 
-  if (screen === "translator") {
-    return (
-      <>
-        <StatusBar style={statusBarStyle} />
-        <TranslatorHubScreen
-          onBack={() => setScreen(translatorFrom)}
-          backLabel={translatorFrom === "app" ? "Back to your dashboard" : "Back to the log-in screen"}
-          signerName={authGate.status === "authenticated" ? authGate.profile?.full_name ?? undefined : undefined}
-        />
-      </>
-    );
-  }
-
   const signedIn = authGate.status === "authenticated" && !setupPromptActive;
 
   if (!signedIn || screen === "start") {
@@ -182,6 +256,8 @@ function AppContent() {
           accentColor={colors.primaryTeal}
           authGate={authGate}
           onOpenTranslator={() => openTranslator("start")}
+          offline={offline}
+          onOpenClassroom={() => openClassroom("start")}
           signedInAs={restored}
           onContinueSignedIn={() => setScreen("app")}
           onSetupPromptActive={setSetupPromptActive}
@@ -193,6 +269,22 @@ function AppContent() {
   // The dashboard follows the account's role in the database. (RLS is what
   // actually protects the data either way.)
   const profile = authGate.profile;
+
+  // Admin accounts must use 2FA: since 0016 the database ignores an admin's
+  // role until the session has entered an authenticator code, so an admin
+  // without 2FA sets it up here first - no skipping, only logging out.
+  if (profile?.role === "admin" && !authGate.aal2) {
+    return (
+      <>
+        <StatusBar style={statusBarStyle} />
+        <Setup2FAScreen
+          required
+          accentColor={colors.primaryTeal}
+          onDone={(enabled) => (enabled ? authGate.refresh() : authGate.signOut())}
+        />
+      </>
+    );
+  }
   if (!profile || isPendingApproval(profile)) {
     return (
       <>
@@ -212,6 +304,7 @@ function AppContent() {
           footnote={profile ? "Picked the wrong kind of account? Whoever approves you can change it." : undefined}
           onCheckAgain={authGate.refresh}
           onSignOut={() => authGate.signOut()}
+          onPracticeOffline={profile ? undefined : () => openClassroom("app")}
         />
       </>
     );
@@ -227,7 +320,9 @@ function AppContent() {
   return (
     <>
       <StatusBar style={statusBarStyle} />
-      {profile.role === "student" && <StudentDashboard {...dashboardProps} onOpenTranslator={() => openTranslator("app")} />}
+      {profile.role === "student" && (
+        <StudentDashboard {...dashboardProps} onOpenTranslator={() => openTranslator("app")} onPracticeOffline={() => openClassroom("app")} />
+      )}
       {profile.role === "teacher" && <TeacherDashboard {...dashboardProps} onOpenTranslator={() => openTranslator("app")} />}
       {profile.role === "admin" && <AdminDashboard {...dashboardProps} />}
     </>

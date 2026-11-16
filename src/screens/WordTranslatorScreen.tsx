@@ -252,6 +252,8 @@ export default function WordTranslatorScreen({
       .catch((e: any) => {
         if (cancelled) return;
         setProblem("reader");
+        // The screen says "The word reader didn't load"; the detail goes to the error report.
+        console.error("[word reader] model load failed", e);
         setStatus(`Word model load failed: ${e?.message ?? e}`);
       });
     return () => {
@@ -482,6 +484,7 @@ export default function WordTranslatorScreen({
             ? "blocked"
             : "camera"
       );
+      console.error(`[word reader] ${cameraFailed ? "camera" : "setup"} failed`, err);
       setStatus("ERROR: " + (err && err.message ? err.message : String(err)));
     });
 

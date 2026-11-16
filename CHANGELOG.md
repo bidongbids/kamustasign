@@ -1,0 +1,48 @@
+# LCSign changes
+
+Newest first. Every build that leaves the development PC gets a new version
+(`npm run version:set -- x.y.z`) and an entry here. How to release:
+docs/RELEASING.md.
+
+## 1.1.0 - 2026-11-17
+
+The first release with a real version number. Everything before was
+installed as "1.0.0", whatever the date of the build.
+
+**New**
+- Android app (Capacitor), now signed with LCSign's own release key so later
+  versions install over it.
+- Teachers book video calls; students can call only during their booked
+  time (database migration 0017).
+- Sign-up and password reset by emailed 6-digit code, leaked-password check,
+  and 2FA required for admins (0016).
+- No internet: the start screen offers the Translator and a Classroom that
+  keeps stars on the device.
+- Translator redesign (big camera, hold ring, Settings) with Words in the
+  same design; hands-free word reading starts sooner and trims the pause at
+  the end.
+- Classroom word lists A to Z; modules count only passes since the module
+  was made; teacher Progress and module editor redesign.
+- FSL words retrained with the team's recordings.
+- **About LCSign** in the Appearance panel: version, update status, and
+  "Copy error report".
+- **Update check:** the app compares itself with the app_release table
+  (0018). Too old = "Update LCSign" screen (the Translator still works).
+- **Desktop auto-update** (switched off until an update address is set in
+  app_release).
+- **Error log:** the last errors on every device; the desktop app also
+  writes `%APPDATA%\LCSign\logs\lcsign.log`. A crashed or frozen desktop
+  window now offers Reload instead of going white.
+
+**Fixed**
+- Desktop app picked a virtual camera (Logi Capture) over the real webcam.
+- Video call fixes (sign reader buttons, Clear syncs to the student).
+- 25-second spinner when starting offline.
+
+**Security**
+- Electron 33 -> 45; inline scripts blocked by the content security policy.
+- Dependency fixes (`npm audit fix`): the critical and most high issues
+  gone. What's left is in Expo's build tools (not shipped in the app) and
+  needs the Expo 58 upgrade.
+
+**Database:** apply 0015 (if not applied yet), 0016, 0017 and 0018 in order.
