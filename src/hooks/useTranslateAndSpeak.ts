@@ -5,7 +5,7 @@
 // the original English text rather than staying silent, since TTS itself
 // doesn't depend on translation succeeding.
 import { useCallback, useRef, useState } from "react";
-import * as Speech from "expo-speech";
+import * as Speech from "../lib/speech";
 import { translateText, isTranslateConfigured } from "../lib/translate";
 import { toTtsLocale } from "../lib/ttsLocales";
 
@@ -51,9 +51,12 @@ export function useTranslateAndSpeak(targetLanguageCode: string, sourceLanguageC
           toSpeak = text;
           if (id === callIdRef.current) {
             setError(
-              isTranslateConfigured
-                ? err?.message ?? "Translation failed."
-                : "Google Translate isn't configured yet - speaking the original English instead."
+              !isTranslateConfigured
+                ? "Google Translate isn't configured yet - speaking the original English instead."
+                : err instanceof TypeError
+                  ? // fetch() itself failed: no internet (reading signs works offline, translating doesn't).
+                    "No internet, so it's said without translating."
+                  : err?.message ?? "Translation failed."
             );
           }
         }

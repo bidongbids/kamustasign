@@ -1,0 +1,12 @@
+{
+  "appId": "com.nmsc.kamustasign",
+  "appName": "LCSign",
+  "webDir": "../dist",
+  "backgroundColor": "#1A1E26",
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native",
+      "style": "DARK"
+    }
+  }
+}

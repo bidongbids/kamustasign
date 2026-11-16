@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LCSign's dark background (theme_color in public/manifest.webmanifest).
+         Shown behind the status and navigation bars and while the page loads. -->
+    <color name="lcsign_background">#1A1E26</color>
+</resources>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
+import { openCamera } from "../lib/cameraDevice";
 
 // Letters and Words used to each call getUserMedia in their own mount effect
 // and stop() the stream in their own unmount cleanup. Switching tabs unmounts
@@ -20,6 +21,9 @@ import { Platform } from "react-native";
 // `exact`) keeps cameras without that mode working - Chrome takes the closest
 // one and crops/scales it to 4:3, the shape the app has always used.
 // The trackers resize frames internally, so the extra pixels cost almost nothing.
+// Asking for a size without naming a camera makes Chromium pick the camera
+// that fits it best, which can be a virtual one: openCamera() (lib/cameraDevice)
+// names the real camera.
 export const CAMERA_VIDEO: MediaTrackConstraints = {
   width: { ideal: 960 },
   height: { ideal: 720 },
@@ -55,7 +59,7 @@ export function useSharedCameraStream() {
       streamPromiseRef.current = null;
     }
     if (!streamPromiseRef.current) {
-      const pending = navigator.mediaDevices.getUserMedia({ video: CAMERA_VIDEO }).then(
+      const pending = openCamera(CAMERA_VIDEO).then(
         (stream) => {
           if (streamPromiseRef.current === pending) streamRef.current = stream;
           return stream;
