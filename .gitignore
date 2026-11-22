@@ -25,6 +25,11 @@ Thumbs.db
 ml/data/
 ml/datasets/
 *.mp4
+# ...except the FSL "How to make it" clips (FSL-105, CC BY 4.0, which allows
+# sharing). The ASL word clips stay out: their licenses are research-only and
+# this repository is public, so they go up locked in
+# locked-media/asl-words.lcpack (scripts/reference-clips.mjs).
+!public/reference/fsl-words/*.mp4
 *.avi
 # Training checkpoints - too large for git; regenerate with the ml/scripts
 # pipeline (see docs/FSL_MODEL_GUIDE.md / docs/NUMBERS_MODEL_GUIDE.md).

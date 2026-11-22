@@ -16,6 +16,9 @@
 #   EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY,
 #   EXPO_PUBLIC_TURN_CREDENTIALS_URL, EXPO_PUBLIC_MYMEMORY_EMAIL
 # (EXPO_PUBLIC_PASSWORD_RESET is set to true below.)
+# and LCSIGN_CLIPS_KEY (also in .env), which unlocks the ASL word videos in
+# locked-media/asl-words.lcpack. Without them every ASL word shows "No
+# picture for this sign yet", as in 1.2.0 (scripts/reference-clips.mjs).
 #
 # Builds exactly what is committed, so work in progress (like word-list
 # entries the model doesn't know yet) can't slip in.
@@ -60,7 +63,14 @@ jobs:
             echo "EXPO_PUBLIC_PASSWORD_RESET=true"
           } > .env
 
+      - name: Unlock the ASL word videos
+        env:
+          LCSIGN_CLIPS_KEY: ${{ secrets.LCSIGN_CLIPS_KEY }}
+        run: node scripts/reference-clips.mjs unlock
+
       - run: npx expo export --platform web --clear
+      - name: Check every "How to make it" picture and video is in the build
+        run: node scripts/reference-clips.mjs check dist
       - run: npm ci
         working-directory: electron
       - run: node write-server-config.mjs

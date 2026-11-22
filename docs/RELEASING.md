@@ -9,8 +9,13 @@ The steps for every build that goes to the school's PCs or phones.
 2. **Only words the model knows.** Check that every word in
    `src/lib/wordCategories.ts` is in `public/word-model/label_classes.json`
    (and the FSL lists in `public/fsl-model/`).
-3. **Tests:** `npm run typecheck` and `npm test` pass.
-4. **Version:** `npm run version:set -- x.y.z` (bug fixes raise z, new
+3. **Sign videos:** if the ASL word clips in `public/reference/asl-words`
+   changed (after `export_reference_media.py`), run `npm run clips:lock` and
+   commit `locked-media/asl-words.lcpack`. GitHub's build only has the ASL
+   clips through that locked file (their licenses don't allow sharing them
+   in a public repository). FSL clips are committed as normal files.
+4. **Tests:** `npm run typecheck` and `npm test` pass.
+5. **Version:** `npm run version:set -- x.y.z` (bug fixes raise z, new
    features raise y), then add a CHANGELOG.md entry. Commit both, then tag:
    `git tag vx.y.z`.
 
@@ -32,6 +37,8 @@ The steps for every build that goes to the school's PCs or phones.
   Windows 11's **Smart App Control** on it fails at the uninstaller step
   ("spawn UNKNOWN"): Windows won't run the unsigned helper it builds. That
   PC can't run unsigned LCSign either; see "Code signing" below.
+  Every build stops if a "How to make it" photo or video is missing
+  (`node scripts/reference-clips.mjs check dist`).
 - **Android:** `npm run mobile:build` produces
   `mobile/dist/LCSign-x.y.z.apk` (to install directly on phones) and
   `LCSign-x.y.z.aab` (for the Play Store). It's signed with the release key
@@ -76,7 +83,10 @@ the school's call.
 
 ## Keys and secrets (never in git)
 
-- `.env`: Supabase URL and anon key, TURN URL, `SUPABASE_DB_URL`.
+- `.env`: Supabase URL and anon key, TURN URL, `SUPABASE_DB_URL`,
+  `LCSIGN_CLIPS_KEY` (opens the locked ASL word videos; the same value is the
+  GitHub repository secret). If it's lost, `npm run clips:lock` makes a new
+  one; then replace the secret.
 - Android release key: `C:\Users\USER\LCSign-release-key\` (see its
   README). Back it up in two places. Losing it means every phone must
   uninstall LCSign to take a new version.

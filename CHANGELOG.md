@@ -4,6 +4,19 @@ Newest first. Every build that leaves the development PC gets a new version
 (`npm run version:set -- x.y.z`) and an entry here. How to release:
 docs/RELEASING.md.
 
+## 1.2.1 - 2026-11-23
+
+**Fixed**
+- **"How to make it" was empty in the 1.2.0 desktop app** for every word and
+  for the FSL numbers ("No picture for this sign yet"). GitHub builds the
+  installer from what's in git, and the videos had never been in git (all
+  `.mp4` files were ignored). Now the FSL clips (FSL-105, CC BY 4.0) are
+  committed, and the ASL word clips are committed as one locked file,
+  `locked-media/asl-words.lcpack`, that the build opens with the
+  `LCSIGN_CLIPS_KEY` secret (their research-only licenses don't allow
+  sharing them in a public repository). Every build now stops if any
+  "How to make it" photo or video is missing.
+
 ## 1.2.0 - 2026-11-22
 
 **New**
