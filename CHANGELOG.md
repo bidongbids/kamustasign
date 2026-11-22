@@ -4,6 +4,25 @@ Newest first. Every build that leaves the development PC gets a new version
 (`npm run version:set -- x.y.z`) and an entry here. How to release:
 docs/RELEASING.md.
 
+## 1.2.0 - 2026-11-22
+
+**New**
+- **App errors for admins:** while someone is signed in, the app sends its
+  errors to the school's own database (migration 0019, `report_errors()`),
+  and admins see them under "App errors" on the Accounts page: when, whose
+  account, which app and version, the full text, Copy and Delete. Email
+  addresses, log-in tokens and computer user names are taken out first.
+  Admins only; deleted after 30 days. Limits: 30 per send, 50 new a day per
+  account, 20,000 in all. Errors from before sign-in go with the next
+  account that signs in on that device.
+- Desktop app: crashes and freezes of the window are kept in
+  `%APPDATA%\LCSign\logs\problems.json` and added to the error list when
+  the app opens again, since a crashed window can't record its own crash.
+
+**Fixed**
+- `supabase/tests/rls_test.sql` hadn't run since 1.1.0 (four `$` instead of
+  `$$`); it now also covers 0019.
+
 ## 1.1.0 - 2026-11-17
 
 The first release with a real version number. Everything before was
