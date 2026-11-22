@@ -13,6 +13,7 @@
 // closed since 0011 and have no functions here.)
 import { supabase } from "./supabase";
 import type { CallBooking } from "./callSchedule";
+import type { ErrorUpload } from "./errorLog";
 import {
   countMastered,
   getGroup,
@@ -629,4 +630,44 @@ export async function saveBooking(
 export async function cancelBooking(id: string): Promise<{ error: { message: string } | null }> {
   const { error } = await supabase.from("call_bookings").delete().eq("id", id);
   return { error: error ? bookingError(error) : null };
+}
+
+// ── app errors (0019_error_reports.sql) ─────────────────────────────────
+// Every signed-in copy of the app sends its errors (errorLog.ts); admins
+// read them in the Accounts page. Rows go after 30 days by themselves.
+
+export type ErrorReportRow = {
+  id: number;
+  user_id: string;
+  happened_at: string;
+  reported_at: string;
+  app_version: string;
+  platform: "desktop" | "android" | "web";
+  source: string;
+  message: string;
+  count: number;
+  before_sign_in: boolean;
+  device: string | null;
+};
+
+/** errorLog.ts's sender: true once the database has the batch. Never logs a failure. */
+export async function reportErrors(entries: ErrorUpload[]): Promise<boolean> {
+  const { error } = await supabase.rpc("report_errors", { p_entries: entries });
+  return !error;
+}
+
+const ERROR_REPORT_COLUMNS = "id, user_id, happened_at, reported_at, app_version, platform, source, message, count, before_sign_in, device";
+
+/** Admins: the newest 300. `missing`: 0019 isn't applied yet. */
+export async function listErrorReports(): Promise<{ data: ErrorReportRow[]; error: { message: string } | null; missing: boolean }> {
+  const { data, error } = await supabase.from("error_reports").select(ERROR_REPORT_COLUMNS).order("happened_at", { ascending: false }).limit(300);
+  if (error) return { data: [], error: missingTable(error) ? null : error, missing: missingTable(error) };
+  return { data: (data as ErrorReportRow[]) ?? [], error: null, missing: false };
+}
+
+/** Admins: delete these reports (fixed, or not worth keeping). */
+export async function deleteErrorReports(ids: number[]): Promise<{ error: { message: string } | null }> {
+  if (!ids.length) return { error: null };
+  const { error } = await supabase.from("error_reports").delete().in("id", ids);
+  return { error };
 }

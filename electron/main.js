@@ -30,10 +30,15 @@ const isAppUrl = (url) => originOf(url) === APP_ORIGIN;
 // ── Error log ───────────────────────────────────────────────────────────
 // %APPDATA%\LCSign\logs\lcsign.log: page errors (anything the app writes
 // with console.error, and errors nothing caught), crashes and freezes of
-// the page, and the updater. Nothing is sent anywhere; "Open the log
-// folder" in Appearance > About LCSign shows the file so a teacher can
+// the page, and the updater. The file itself is never sent anywhere; "Open
+// the log folder" in Appearance > About LCSign shows it so a teacher can
 // send it to whoever looks after LCSign. At 1 MB it moves to lcsign.old.log
 // and a new file starts, so it never grows past ~2 MB.
+//
+// Crashes and freezes also go in problems.json (the last 20): a page that
+// crashed can't record its own crash, so after it opens again it reads them
+// (lcsign:problems) into its error list, which the app sends to the
+// school's admins (src/lib/errorLog.ts, 0019_error_reports.sql).
 const LOG_MAX_BYTES = 1_000_000;
 const PAGE_LINES_PER_MINUTE = 60;
 let pageLines = { minute: 0, count: 0 };
@@ -67,8 +72,37 @@ function logPageError(message) {
   else if (pageLines.count === PAGE_LINES_PER_MINUTE + 1) log("page", "(more page errors this minute not written)");
 }
 
-process.on("uncaughtException", (err) => log("main", (err && err.stack) || err));
-process.on("unhandledRejection", (reason) => log("main", `unhandled rejection: ${(reason && reason.stack) || reason}`));
+const PROBLEMS_MAX = 20;
+const problemsFile = () => path.join(logDir(), "problems.json");
+
+function readProblems() {
+  try {
+    const list = JSON.parse(fs.readFileSync(problemsFile(), "utf8"));
+    return Array.isArray(list) ? list.slice(-PROBLEMS_MAX) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberProblem(kind, message) {
+  try {
+    const list = readProblems();
+    list.push({ at: new Date().toISOString(), kind, message: String(message).slice(0, 1500) });
+    fs.mkdirSync(logDir(), { recursive: true });
+    fs.writeFileSync(problemsFile(), JSON.stringify(list.slice(-PROBLEMS_MAX)));
+  } catch {
+    // Same rule as log(): never what breaks the app.
+  }
+}
+
+process.on("uncaughtException", (err) => {
+  log("main", (err && err.stack) || err);
+  rememberProblem("main", (err && err.stack) || err);
+});
+process.on("unhandledRejection", (reason) => {
+  log("main", `unhandled rejection: ${(reason && reason.stack) || reason}`);
+  rememberProblem("main", `unhandled rejection: ${(reason && reason.stack) || reason}`);
+});
 
 // Only web links leave the app, and they open in the normal browser.
 function openOutside(url) {
@@ -247,10 +281,12 @@ function watchForCrashes(win) {
     log("crash", `page stopped: ${details.reason} (exit code ${details.exitCode})`);
     if (details.reason === "clean-exit" || win.isDestroyed()) return;
     if (reloadingAfterHang) {
+      // Ended on purpose after a freeze (already in problems.json as one).
       reloadingAfterHang = false;
       win.webContents.reload();
       return;
     }
+    rememberProblem("crash", `LCSign stopped working: ${details.reason} (exit code ${details.exitCode}). Found when it opened again.`);
     ask({
       type: "error",
       message: "LCSign stopped working",
@@ -267,6 +303,7 @@ function watchForCrashes(win) {
 
   win.on("unresponsive", () => {
     log("freeze", "page not responding");
+    rememberProblem("freeze", "LCSign stopped responding (the window froze).");
     ask({
       message: "LCSign isn't responding",
       detail: "It may still be loading the sign models. Wait a little, or reload it.",
@@ -325,7 +362,9 @@ app.on("web-contents-created", (_event, contents) => {
 });
 
 app.on("child-process-gone", (_event, details) => {
-  if (details.reason !== "clean-exit") log("crash", `${details.type} process stopped: ${details.reason} (exit code ${details.exitCode})`);
+  if (details.reason === "clean-exit") return;
+  log("crash", `${details.type} process stopped: ${details.reason} (exit code ${details.exitCode})`);
+  rememberProblem("crash", `The ${details.type} part of LCSign stopped: ${details.reason} (exit code ${details.exitCode}).`);
 });
 
 // ── Updates ─────────────────────────────────────────────────────────────
@@ -448,6 +487,7 @@ function startUpdates() {
 const fromApp = (event) => !!event.senderFrame && isAppUrl(event.senderFrame.url);
 
 ipcMain.handle("lcsign:update-status", (event) => (fromApp(event) ? updateStatus : null));
+ipcMain.handle("lcsign:problems", (event) => (fromApp(event) ? readProblems() : []));
 ipcMain.handle("lcsign:open-logs", (event) => {
   if (!fromApp(event)) return false;
   fs.mkdirSync(logDir(), { recursive: true });

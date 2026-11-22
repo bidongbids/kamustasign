@@ -1,7 +1,8 @@
 // The desktop app's window.lcsignDesktop (electron/preload.js): background
-// update status, "Restart to update", and the log folder. null in browsers
+// update status, "Restart to update", the log folder, and recent crashes. null in browsers
 // and the Android app.
 import { useEffect, useState } from "react";
+import type { DesktopProblem } from "./errorLog";
 
 export type DesktopUpdateState = "off" | "checking" | "current" | "downloading" | "ready" | "error";
 
@@ -20,6 +21,8 @@ type DesktopBridge = {
   onUpdateStatus: (callback: (status: DesktopUpdateStatus) => void) => () => void;
   installUpdate: () => Promise<boolean>;
   openLogFolder: () => Promise<boolean>;
+  /** Recent crashes and freezes of the page (main.js problems.json); older desktop builds lack it. */
+  getProblems?: () => Promise<DesktopProblem[]>;
 };
 
 export function desktopBridge(): DesktopBridge | null {

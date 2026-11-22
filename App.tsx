@@ -10,7 +10,9 @@ import TeacherDashboard from "./src/screens/dashboard/TeacherDashboard";
 import AdminDashboard from "./src/screens/dashboard/AdminDashboard";
 import { useAuthGate } from "./src/lib/authGate";
 import { useConnection } from "./src/lib/connectivity";
-import { isPendingApproval, type ProfileRole } from "./src/lib/queries";
+import { isPendingApproval, reportErrors, type ProfileRole } from "./src/lib/queries";
+import { isSupabaseConfigured } from "./src/lib/supabase";
+import { desktopBridge } from "./src/lib/desktopBridge";
 import AccountNoticeScreen from "./src/screens/auth/AccountNoticeScreen";
 import Verify2FAScreen from "./src/screens/auth/Verify2FAScreen";
 import ResetPasswordScreen from "./src/screens/auth/ResetPasswordScreen";
@@ -20,7 +22,7 @@ import { ThemeProvider, useTheme, useThemedStyles } from "./src/theme/ThemeProvi
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import CrashBoundary from "./src/components/CrashBoundary";
 import { isAndroidApp } from "./src/lib/androidApp";
-import { installErrorCapture } from "./src/lib/errorLog";
+import { addDesktopProblems, installErrorCapture, setErrorUser, startErrorUpload, stopErrorUpload } from "./src/lib/errorLog";
 import { useAppRelease } from "./src/lib/appRelease";
 import UpdateRequiredScreen from "./src/screens/auth/UpdateRequiredScreen";
 
@@ -68,6 +70,9 @@ const ROLE_WITH_ARTICLE: Record<ProfileRole, string> = { student: "a student", t
 // Keep the last few errors on this device for "Copy error report"
 // (Appearance > About LCSign) - production builds; in dev the console is right there.
 if (!__DEV__ && Platform.OS === "web") installErrorCapture();
+// ...and send them to the school's database for its admins (0019), from
+// production builds only: a developer's errors don't belong there.
+const SEND_ERRORS = !__DEV__ && Platform.OS === "web" && isSupabaseConfigured;
 
 // Installable app / offline shell (public/sw.js). Production web builds only:
 // in dev it would cache Metro's bundles, and Electron's app:// scheme has no
@@ -136,6 +141,23 @@ function AppContent() {
   // Too old for the server (app_release.min_version, 0018)? Then the
   // Translator still works, but nothing that needs an account.
   const appRelease = useAppRelease();
+
+  // New errors belong to the signed-in account. They're sent once it may
+  // use LCSign: approved, and an admin's session has 2FA (0014, 0016) -
+  // report_errors() refuses anyone else. Signed out, they wait on the device.
+  const errorUser = authGate.status === "authenticated" ? authGate.session?.user.id ?? null : null;
+  const gateProfile = authGate.profile;
+  const mayReport = !!errorUser && !!gateProfile && !isPendingApproval(gateProfile) && (gateProfile.role !== "admin" || authGate.aal2);
+  useEffect(() => {
+    setErrorUser(errorUser);
+    // A crash of the desktop app's page can only be found after it opens
+    // again (electron/main.js keeps them); added now, with this account.
+    if (errorUser && !__DEV__) void desktopBridge()?.getProblems?.().then(addDesktopProblems, () => {});
+  }, [errorUser]);
+  useEffect(() => {
+    if (SEND_ERRORS && mayReport && errorUser) startErrorUpload(errorUser, reportErrors);
+    else stopErrorUpload();
+  }, [mayReport, errorUser]);
 
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;

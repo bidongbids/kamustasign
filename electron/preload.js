@@ -16,4 +16,6 @@ contextBridge.exposeInMainWorld("lcsignDesktop", {
   installUpdate: () => ipcRenderer.invoke("lcsign:install-update").catch(() => false),
   /** Show %APPDATA%\LCSign\logs (lcsign.log) in File Explorer. */
   openLogFolder: () => ipcRenderer.invoke("lcsign:open-logs").catch(() => false),
+  /** Recent crashes and freezes [{ at, kind, message }], for the page's error list after a restart. */
+  getProblems: () => ipcRenderer.invoke("lcsign:problems").catch(() => []),
 });

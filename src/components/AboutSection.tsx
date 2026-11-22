@@ -1,6 +1,6 @@
 // "About LCSign" at the bottom of the Appearance panel, which every screen
 // can open: the version and where it runs, whether an update is out, and
-// the error report (errorLog.ts) - plus, in the desktop app, the folder
+// the error report (errorLog.ts; also sent to the admins, 0019) - plus, in the desktop app, the folder
 // holding lcsign.log (electron/main.js). The first thing to ask when
 // someone says "it broke" is "which version?", so it lives where anyone can
 // find it without logging in.
@@ -72,7 +72,7 @@ export default function AboutSection() {
       <Text style={styles.note}>
         {copied === "no"
           ? "Couldn't copy. Take a photo of this panel instead."
-          : `${errorCount ? `${errorCount} recent error${errorCount === 1 ? "" : "s"} on this device. ` : ""}If something goes wrong, send the error report to whoever looks after LCSign. Nothing is sent by itself.`}
+          : `${errorCount ? `${errorCount} recent error${errorCount === 1 ? "" : "s"} on this device. ` : ""}While someone is signed in, errors also go to the school's LCSign admins by themselves, without emails or passwords, and are deleted after 30 days. If something goes wrong, you can still send this error report to whoever looks after LCSign.`}
       </Text>
     </View>
   );

@@ -18,12 +18,14 @@
 // live counts, a class filter and "Group by class"; then the accounts as a
 // table (a list on a phone). Editing opens a frosted drawer: the role as
 // three cards, and - when it changes - what will happen, in sentences, with
-// a confirm button that names the change.
+// a confirm button that names the change. Under the list: "App errors"
+// (AdminErrorReports.tsx), what went wrong in the app on every device.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import DashboardShell from "./DashboardShell";
 import { ActionButton, Avatar, ChoicePills, ConfirmInline, Notice, RoleBadge, roleColors, SearchField, type NoticeState } from "./ManageKit";
 import { LoadErrorCard } from "./TeacherStates";
+import ErrorReportsCard from "./AdminErrorReports";
 import { CloseButton, SelectPill, SideDrawer } from "./Overlays";
 import SegmentedToggle from "../../components/SegmentedToggle";
 import { AlertCircleIcon, CheckIcon, ChevronDownIcon, InboxIcon, PencilIcon, SearchIcon, ShieldIcon } from "../../components/icons/UiIcons";
@@ -231,6 +233,9 @@ export default function AdminDashboard({ accentColor, onSignOut, onExitToStart, 
           onEdit={setEditingId}
         />
       )}
+
+      {/* What went wrong in the app on every device (0019). */}
+      {!loading && !loadError ? <ErrorReportsCard accounts={accounts} accentColor={accentColor} /> : null}
 
       <AccountDrawer
         account={editing}

@@ -1,4 +1,4 @@
--- RLS / access-rule checks for the classroom schema (migrations 0001-0018).
+-- RLS / access-rule checks for the classroom schema (migrations 0001-0019).
 --
 -- Run in the Supabase SQL editor (it runs as `postgres`) against a
 -- NON-PRODUCTION project with every migration applied. (2026-11-05: also
@@ -233,7 +233,7 @@ begin
     raise exception 'FAIL: anon can change app_release';
   exception when insufficient_privilege then null;
   end;
-end $;
+end $$;
 
 reset role;
 
@@ -1077,7 +1077,7 @@ reset role;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-a000-0000000000c2","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 
-do $ begin
+do $$ begin
   if (select count(*) from public.app_release) <> 2 then
     raise exception 'FAIL: a signed-in user cannot read app_release';
   end if;
@@ -1091,10 +1091,175 @@ do $ begin
     raise exception 'FAIL: a signed-in user can add an app_release row';
   exception when insufficient_privilege then null;
   end;
-end $;
+end $$;
 
 reset role;
 
-do $ begin raise notice 'RLS tests: all passed'; end $;
+-- ── error_reports (0019): sent by anyone signed in, read by admins ─────
+do $$
+declare r record;
+begin
+  for r in
+    select who, priv from unnest(array['anon', 'authenticated']) who
+      cross join unnest(array['insert', 'update', 'truncate']) priv
+    where has_table_privilege(who, 'public.error_reports', priv)
+  loop
+    raise exception 'FAIL: % can % public.error_reports directly (only report_errors() may write)', r.who, r.priv;
+  end loop;
+end $$;
+
+-- An old row (31 days) that the next report must clear away.
+insert into public.error_reports (user_id, client_key, happened_at, reported_at, app_version, platform, source, message)
+values ('00000000-0000-4000-a000-0000000000b3', 'rls-old-row', now() - interval '31 days', now() - interval '31 days', '1.0.0', 'web', 'console', 'old error');
+
+-- S3 (approved student) sends two errors, then the first one again.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-a000-0000000000b3","role":"authenticated"}', true);
+set local role authenticated;
+
+do $$
+declare n int;
+begin
+  n := public.report_errors(jsonb_build_array(
+    jsonb_build_object('key', 'rls-err-1', 'at', now() - interval '5 minutes', 'version', '1.2.0', 'platform', 'desktop',
+      'source', 'console', 'message', 'model load failed', 'count', 3, 'device', 'Windows test'),
+    jsonb_build_object('key', 'rls-err-2', 'at', now(), 'version', '1.2.0', 'platform', 'web',
+      'source', 'uncaught', 'message', repeat('y', 5000), 'before_sign_in', true),
+    -- skipped: a bad key, a made-up platform, no text
+    jsonb_build_object('key', 'no spaces allowed', 'platform', 'web', 'message', 'x'),
+    jsonb_build_object('key', 'rls-err-3', 'platform', 'ios', 'message', 'x'),
+    jsonb_build_object('key', 'rls-err-4', 'platform', 'web', 'message', '   ')
+  ));
+  if n <> 2 then
+    raise exception 'FAIL: report_errors saved % entries, expected 2 (3 bad ones skipped)', n;
+  end if;
+  n := public.report_errors(jsonb_build_array(
+    jsonb_build_object('key', 'rls-err-1', 'at', now() + interval '1 day', 'version', '1.2.0', 'platform', 'desktop',
+      'source', 'console', 'message', 'model load failed', 'count', 7)));
+  if n <> 1 then
+    raise exception 'FAIL: reporting the same error again was not saved';
+  end if;
+  -- A student can't read the reports, not even their own.
+  if exists (select 1 from public.error_reports) then
+    raise exception 'FAIL: a student can read error_reports';
+  end if;
+  begin
+    insert into public.error_reports (user_id, client_key, happened_at, app_version, platform, source, message)
+    values ('00000000-0000-4000-a000-0000000000b1', 'rls-forged', now(), '1.0.0', 'web', 'console', 'in someone else''s name');
+    raise exception 'FAIL: a student can insert into error_reports directly';
+  exception when insufficient_privilege then null;
+  end;
+  delete from public.error_reports;
+  get diagnostics n = row_count;
+  if n <> 0 then
+    raise exception 'FAIL: a student deleted % error reports', n;
+  end if;
+  begin
+    perform public.report_errors((select jsonb_agg(jsonb_build_object('key', 'rls-many-' || i, 'platform', 'web', 'message', 'x')) from generate_series(1, 31) i));
+    raise exception 'FAIL: report_errors took 31 entries in one call';
+  exception when invalid_parameter_value then null;
+  end;
+  begin
+    perform public.report_errors('{"key":"rls-not-array"}'::jsonb);
+    raise exception 'FAIL: report_errors took something that is not a list';
+  exception when invalid_parameter_value then null;
+  end;
+end $$;
+
+reset role;
+
+do $$
+declare n int;
+begin
+  if exists (select 1 from public.error_reports where client_key = 'rls-old-row') then
+    raise exception 'FAIL: a 31-day-old error report was not deleted';
+  end if;
+  if (select count(*) from public.error_reports where user_id = '00000000-0000-4000-a000-0000000000b3') <> 2 then
+    raise exception 'FAIL: the same error reported twice made two rows';
+  end if;
+  if (select e.count from public.error_reports e where e.client_key = 'rls-err-1') <> 7 then
+    raise exception 'FAIL: a repeated error did not update its count';
+  end if;
+  if (select happened_at > now() from public.error_reports where client_key = 'rls-err-1') then
+    raise exception 'FAIL: a device clock in the future was believed';
+  end if;
+  if (select char_length(message) from public.error_reports where client_key = 'rls-err-2') <> 1500 then
+    raise exception 'FAIL: a long error text was not cut to 1500 characters';
+  end if;
+  if not (select before_sign_in from public.error_reports where client_key = 'rls-err-2') then
+    raise exception 'FAIL: before_sign_in was lost';
+  end if;
+end $$;
+
+-- 50 new rows a day per account: S3 has 2, so 48 more fit and the rest don't.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-a000-0000000000b3","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+declare n int;
+begin
+  n := public.report_errors((select jsonb_agg(jsonb_build_object('key', 'rls-cap-a' || i, 'platform', 'web', 'message', 'x')) from generate_series(1, 30) i));
+  n := n + public.report_errors((select jsonb_agg(jsonb_build_object('key', 'rls-cap-b' || i, 'platform', 'web', 'message', 'x')) from generate_series(1, 30) i));
+  -- Updating a row already there still works at the cap.
+  n := n + public.report_errors(jsonb_build_array(jsonb_build_object('key', 'rls-err-2', 'platform', 'web', 'message', 'x', 'count', 2)));
+  if n <> 49 then
+    raise exception 'FAIL: the 50-a-day cap let % of 61 through, expected 49 (48 new + 1 update)', n;
+  end if;
+end $$;
+reset role;
+delete from public.error_reports where client_key like 'rls-cap-%';
+
+-- A sign-up still waiting can't send, and neither can an admin without 2FA.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-a000-0000000000b4","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  begin
+    perform public.report_errors(jsonb_build_array(jsonb_build_object('key', 'rls-pending', 'platform', 'web', 'message', 'x')));
+    raise exception 'FAIL: an account waiting for approval can send error reports';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
+-- A teacher can't read them.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-a000-0000000000a1","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  if exists (select 1 from public.error_reports) then
+    raise exception 'FAIL: a teacher can read error_reports';
+  end if;
+end $$;
+reset role;
+
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-a000-0000000000c1","role":"authenticated","aal":"aal1"}', true);
+set local role authenticated;
+do $$ begin
+  if exists (select 1 from public.error_reports) then
+    raise exception 'FAIL: an admin without 2FA (aal1) can read error_reports';
+  end if;
+end $$;
+reset role;
+
+-- AD (admin, aal2) reads them all and can clear them, but not change them.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-a000-0000000000c1","role":"authenticated","aal":"aal2"}', true);
+set local role authenticated;
+do $$
+declare n int;
+begin
+  if (select count(*) from public.error_reports where user_id = '00000000-0000-4000-a000-0000000000b3') <> 2 then
+    raise exception 'FAIL: an admin cannot read the error reports';
+  end if;
+  begin
+    update public.error_reports set message = 'changed';
+    raise exception 'FAIL: an admin can change an error report';
+  exception when insufficient_privilege then null;
+  end;
+  delete from public.error_reports where client_key = 'rls-err-2';
+  get diagnostics n = row_count;
+  if n <> 1 then
+    raise exception 'FAIL: an admin cannot delete an error report';
+  end if;
+end $$;
+reset role;
+
+do $$ begin raise notice 'RLS tests: all passed'; end $$;
 
 rollback;

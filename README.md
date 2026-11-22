@@ -44,11 +44,12 @@ npm run web               # http://localhost:8081
 
 ### Database
 
-Run the migrations in `supabase/migrations/` **in order** (`0001` → `0013`)
+Run the migrations in `supabase/migrations/` **in order** (`0001` → `0019`)
 in the Supabase SQL editor (or `supabase db push`). Row Level Security is
 defined there; the anon key is safe to ship because RLS, not the key,
 restricts access. `supabase/tests/rls_test.sql` checks the main access rules
-(see [Testing](#testing)).
+(see [Testing](#testing)). [docs/MIGRATIONS_GUIDE.md](docs/MIGRATIONS_GUIDE.md)
+explains each migration and has a query that shows which ones a database has.
 
 ### Supabase dashboard settings
 
